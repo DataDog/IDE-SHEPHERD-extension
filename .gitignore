@@ -1,0 +1,6 @@
+.DS_Store
+.vscode
+.github
+out
+node_modules
+*.vsix  
