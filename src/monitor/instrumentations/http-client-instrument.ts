@@ -1,20 +1,45 @@
 import { CONFIG } from '../../lib/config';
-import { AsyncTargetChannel } from '../channels';
 import { NetworkEvent } from '../../lib/events/network-events';
 import type { Protocol } from '../../lib/events/network-events';
 import url from 'url';
 import type { ExtensionInfo } from '../../lib/events/ext-events';
 import { Logger } from '../../lib/logger';
+import { NetworkAnalyzer } from '../analysis/network-analyzer';
+import { NotificationService } from '../../lib/services/notification-service';
 
-// access network channel dynamically to avoid timing issues!
-function getNetworkChannel(): AsyncTargetChannel<NetworkEvent> | undefined {
-    return (global as any).NETWORK_CH;
-}
+// Create a local instance of NetworkAnalyzer
+const networkAnalyzer = new NetworkAnalyzer();
 
 
 function blocked(){
-    // gracefully block the request
-    // .. or maybe not :/
+    // Create a mock request object that behaves like a real request but does nothing
+    const mockReq: any = {
+        write: () => mockReq,
+        end: () => mockReq,
+        on: () => mockReq,
+        once: () => mockReq,
+        emit: (...args: any[]) => mockReq,
+        destroy: () => mockReq,
+        setTimeout: () => mockReq,
+        setNoDelay: () => mockReq,
+        setSocketKeepAlive: () => mockReq,
+        setHeader: () => mockReq,
+        getHeader: () => undefined,
+        removeHeader: () => mockReq,
+        addTrailers: () => mockReq,
+        aborted: false,
+        connection: null,
+        socket: null,
+        finished: true,
+        readable: false,
+        writable: false
+    };
+    
+    setTimeout(() => {
+        mockReq.emit('error', new Error('Request blocked by security policy'));
+    }, 0);
+    
+    return mockReq;
 }
 
 
@@ -134,28 +159,8 @@ export function patchHttpExports(http:any, protocol:Protocol, extensionInfo: Ext
     Logger.debug(`HTTP Plugin: Saved original ${protocol}.request function`);
 
     http.request=function wrapped(...args:any[]){
-        const NETWORK_CH = getNetworkChannel();
-        if(!NETWORK_CH) {
-            Logger.debug(`HTTP Plugin: Network channel not available, bypassing instrumentation`);
-            return orig(...args);
-        }
-
         const parsed = normalizeArgs(http, args[0], args[1], args[2]);
         Logger.debug(`HTTP Plugin: Intercepted ${protocol} request to: ${Logger.truncate(parsed.uri, 100)}`);
-
-        /* pre verdict (still sync/light) */
-        const pre=new NetworkEvent(
-        protocol, parsed.uri, 'request:pre',__filename,
-        extensionInfo,
-        undefined,parsed.options
-        );
-        
-        // lightweight domain check in main thread
-        // TODO: use network analyzer instead
-        if(pre.url.includes('localhost')) { 
-            Logger.warn(`HTTP Plugin: Blocking request to blacklisted domain: ${parsed.uri}`);
-            return blocked(); 
-        }
 
         const req=orig(...args);
 
@@ -173,17 +178,16 @@ export function patchHttpExports(http:any, protocol:Protocol, extensionInfo: Ext
                 undefined, parsed.options, undefined, undefined, undefined,
                 data, truncated
             );
-            const networkChannel = getNetworkChannel();
-            if (networkChannel) {
-                networkChannel.askAsync(post).then(verdict => {
-                    if(verdict && !verdict.allowed){
-                        req.destroy(new Error('blocked'));
-                        // we emit security events from the worker thread instead of the hook
-                        // however we're not sure if the blocking was successful due to the TO
-                    } else {
-                        t.apply(th,[c,...rest]);
-                    }
-                });
+            const analysisResult = networkAnalyzer.analyze(post);
+            if(analysisResult && !analysisResult.verdict.allowed && analysisResult.securityEvent){
+                Logger.warn(`HTTP Plugin: Blocked request:post based on analyzer verdict: ${parsed.uri}`);
+                req.destroy();
+                NotificationService.showSecurityBlockingInfo(
+                    parsed.uri, 
+                    analysisResult.securityEvent, 
+                    'request'
+                );
+                return req;
             } else {
                 t.apply(th,[c,...rest]);
             }
@@ -200,13 +204,16 @@ export function patchHttpExports(http:any, protocol:Protocol, extensionInfo: Ext
                 undefined, undefined, res.statusCode, res.headers, undefined,
                 data, truncated
             );
-            const networkChannel = getNetworkChannel();
-            if (networkChannel) {
-                networkChannel.askAsync(ev).then(v => {
-                    if(v && !v.allowed){
-                        res.destroy(new Error('blocked'));
-                    }
-                });
+            const analysisResult = networkAnalyzer.analyze(ev);
+            if(analysisResult && !analysisResult.verdict.allowed && analysisResult.securityEvent){
+                Logger.warn(`HTTP Plugin: Blocked response based on analyzer verdict: ${parsed.uri}`);
+                res.destroy();
+                NotificationService.showSecurityBlockingInfo(
+                    parsed.uri, 
+                    analysisResult.securityEvent, 
+                    'response'
+                );
+                return;
             }
         });
         });

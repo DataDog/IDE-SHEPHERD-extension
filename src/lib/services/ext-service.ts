@@ -42,7 +42,8 @@ export class ExtensionServices {
 
 
 	// getCallContext will yield a different result from getExtensionFromParentModule 
-	// iff there is ANOTHER extension patching Node's require the same way we do. 
+	// iff there is ANOTHER extension patching Node's require the same way we do.
+	// we use the getExtensionFromParentModule, but it is helpful to look at the stack trace to understand the call context.
 	static getCallContext() {
 		try {
 			const stack = new Error().stack;

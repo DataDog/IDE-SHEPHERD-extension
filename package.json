@@ -5,7 +5,7 @@
   "version": "0.0.1",
   "publisher": "datadog",
   "engines": {
-    "vscode": "^1.102.0"
+    "vscode": "^1.99.3"
   },
   "categories": [
     "Other"
@@ -15,7 +15,13 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": []
+    "commands": [
+      {
+        "command": "ide-shepherd.showStatus",
+        "title": "Show IDE Shepherd Status",
+        "category": "IDE Shepherd"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -28,7 +34,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
-    "@types/vscode": "^1.102.0",
+    "@types/vscode": "^1.99.3",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
     "@vscode/test-cli": "^0.0.11",

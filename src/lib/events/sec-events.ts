@@ -28,19 +28,12 @@ export function getHighestSeverity(severities: SeverityLevel[]): SeverityLevel {
   );
 }
 
-export enum ThreatType {
-  MALICIOUS_DOMAIN = 'malicious_domain',
-  DATA_EXFILTRATION = 'data_exfiltration',
-  SUSPICIOUS_PAYLOAD = 'suspicious_payload',
-}
-
 /**
  * IoC found in the extension event
  * We suppose each IoC is surfaced by a single rule.
  * If multiple rules are triggered, we will create multiple IoCs.
  */
 export interface IoC {
-  type: ThreatType;
   finding: string;
   rule: string; // triggered rule
   description: string;
@@ -97,9 +90,10 @@ export class SecurityEvent {
     );
   }
 
+  // customize it later to grab attention cuz they have the attention span of a goldfish, myself included
   getSummary(): string {
     const primaryIoC = this.getPrimaryIoC();
-    return `Highest threat: ${primaryIoC.type} detected in (${this.extension.id})`;
+    return `- Highest threat: ${primaryIoC.rule} detected in\n- Extension: ${this.extension.id}\n- Rule description: ${primaryIoC.description}\n- Severity: ${primaryIoC.severity}`;
   }
 
   getSecurityEventData(): Record<string, any> {

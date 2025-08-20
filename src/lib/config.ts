@@ -22,20 +22,5 @@ export const CONFIG = {
     },
     NETWORK: {
         MAX_CAPTURE_BYTES: 256 * 1024, // 256 kB
-        NBR_WORKERS: 4,  // worker pool size
-        TIMEOUT_MS: 500,
     },
-    FILESYSTEM: { 
-        NBR_WORKERS: 2,
-        TIMEOUT_MS: 200,
-    },
-    WORKSPACE: { 
-        NBR_WORKERS: 2,
-        TIMEOUT_MS: 200,
-    },
-    CHANNELS: {
-        NETWORK: 'sec:network',
-        FILESYSTEM: 'sec:filesystem',
-        WORKSPACE: 'sec:workspace'
-    }
 };

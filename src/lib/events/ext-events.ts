@@ -7,12 +7,6 @@ import { randomUUID } from 'crypto';
 
 export type Timestamp = number;
 
-/**
- * Identifier and meta data of the extension that emitted the event.
- */
-/**
- * Extension status information
- */
 export interface ExtensionInfo {
   id: string; // extensionName.publisherName
   isPatched: boolean;
