@@ -34,7 +34,10 @@ export class IDEStatusService {
             lastSecurityEvents: [],
             monitoringStartTime: Date.now(),
             lastUpdateTime: Date.now(),
-            isMonitoringActive: true
+            isMonitoringActive: true,
+            totalEventProcessingTime: 0,
+            nbrOfEventsProcessed: 0,
+            memoryUsage: 0
         };
     }
 
@@ -96,7 +99,7 @@ export class IDEStatusService {
         }
     }
 
-    static async recordSecurityEvent(event: SecurityEvent): Promise<void> {
+    static async emitSecurityEvent(event: SecurityEvent): Promise<void> {
         this.ensureInitialized();
         await this.acquireLock();
         try {
@@ -122,12 +125,9 @@ export class IDEStatusService {
         this.ensureInitialized();
         await this.acquireLock();
         try {
-            if (processingTime !== undefined) {
-                if (this._status.averageEventProcessingTime !== undefined) { 
-                    this._status.averageEventProcessingTime = (this._status.averageEventProcessingTime + processingTime) / 2;
-                } else {
-                    this._status.averageEventProcessingTime = processingTime;
-                }
+            if (processingTime !== undefined && this._status.totalEventProcessingTime !== undefined && this._status.nbrOfEventsProcessed !== undefined) {
+                this._status.totalEventProcessingTime += processingTime;
+                this._status.nbrOfEventsProcessed++;
             }
 
             if (memoryUsage !== undefined) {
@@ -176,6 +176,7 @@ export class IDEStatusService {
     private static formatStatusForDisplay(status: IDEStatus): string {
         const uptime = this.formatUptime(Date.now() - status.monitoringStartTime);
         const lastUpdate = this.formatUptime(Date.now() - status.lastUpdateTime);
+        const avgProcessingTime = status.totalEventProcessingTime && status.nbrOfEventsProcessed && status.nbrOfEventsProcessed > 0 ? (status.totalEventProcessingTime / status.nbrOfEventsProcessed).toFixed(2) : 'N/A';
         
         return [
             `IDE Shepherd Security Status`,
@@ -191,7 +192,7 @@ export class IDEStatusService {
             `\t* Filesystem: ${status.securityEventsByTarget.filesystem || 0}`,
             `\t* Workspace: ${status.securityEventsByTarget.workspace || 0}`,
             `- Performance:`,
-            `\t* Avg Processing Time: ${status.averageEventProcessingTime?.toFixed(2) || 'N/A'} ms`,
+            `\t* Avg Processing Time: ${avgProcessingTime} ms`,
             `\t* Memory Usage: ${status.memoryUsage ? `${(status.memoryUsage / 1024 / 1024).toFixed(2)} MB` : 'N/A'}`
         ].join('\n');
     }

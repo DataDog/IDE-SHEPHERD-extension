@@ -97,11 +97,7 @@ export class ModuleLoaderPatcher {
         try {
             const protocol: 'http' | 'https' = spec.includes('https') ? 'https' : 'http';
             const extId = ExtensionServices.getExtensionFromParentModule(parent);
-            const extensionInfo: ExtensionInfo = { 
-                id: extId, 
-                isPatched: true, 
-                patchedAt: Date.now() 
-            };
+            const extensionInfo = new ExtensionInfo(extId, true, Date.now());
 
             Logger.debug(`ModuleLoaderPatcher: Protocol: ${protocol}, Extension ID: ${extId}`);
 

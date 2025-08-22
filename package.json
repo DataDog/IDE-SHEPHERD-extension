@@ -18,7 +18,12 @@
     "commands": [
       {
         "command": "ide-shepherd.showStatus",
-        "title": "Show IDE Shepherd Status",
+        "title": "Show Status",
+        "category": "IDE Shepherd"
+      },
+      {
+        "command": "ide-shepherd.showWelcome",
+        "title": "Show Welcome & Help",
         "category": "IDE Shepherd"
       }
     ]

@@ -15,7 +15,7 @@ export class NetworkAnalyzer {
             const result = this.analyzeUrl(ev);
             
             if (result?.securityEvent) {
-                IDEStatusService.recordSecurityEvent(result.securityEvent).catch((error) => {
+                IDEStatusService.emitSecurityEvent(result.securityEvent).catch((error) => {
                     Logger.error(`NetworkAnalyzer: Failed to record security event: ${error.message}`);
                 });
             }
@@ -66,14 +66,10 @@ export class NetworkAnalyzer {
         // Suspicious domains pattern 1
         const susDomainsPattern1 = /([a-zA-Z0-9\-\.\_]+)(bit\.ly|workers\.dev|appdomain\.cloud|ngrok\.io|termbin\.com|localhost\.run|webhook\.(site|cool)|oastify\.com|burpcollaborator\.(me|net)|trycloudflare\.com|oast\.(pro|live|site|online|fun|me)|ply\.gg|pipedream\.net|dnslog\.cn|webhook-test\.com|typedwebhook\.tools|beeceptor\.com|ngrok-free\.(app|dev))/;
         
-        // Suspicious domains pattern 2
-        const susDomainsPattern2 = /([a-zA-Z0-9\-\.\_]+)\.(xyz|tk|ml|ga|cf|gq|pw|top|club|mw|bd|ke|am|sbs|date|quest|cd|bid|cd|ws|icu|cam|uno|stream|zip)[^a-zA-Z\.]/;
-
         const match1 = url.match(susDomainsPattern1);
-        const match2 = url.match(susDomainsPattern2);
 
-        if (match1 || match2) {
-            const matchedDomain = match1 ? match1[0] : match2![0];
+        if (match1) {
+            const matchedDomain = match1[0];
             return {
                 verdict: { allowed: false },
                 securityEvent: this.createSecurityEvent(

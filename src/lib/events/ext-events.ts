@@ -7,10 +7,16 @@ import { randomUUID } from 'crypto';
 
 export type Timestamp = number;
 
-export interface ExtensionInfo {
+export class ExtensionInfo {
   id: string; // extensionName.publisherName
   isPatched: boolean;
   patchedAt?: Timestamp; // useful to construct a patching timeline
+
+  constructor(id: string, isPatched: boolean, patchedAt?: Timestamp) {
+    this.id = id;
+    this.isPatched = isPatched;
+    this.patchedAt = patchedAt;
+  }
 }
 
 /**

@@ -4,7 +4,6 @@
 
 import * as vscode from 'vscode';
 import { SecurityEvent } from '../events/sec-events';
-import { Logger } from '../logger';
 
 export class NotificationService {
 

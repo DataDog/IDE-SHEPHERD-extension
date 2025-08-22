@@ -5,7 +5,7 @@
 
 import * as vscode from 'vscode';
 import { Logger } from './lib/logger';
-import { moduleLoaderPatcher } from './monitor';
+import { moduleLoaderPatcher } from './monitor/index';
 import { NotificationService } from './lib/services/notification-service';
 import { IDEStatusService } from './lib/services/ide-status-service';
 
@@ -13,6 +13,7 @@ export function activate(context: vscode.ExtensionContext) {
     try {
         Logger.init(context);
         Logger.info('IDE Shepherd Extension: Logger initialized');
+        
         
         Logger.info('IDE Shepherd Extension: Activating module loader patcher...');
         moduleLoaderPatcher.patch();
@@ -35,9 +36,6 @@ export function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(disposable);
         
         Logger.info('IDE Shepherd Extension: Activation completed successfully');
-        
-        // Show startup notification to user
-        NotificationService.showInfo('Security monitoring is now active and protecting your workspace');
         
     } catch (error) {
         Logger.error('IDE Shepherd Extension: Failed to activate', error as Error);

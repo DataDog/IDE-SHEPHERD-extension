@@ -93,7 +93,7 @@ export class SecurityEvent {
   // customize it later to grab attention cuz they have the attention span of a goldfish, myself included
   getSummary(): string {
     const primaryIoC = this.getPrimaryIoC();
-    return `- Highest threat: ${primaryIoC.rule} detected in\n- Extension: ${this.extension.id}\n- Rule description: ${primaryIoC.description}\n- Severity: ${primaryIoC.severity}`;
+    return `- Critical threat: ${primaryIoC.rule} detected in\n- Extension: ${this.extension.id}\n- Rule description: ${primaryIoC.description}\n- Severity: ${primaryIoC.severity}`;
   }
 
   getSecurityEventData(): Record<string, any> {

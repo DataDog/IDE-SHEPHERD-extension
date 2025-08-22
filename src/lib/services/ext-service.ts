@@ -124,7 +124,9 @@ export class ExtensionServices {
 	 * Enhanced path extraction with better patterns, aims to support multiple IDEs
 	 */
 	static _extractExtensionFromPath(filePath: string) {
-		if (!filePath) return 'unknown';
+		if (!filePath) {
+			return 'unknown';
+		}
 
 		try {
 			// Enhanced patterns for different VS Code installation types

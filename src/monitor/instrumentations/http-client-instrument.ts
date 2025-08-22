@@ -10,35 +10,117 @@ import { NotificationService } from '../../lib/services/notification-service';
 // Create a local instance of NetworkAnalyzer
 const networkAnalyzer = new NetworkAnalyzer();
 
+// dynamically block the request
+function createDynamicMock(realRequest: any): any {
 
-function blocked(){
-    // Create a mock request object that behaves like a real request but does nothing
-    const mockReq: any = {
-        write: () => mockReq,
-        end: () => mockReq,
-        on: () => mockReq,
-        once: () => mockReq,
-        emit: (...args: any[]) => mockReq,
-        destroy: () => mockReq,
-        setTimeout: () => mockReq,
-        setNoDelay: () => mockReq,
-        setSocketKeepAlive: () => mockReq,
-        setHeader: () => mockReq,
-        getHeader: () => undefined,
-        removeHeader: () => mockReq,
-        addTrailers: () => mockReq,
-        aborted: false,
-        connection: null,
-        socket: null,
-        finished: true,
-        readable: false,
-        writable: false
+    // simulate an event emitter
+    // https://nodejs.org/api/events.html#class-eventemitter
+
+    const listeners = new Map<string | symbol, Function[]>();
+
+    const on = (event: string | symbol, fn: Function) => {
+        (listeners.get(event) ?? listeners.set(event, []).get(event)!).push(fn);
+        return mockReq;                                   // chaining
     };
-    
-    setTimeout(() => {
-        mockReq.emit('error', new Error('Request blocked by security policy'));
-    }, 0);
-    
+    const once  = (event: string | symbol, fn: Function) =>
+        on(event, function wrapper(...a: any[]) {
+            off(event, wrapper);
+            fn(...a);
+        });
+    const off   = (event: string | symbol, fn: Function) => {
+        const arr = listeners.get(event);
+        if (arr) {
+            listeners.set(event, arr.filter(f => f !== fn));
+        }
+        return mockReq;
+    };
+    const emit  = (event: string | symbol, ...a: any[]) => {
+        (listeners.get(event) ?? []).slice().forEach(f => {
+            try { 
+                f(...a); 
+            } catch { 
+                // keep going
+            }
+        });
+        return mockReq;
+    };
+
+    // stable objects
+    const dummyObject = new Proxy({}, {   // never throws, always defined
+        get : () => dummyObject,
+        set : () => true,
+        apply: () => undefined
+    });
+
+    // chainable no-ops methods
+    // add it explicitly in case the user tests `typeof req.write === 'function'`
+    const CHAINABLE = new Set([
+        'write', 'end', 'destroy', 'setTimeout', 'setNoDelay',
+        'setSocketKeepAlive', 'setHeader', 'removeHeader', 'addTrailers',
+        'cork', 'uncork', 'flushHeaders'
+    ]);
+
+    // state flags - default to false (?)
+    // includes finished (deprecated), aborted (deprecated), destroyed, writableEnded, writableFinished
+
+    const STATE_FLAGS = [
+        'finished', 'aborted', 'destroyed',
+        'writableEnded', 'writableFinished'
+    ];
+
+    // everything that is not defined explicitly becomes
+    // either a chainable no-op function or undefined (for data properties)
+    const cache = new Map<PropertyKey, any>(); // ensures identity
+
+    const base: any = {
+        // event-emitter subset
+        on, addListener: on, once, off, removeListener: off, emit,
+
+        // "stable" sub-objects
+        socket: dummyObject,
+        connection: dummyObject,
+        agent: dummyObject,
+
+        // state flags
+        // default them to false, the same way like a first initial request
+        ...Object.fromEntries(STATE_FLAGS.map(k => [k, false])),
+
+        // util.inspect support – makes console.log nicer
+        [Symbol.for('nodejs.util.inspect.custom')]: () => '[BlockedClientRequest]'
+    };
+
+    const mockReq = new Proxy(base, {
+        get(target, prop, receiver) {
+            if (Reflect.has(target, prop)) {
+                return Reflect.get(target, prop, receiver);
+            }
+            // symbols we do not explicitly know about are undefined
+            if (typeof prop === 'symbol') {
+                return undefined;
+            }
+
+            // cache so repeated access returns identical value
+            if (cache.has(prop)) {
+                return cache.get(prop);
+            }
+
+            const val = CHAINABLE.has(String(prop))
+                ? (..._args: any[]) => receiver
+                : typeof realRequest[prop] === 'function'
+                    ? (..._args: any[]) => receiver
+                    : undefined;
+
+            cache.set(prop, val);
+            return val;
+        },
+
+        // mute any writes : apparently user code sometimes tries to assign
+        // req.method = 'POST', req.path = '/foo', etc.               
+        set: () => true
+    });
+
+    setTimeout(() => mockReq.emit('error', new Error('Request blocked by security policy')), 0);
+    Logger.debug(`HTTP Plugin: Created dynamic mock with ${Object.keys(base).length} base properties + proxy fallbacks`);
     return mockReq;
 }
 
@@ -181,13 +263,17 @@ export function patchHttpExports(http:any, protocol:Protocol, extensionInfo: Ext
             const analysisResult = networkAnalyzer.analyze(post);
             if(analysisResult && !analysisResult.verdict.allowed && analysisResult.securityEvent){
                 Logger.warn(`HTTP Plugin: Blocked request:post based on analyzer verdict: ${parsed.uri}`);
-                req.destroy();
+                Logger.debug('HTTP Plugin: Creating dynamic mock for blocked request');
+                const blockedReq = createDynamicMock(req);
+                
+                // Show security notification
                 NotificationService.showSecurityBlockingInfo(
                     parsed.uri, 
                     analysisResult.securityEvent, 
                     'request'
                 );
-                return req;
+                
+                return blockedReq;
             } else {
                 t.apply(th,[c,...rest]);
             }
@@ -207,7 +293,7 @@ export function patchHttpExports(http:any, protocol:Protocol, extensionInfo: Ext
             const analysisResult = networkAnalyzer.analyze(ev);
             if(analysisResult && !analysisResult.verdict.allowed && analysisResult.securityEvent){
                 Logger.warn(`HTTP Plugin: Blocked response based on analyzer verdict: ${parsed.uri}`);
-                res.destroy();
+                res.destroy(); // TODO: create dynamic mock for blocked response
                 NotificationService.showSecurityBlockingInfo(
                     parsed.uri, 
                     analysisResult.securityEvent, 

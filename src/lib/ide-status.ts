@@ -23,6 +23,7 @@ export interface IDEStatus {
     isMonitoringActive: boolean;
     
     // Performance metrics
-    averageEventProcessingTime?: number;
+    totalEventProcessingTime?: number;
+    nbrOfEventsProcessed?: number;
     memoryUsage?: number;
 }
