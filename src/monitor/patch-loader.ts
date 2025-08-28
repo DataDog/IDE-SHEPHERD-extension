@@ -4,16 +4,12 @@
  * will receive config params and pass them to the hooks
  */
 
-import { NetworkEvent } from "../lib/events/network-events";
-import { ideStatusManager } from "../lib/ide-status";
-import { ExtensionInfo, Target } from "../lib/events/ext-events";
+import { ExtensionInfo } from "../lib/events/ext-events";
 import { Logger } from "../lib/logger";
-
 import { CONFIG } from "../lib/config";
-import { AsyncTargetChannel } from "./channels";
 import { patchHttpExports } from "./instrumentations/http-client-instrument";
-import { createWorkersPool } from "./workers/workers-pool";
 import { ExtensionServices } from "../lib/services/ext-service";
+import { IDEStatusService } from "../lib/services/ide-status-service";
 
 const { Module } = require('module');
 
@@ -25,8 +21,6 @@ export class ModuleLoaderPatcher {
 
     private restoreMap = new Map<any, { request: Function; get: Function }>();
 
-    private networkChannel!: AsyncTargetChannel<NetworkEvent>;
-
     patch(): void {
         if (this.patched) {
             Logger.debug('ModuleLoaderPatcher: Already patched, skipping');
@@ -36,17 +30,6 @@ export class ModuleLoaderPatcher {
         Logger.info('ModuleLoaderPatcher: Starting patch process...');
         
         try {
-            // Initialize network channel
-            Logger.debug(`ModuleLoaderPatcher: Creating network channel with timeout ${CONFIG.NETWORK.TIMEOUT_MS}ms`);
-            this.networkChannel = new AsyncTargetChannel('sec:network', Target.NETWORK, CONFIG.NETWORK.TIMEOUT_MS);
-            
-            // Create worker pool
-            Logger.debug(`ModuleLoaderPatcher: Creating worker pool with ${CONFIG.NETWORK.NBR_WORKERS} workers`);
-            createWorkersPool(this.networkChannel);
-
-            (global as any).NETWORK_CH = this.networkChannel;
-            Logger.debug('ModuleLoaderPatcher: Network channel exposed to global scope');
-
             // patch Module._load for future requires
             Logger.info('ModuleLoaderPatcher: Installing Module._load hook for future requires');
             const self = this;
@@ -62,16 +45,14 @@ export class ModuleLoaderPatcher {
             };
 
             this.patched = true;
-            Logger.info('ModuleLoaderPatcher: Patch process completed successfully'); // verify if it's displayed before the patch is complete. 
-            // meaning this.patched = true BEFORE it's done!!
-            
+            Logger.info('ModuleLoaderPatcher: Patch process completed successfully');
         } catch (error) {
             Logger.error('ModuleLoaderPatcher: Failed to complete patch process', error as Error);
             throw error;
         }
     }
 
-    /** restore original _load and unpatch every module export */
+    // restore original _load and unpatch every module export
     unpatch(): void {
         if (!this.patched) { 
             Logger.debug('ModuleLoaderPatcher: Not patched, nothing to unpatch');
@@ -94,7 +75,7 @@ export class ModuleLoaderPatcher {
             }
             
             this.restoreMap.clear();
-            ideStatusManager.reset();
+            IDEStatusService.reset();
             this.patched = false;
             
             Logger.info('ModuleLoaderPatcher: Unpatch process completed successfully');
@@ -116,7 +97,7 @@ export class ModuleLoaderPatcher {
         try {
             const protocol: 'http' | 'https' = spec.includes('https') ? 'https' : 'http';
             const extId = ExtensionServices.getExtensionFromParentModule(parent);
-            const extensionInfo: ExtensionInfo = { id: extId, isPatched: true };
+            const extensionInfo = new ExtensionInfo(extId, true, Date.now());
 
             Logger.debug(`ModuleLoaderPatcher: Protocol: ${protocol}, Extension ID: ${extId}`);
 
@@ -131,8 +112,8 @@ export class ModuleLoaderPatcher {
             Object.defineProperty(exp, '__patched__', { value: true });
             Logger.debug(`ModuleLoaderPatcher: Marked ${spec} as patched`);
 
-            // Update IDE status
-            ideStatusManager.updateExtension(extensionInfo).catch((error) => {
+            // Update IDE status using the service
+            IDEStatusService.updatePatchedExtension(extensionInfo).catch((error) => {
                 Logger.warn(`ModuleLoaderPatcher: Failed to update extension status for ${extId}: ${error.message}`);
             });
             

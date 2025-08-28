@@ -1,8 +1,6 @@
 import { CONFIG } from '../config';
 import { Target, TargetEvent, ExtensionInfo } from './ext-events';
 
-const SECURITY_CHANNEL = CONFIG.CHANNELS.NETWORK;
-
 export type Protocol = 'http' | 'https';
 export type OriginalHeaders = Record<string, string | string[] | undefined>;
 export type RequestOptions = Record<string, unknown>;

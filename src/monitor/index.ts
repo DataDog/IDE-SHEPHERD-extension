@@ -4,4 +4,4 @@
  */
 
 export { moduleLoaderPatcher, ModuleLoaderPatcher } from './patch-loader';
-export { AsyncTargetChannel } from './channels';
+export { NetworkAnalyzer } from './analysis/network-analyzer';
