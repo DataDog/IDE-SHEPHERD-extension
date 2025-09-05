@@ -246,14 +246,69 @@ export function patchHttpExports(http:any, protocol:Protocol, extensionInfo: Ext
 
         const req=orig(...args);
 
-        // collect body then ask worker
+        let urlAnalyzed = false;
+        let blocked = false;
         const { push, result } = mkCollector(CONFIG.NETWORK.MAX_CAPTURE_BYTES);
+
+        // preemptive block for malicious URLs
+        if (!urlAnalyzed) {
+            const urlEvent = new NetworkEvent(
+                protocol, parsed.uri, 'request:pre', __filename, extensionInfo,
+                undefined, parsed.options, undefined, undefined, undefined,
+                undefined, false
+            );
+            const urlResult = networkAnalyzer.analyze(urlEvent);
+            urlAnalyzed = true;
+            
+            if (urlResult && !urlResult.verdict.allowed && urlResult.securityEvent) {
+                blocked = true;
+                Logger.warn(`HTTP Plugin: Blocked request based on URL analysis: ${parsed.uri}`);
+                NotificationService.showSecurityBlockingInfo(
+                    parsed.uri, 
+                    urlResult.securityEvent, 
+                    'request'
+                );
+            }
+        }
+        
         req.write = new Proxy( req.write, {apply(t, th, [c,...rest]){
+            // if we've already blocked the request, don't send the subsequent chunks
+            if (blocked) {
+                return c?.length || 0; 
+            }
+            
             push(c);
+            
+            // analyze current data chunk based on the constructed buffer
+            const {data} = result();
+            const chunkEvent = new NetworkEvent(
+                protocol, parsed.uri, 'request:post', __filename, extensionInfo,
+                undefined, parsed.options, undefined, undefined, undefined,
+                data, false
+            );
+            const chunkResult = networkAnalyzer.analyze(chunkEvent);
+            
+            if (chunkResult && !chunkResult.verdict.allowed && chunkResult.securityEvent) {
+                blocked = true;
+                Logger.warn(`HTTP Plugin: Blocked request based on chunk analysis: ${data}`);
+                NotificationService.showSecurityBlockingInfo(
+                    parsed.uri, 
+                    chunkResult.securityEvent, 
+                    'request'
+                );
+                return c?.length || 0; // Don't send this chunk
+            }
+            
             return t.apply(th,[c,...rest]);
         }});
+        
         req.end = new Proxy( req.end, {apply(t,th,[c,...rest]){
+            if (blocked) {
+                return createDynamicMock(req);
+            }
+            
             push(c);
+            
             const {data, truncated} = result();
             const post = new NetworkEvent(
                 protocol, parsed.uri, 'request:post', __filename, extensionInfo,
@@ -281,27 +336,56 @@ export function patchHttpExports(http:any, protocol:Protocol, extensionInfo: Ext
         }});
 
         req.once('response',(res:any)=>{
-        const { push: rp, result: rResult} = mkCollector(CONFIG.NETWORK.MAX_CAPTURE_BYTES);
-        res.on('data',rp);
-        res.on('end',()=>{
-            const {data,truncated}=rResult();
-            const ev = new NetworkEvent(
-                protocol, parsed.uri, 'response', __filename, extensionInfo,
-                undefined, undefined, res.statusCode, res.headers, undefined,
-                data, truncated
-            );
-            const analysisResult = networkAnalyzer.analyze(ev);
-            if(analysisResult && !analysisResult.verdict.allowed && analysisResult.securityEvent){
-                Logger.warn(`HTTP Plugin: Blocked response based on analyzer verdict: ${parsed.uri}`);
-                res.destroy(); // TODO: create dynamic mock for blocked response
-                NotificationService.showSecurityBlockingInfo(
-                    parsed.uri, 
-                    analysisResult.securityEvent, 
-                    'response'
+            const { push: rp, result: rResult} = mkCollector(CONFIG.NETWORK.MAX_CAPTURE_BYTES);
+            let responseBlocked = false;
+            
+            res.on('data', (chunk: any) => {
+                if (responseBlocked) {
+                    return; 
+                }
+                
+                rp(chunk);
+                const {data} = rResult();
+                const dataEvent = new NetworkEvent(
+                    protocol, parsed.uri, 'response', __filename, extensionInfo,
+                    undefined, undefined, res.statusCode, res.headers, undefined,
+                    data, false
                 );
-                return;
-            }
-        });
+                const dataAnalysis = networkAnalyzer.analyze(dataEvent);
+                
+                if(dataAnalysis && !dataAnalysis.verdict.allowed && dataAnalysis.securityEvent){
+                    Logger.warn(`HTTP Plugin: Blocked response based on data analysis: ${parsed.uri}`);
+                    responseBlocked = true;
+                    res.destroy(); 
+                    NotificationService.showSecurityBlockingInfo(
+                        parsed.uri, 
+                        dataAnalysis.securityEvent, 
+                        'response'
+                    );
+                }
+            });
+            
+            res.on('end',()=>{
+                if (responseBlocked) {
+                    return; 
+                }
+                
+                const {data,truncated}=rResult();
+                const finalEvent = new NetworkEvent(
+                    protocol, parsed.uri, 'response', __filename, extensionInfo,
+                    undefined, undefined, res.statusCode, res.headers, undefined,
+                    data, truncated
+                );
+                const finalAnalysis = networkAnalyzer.analyze(finalEvent);
+                if(finalAnalysis && !finalAnalysis.verdict.allowed && finalAnalysis.securityEvent){
+                    Logger.warn(`HTTP Plugin: Blocked response based on final analysis: ${parsed.uri}`);
+                    NotificationService.showSecurityBlockingInfo(
+                        parsed.uri, 
+                        finalAnalysis.securityEvent, 
+                        'response'
+                    );
+                }
+            });
         });
         return req;
     };

@@ -3,28 +3,60 @@ import { Verdict, IoC, SeverityLevel, SecurityEvent} from "../../lib/events/sec-
 import { NetworkEvent } from "../../lib/events/network-events";
 import { Logger } from "../../lib/logger";
 import { IDEStatusService } from "../../lib/services/ide-status-service";
-interface AnalysisResult {
+class AnalysisResult {
     verdict: Verdict;
     securityEvent?: SecurityEvent;
+
+    constructor(verdict?: Verdict, securityEvent?: SecurityEvent) {
+        this.verdict = verdict ?? { allowed: true };
+        this.securityEvent = securityEvent;
+    }
 }
 
 export class NetworkAnalyzer {
 
     analyze(ev: NetworkEvent): AnalysisResult | undefined {
+        const startTime = Date.now();
+        
         try {
-            const result = this.analyzeUrl(ev);
+            let result = new AnalysisResult();
+
+            if (ev.phase === 'request:pre') {
+                result = this.analyzeUrl(ev);
+            } else if (ev.phase === 'response') {
+                result = this.analyzePayload(ev);
+            }
             
             if (result?.securityEvent) {
                 IDEStatusService.emitSecurityEvent(result.securityEvent).catch((error) => {
                     Logger.error(`NetworkAnalyzer: Failed to record security event: ${error.message}`);
                 });
             }
+            const endTime = Date.now();
+            const processingTime = endTime - startTime; // in ms
+            IDEStatusService.updatePerformanceMetrics(processingTime).catch((error) => {
+                Logger.error(`NetworkAnalyzer: Failed to record processing time: ${error.message}`);
+            });
             
             return result;
         } catch (error) {
             Logger.error('NetworkAnalyzer: Error during analysis', error as Error);
-            return { verdict: { allowed: true } };
+            return new AnalysisResult();
         }
+    }
+
+    private analyzePayload(ev: NetworkEvent): AnalysisResult {
+        const powershellResult = this.checkPowerShellScripts(ev);
+        if (powershellResult) {
+            return powershellResult;
+        }
+
+        const exfiltrationResult = this.checkExfiltrationAttempts(ev);
+        if (exfiltrationResult) {
+            return exfiltrationResult;
+        }
+
+        return new AnalysisResult();
     }
 
 
@@ -56,10 +88,7 @@ export class NetworkAnalyzer {
             return externalIpResult;
         }
 
-        // No threats detected
-        return {
-            verdict: { allowed: true }
-        };
+        return new AnalysisResult();
     }
 
     private checkSuspiciousDomains(url: string, ev: NetworkEvent): AnalysisResult | null {
@@ -70,9 +99,9 @@ export class NetworkAnalyzer {
 
         if (match1) {
             const matchedDomain = match1[0];
-            return {
-                verdict: { allowed: false },
-                securityEvent: this.createSecurityEvent(
+            return new AnalysisResult(
+                { allowed: false },
+                this.createSecurityEvent(
                     ev,
                     SeverityLevel.HIGH,
                     [{
@@ -83,7 +112,7 @@ export class NetworkAnalyzer {
                         severity: SeverityLevel.HIGH
                     }]
                 )
-            };
+            );
         }
 
         return null;
@@ -95,9 +124,9 @@ export class NetworkAnalyzer {
         const match = url.match(exfiltrationPattern);
         if (match) {
             const matchedDomain = match[0];
-            return {
-                verdict: { allowed: false },
-                securityEvent: this.createSecurityEvent(
+            return new AnalysisResult(
+                { allowed: false },
+                this.createSecurityEvent(
                     ev,
                     SeverityLevel.HIGH,
                     [{
@@ -108,7 +137,7 @@ export class NetworkAnalyzer {
                         severity: SeverityLevel.HIGH
                     }]
                 )
-            };
+            );
         }
 
         return null;
@@ -120,9 +149,9 @@ export class NetworkAnalyzer {
         const match = url.match(malwarePattern);
         if (match) {
             const matchedDomain = match[0];
-            return {
-                verdict: { allowed: false },
-                securityEvent: this.createSecurityEvent(
+            return new AnalysisResult(
+                { allowed: false },
+                this.createSecurityEvent(
                     ev,
                     SeverityLevel.HIGH,
                     [{
@@ -133,7 +162,7 @@ export class NetworkAnalyzer {
                         severity: SeverityLevel.HIGH
                     }]
                 )
-            };
+            );
         }
 
         return null;
@@ -145,9 +174,9 @@ export class NetworkAnalyzer {
         const match = url.match(intelPattern);
         if (match) {
             const matchedDomain = match[0];
-            return {
-                verdict: { allowed: false },
-                securityEvent: this.createSecurityEvent(
+            return new AnalysisResult(
+                { allowed: false },
+                this.createSecurityEvent(
                     ev,
                     SeverityLevel.MEDIUM,
                     [{
@@ -158,7 +187,7 @@ export class NetworkAnalyzer {
                         severity: SeverityLevel.MEDIUM
                     }]
                 )
-            };
+            );
         }
 
         return null;
@@ -175,9 +204,9 @@ export class NetworkAnalyzer {
 
         if (ipv4Match && !localMatch && !wildMatch) {
             const matchedIp = ipv4Match[0];
-            return {
-                verdict: { allowed: false },
-                securityEvent: this.createSecurityEvent(
+            return new AnalysisResult(
+                { allowed: false },
+                this.createSecurityEvent(
                     ev,
                     SeverityLevel.MEDIUM,
                     [{
@@ -188,7 +217,59 @@ export class NetworkAnalyzer {
                         severity: SeverityLevel.MEDIUM
                     }]
                 )
-            };
+            );
+        }
+
+        return null;
+    }
+
+    private checkPowerShellScripts( ev: NetworkEvent): AnalysisResult | null {
+        const powershellPattern = /powershell(?:\.exe)?/gi;
+        
+        const match = ev.payload?.match(powershellPattern);
+        if (match) {
+            return new AnalysisResult(
+                { allowed: false },
+                this.createSecurityEvent(
+                    ev,
+                    SeverityLevel.HIGH,
+                    [{
+                        finding: match[0],
+                        rule: "PowerShell Script Detection",
+                        description: `Detected PowerShell script in response payload`,
+                        confidence: 1,
+                        severity: SeverityLevel.HIGH
+                    }]
+                )
+            );
+        }
+
+        return null;
+    }
+
+    private checkExfiltrationAttempts(ev: NetworkEvent): AnalysisResult | null {
+        if (!ev.payload) {
+            return null;
+        }
+
+        const exfiltrationPattern = /curl\s+.*-X\s+POST|curl\s+.*-d\s+|POST.*application\/json|\$\([^)]*\)/gi;
+        
+        const match = ev.payload.match(exfiltrationPattern);
+        if (match) {
+            return new AnalysisResult(
+                { allowed: false },
+                this.createSecurityEvent(
+                    ev,
+                    SeverityLevel.HIGH,
+                    [{
+                        finding: match[0],
+                        rule: "Data Exfiltration Detection",
+                        description: `Detected potential data exfiltration attempt using curl/POST`,
+                        confidence: 1,
+                        severity: SeverityLevel.HIGH
+                    }]
+                )
+            );
         }
 
         return null;
