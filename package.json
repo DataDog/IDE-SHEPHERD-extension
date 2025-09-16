@@ -34,7 +34,12 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"*.json\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"*.json\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vscode-test",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
@@ -45,6 +50,9 @@
     "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2",
     "eslint": "^9.25.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
+    "prettier": "^3.4.2",
     "typescript": "^5.8.3"
   },
   "dependencies": {
