@@ -5,11 +5,13 @@ IDE Shepherd is a Visual Studio Code extension capable of securely monitoring th
 ### Development
 
 1. **Install VSCE (VS Code Extension Manager)**
+
    ```bash
    npm install -g @vscode/vsce ## you might need to run npm fund
    ```
 
 2. **Install Dependencies**
+
    ```bash
    npm install
    ```
@@ -23,6 +25,7 @@ IDE Shepherd is a Visual Studio Code extension capable of securely monitoring th
 ### Installation
 
 1. **Install from VSIX file**
+
    ```bash
    code --install-extension /path/to/ide-shepherd-1.0.0.vsix
    ```
@@ -33,24 +36,29 @@ IDE Shepherd is a Visual Studio Code extension capable of securely monitoring th
 ## Usage
 
 ### Security Monitoring
+
 The extension automatically starts monitoring when VS Code loads:
 
-###  Viewing Status & Logs
+### Viewing Status & Logs
 
 #### First-Time Setup
+
 - **Welcome Message**: Automatically displayed on first installation with setup guide
 - **Manual Help**: Command Palette > `IDE Shepherd: Show Welcome & Help` > Access help anytime
 - **Smart Tips**: Helpful usage tips appear periodically based on your activity
 
 #### IDE Status Command
+
 Command Palette (`Ctrl+Shift+P`) > `IDE Shepherd: Show Status` > View monitoring status, uptime, and recent security events
 
 #### Extension Logs
+
 Command Palette (`Ctrl+Shift+P`) > `Developer: Show Logs` > `IDE Shepherd Extension` > View detailed logs of all monitoring activity
 
 ### Testing Security Blocking
 
-A PoC malicious has been updated to DD repos with restricted access under the name: `tmp_proof_of_concept`. The vsix is already uploaded there and can be installed with 
+A PoC malicious has been updated to DD repos with restricted access under the name: `tmp_proof_of_concept`. The vsix is already uploaded there and can be installed with
+
 ```bash
 code --install-extension mal_xt_poc.vsix
 ```

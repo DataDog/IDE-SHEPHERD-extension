@@ -6,46 +6,40 @@ import * as vscode from 'vscode';
 import { SecurityEvent } from '../events/sec-events';
 
 export class NotificationService {
+  static showSecurityEventNotification(securityEvent: SecurityEvent): void {
+    const message = JSON.stringify(securityEvent.getSecurityEventData(), null, 2);
+    vscode.window.showWarningMessage(message);
+  }
 
-    static showSecurityEventNotification(securityEvent: SecurityEvent): void {
-        const message = JSON.stringify(securityEvent.getSecurityEventData(), null, 2);
-        vscode.window.showWarningMessage(message);
-    }
+  static showInfo(message: string): void {
+    vscode.window.showInformationMessage(message);
+  }
 
-    static showInfo(message: string): void {
-        vscode.window.showInformationMessage(message);
-    }
+  static async showSecurityBlockingInfo(
+    url: string,
+    securityEvent: SecurityEvent,
+    type: 'request' | 'response' = 'request',
+  ): Promise<void> {
+    const title = `!!! Security Policy: ${type === 'request' ? 'Request' : 'Response'} Blocked`;
 
-    static async showSecurityBlockingInfo(
-        url: string, 
-        securityEvent: SecurityEvent, 
-        type: 'request' | 'response' = 'request'
-    ): Promise<void> {
-        const title = `!!! Security Policy: ${type === 'request' ? 'Request' : 'Response'} Blocked`;
-        
-        let content = `A ${type} has been blocked by IDE Shepherd's security policy.\n`;
-        content += `URL: ${url}\n\n`;
-        content += `Summary:\n${securityEvent.getSummary()}\n\n`;
-        content += `Action: The ${type} was automatically blocked to protect your workspace.`;
+    let content = `A ${type} has been blocked by IDE Shepherd's security policy.\n`;
+    content += `URL: ${url}\n\n`;
+    content += `Summary:\n${securityEvent.getSummary()}\n\n`;
+    content += `Action: The ${type} was automatically blocked to protect your workspace.`;
 
-        // Create custom modal-like webview
-        await this.showCustomModal(title, content);
-    }
+    // Create custom modal-like webview
+    await this.showCustomModal(title, content);
+  }
 
-    private static async showCustomModal(title: string, content: string): Promise<void> {
-        return new Promise((resolve) => {
-            const panel = vscode.window.createWebviewPanel(
-                'securityAlert',
-                title,
-                vscode.ViewColumn.Active,
-                {
-                    enableScripts: true,
-                    retainContextWhenHidden: true
-                }
-            );
+  private static async showCustomModal(title: string, content: string): Promise<void> {
+    return new Promise((resolve) => {
+      const panel = vscode.window.createWebviewPanel('securityAlert', title, vscode.ViewColumn.Active, {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+      });
 
-            // HTML content for the modal-like display
-            panel.webview.html = `
+      // HTML content for the modal-like display
+      panel.webview.html = `
                 <!DOCTYPE html>
                 <html lang="en">
                 <head>
@@ -139,20 +133,18 @@ export class NotificationService {
                 </html>
             `;
 
-            // Handle messages from webview
-            panel.webview.onDidReceiveMessage(
-                message => {
-                    if (message.command === 'dismiss') {
-                        panel.dispose();
-                        resolve();
-                    }
-                }
-            );
+      // Handle messages from webview
+      panel.webview.onDidReceiveMessage((message) => {
+        if (message.command === 'dismiss') {
+          panel.dispose();
+          resolve();
+        }
+      });
 
-            // Handle panel disposal
-            panel.onDidDispose(() => {
-                resolve();
-            });
-        });
-    }
+      // Handle panel disposal
+      panel.onDidDispose(() => {
+        resolve();
+      });
+    });
+  }
 }

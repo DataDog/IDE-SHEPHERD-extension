@@ -1,0 +1,58 @@
+name: GuardDog Security Scan
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+  schedule:
+    # Run weekly security scan on Monday at 10 AM UTC
+    - cron: '0 10 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  guarddog-scan:
+    name: GuardDog Package Security
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.x'
+
+      - name: Install GuardDog
+        run: |
+          pip install guarddog
+
+      - name: Scan npm packages with GuardDog
+        run: |
+          # Extract and scan all dependencies
+          guarddog npm verify package.json --output-format json > guarddog-report.json || true
+
+          # Check if any malicious packages were found
+          if [ -s guarddog-report.json ]; then
+            echo "::warning::GuardDog found potential security issues. Please review the report."
+            cat guarddog-report.json
+          fi
+
+      - name: Upload GuardDog report
+        if: always()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: guarddog-security-report
+          path: guarddog-report.json
+          retention-days: 7
