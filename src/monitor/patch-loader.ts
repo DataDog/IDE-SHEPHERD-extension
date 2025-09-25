@@ -52,8 +52,6 @@ export class ModuleLoaderPatcher {
     }
   }
 
-
-
   private patchExports(exp: any, spec: string, parent: typeof Module | null): void {
     if (!exp || exp.__patched__) {
       Logger.debug(`ModuleLoaderPatcher: Module ${spec} already patched or invalid, skipping`);

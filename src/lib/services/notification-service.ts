@@ -42,13 +42,13 @@ export class NotificationService {
     const title = `!!! Security Policy: ${getOperationTitle(type)} Blocked`;
 
     let content = `A ${type} operation has been blocked by IDE Shepherd's security policy.\n`;
-    
+
     if (['request', 'response'].includes(type)) {
       content += `URL: ${target}\n\n`;
     } else {
       content += `Command: ${target}\n\n`;
     }
-    
+
     content += `Summary:\n${securityEvent.getSummary()}\n\n`;
     content += `Action: The ${type} was automatically blocked to protect your workspace.`;
 

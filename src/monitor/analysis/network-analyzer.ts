@@ -4,7 +4,6 @@ import { Logger } from '../../lib/logger';
 import { IDEStatusService } from '../../lib/services/ide-status-service';
 import { AnalysisResult } from './analyzer';
 
-
 export class NetworkAnalyzer {
   analyze(ev: NetworkEvent): AnalysisResult | undefined {
     const startTime = Date.now();
