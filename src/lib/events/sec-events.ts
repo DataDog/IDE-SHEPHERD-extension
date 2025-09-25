@@ -58,10 +58,10 @@ export class SecurityEvent {
 
   public readonly iocs: IoC[];
 
-  public readonly originalEvent: NetworkEvent;
+  public readonly originalEvent: TargetEvent<Target>;
 
   constructor(
-    originalEvent: NetworkEvent,
+    originalEvent: TargetEvent<Target>,
     extension: ExtensionInfo,
     severity: SeverityLevel,
     iocs: IoC[],

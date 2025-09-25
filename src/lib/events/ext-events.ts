@@ -24,8 +24,7 @@ export class ExtensionInfo {
  */
 export enum Target {
   NETWORK = 'network',
-  FILESYSTEM = 'filesystem',
-  WORKSPACE = 'workspace',
+  PROCESS = 'process',
 }
 
 /**

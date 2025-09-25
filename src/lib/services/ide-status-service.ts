@@ -26,7 +26,7 @@ export class IDEStatusService {
     return {
       patchedExtensions: [],
       totalSecurityEvents: 0,
-      securityEventsByTarget: { [Target.NETWORK]: 0, [Target.FILESYSTEM]: 0, [Target.WORKSPACE]: 0 },
+      securityEventsByTarget: { [Target.NETWORK]: 0, [Target.PROCESS]: 0 },
       lastSecurityEvents: [],
       monitoringStartTime: Date.now(),
       lastUpdateTime: Date.now(),
@@ -188,8 +188,7 @@ export class IDEStatusService {
       `- Security Events:`,
       `\t* Total: ${status.totalSecurityEvents}`,
       `\t* Network: ${status.securityEventsByTarget.network || 0}`,
-      `\t* Filesystem: ${status.securityEventsByTarget.filesystem || 0}`,
-      `\t* Workspace: ${status.securityEventsByTarget.workspace || 0}`,
+      `\t* Process: ${status.securityEventsByTarget.process || 0}`,
       `- Performance:`,
       `\t* Avg Processing Time: ${avgProcessingTime} ms`,
       `\t\t* Events Processed: ${status.nbrOfEventsProcessed} | Total Processing Time: ${status.totalEventProcessingTime} ms`,

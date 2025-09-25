@@ -232,15 +232,14 @@ export function normalizeArgs(httpExports: any, inputURL: any, inputOptions?: an
 }
 
 export function patchHttpExports(http: any, protocol: Protocol, extensionInfo: ExtensionInfo) {
-  Logger.debug(`HTTP Plugin: Starting patch for ${protocol} module, extension: ${extensionInfo.id}`);
-
-  if (http.__patched__) {
-    Logger.debug(`HTTP Plugin: ${protocol} module already patched, skipping`);
-    return;
-  }
+    
+    if (http.__patched__) {
+        Logger.debug(`HTTP Plugin: ${protocol} module already patched, skipping`);
+        return;
+      }
+    Logger.debug(`HTTP Plugin: Starting patch for ${protocol} module, extension: ${extensionInfo.id}`);
 
   const orig = http.request.bind(http);
-  Logger.debug(`HTTP Plugin: Saved original ${protocol}.request function`);
 
   http.request = function wrapped(...args: any[]) {
     const parsed = normalizeArgs(http, args[0], args[1], args[2]);

@@ -8,7 +8,10 @@ export const CONFIG = {
     NAME: 'IDE Shepherd',
     OUTPUT_CHANNEL_NAME: 'IDE Shepherd Extension',
   },
-  MODULES: { HTTP_MODULES: ['http', 'https', 'node:http', 'node:https'] },
+  MODULES: { 
+    HTTP_MODULES: ['http', 'https', 'node:http', 'node:https'],
+    CHILD_PROCESS_MODULES: ['child_process', 'node:child_process'],
+},
   LOGGER: { MAX_TRUNCATE_LENGTH: 1000, LEVELS: { INFO: 'INFO', WARN: 'WARN', ERROR: 'ERROR', DEBUG: 'DEBUG' } },
   NETWORK: {
     MAX_CAPTURE_BYTES: 256 * 1024, // 256 kB

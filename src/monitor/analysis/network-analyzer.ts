@@ -1,17 +1,9 @@
-import { CONFIG } from '../../lib/config';
-import { Verdict, IoC, SeverityLevel, SecurityEvent } from '../../lib/events/sec-events';
+import { IoC, SeverityLevel, SecurityEvent } from '../../lib/events/sec-events';
 import { NetworkEvent } from '../../lib/events/network-events';
 import { Logger } from '../../lib/logger';
 import { IDEStatusService } from '../../lib/services/ide-status-service';
-class AnalysisResult {
-  verdict: Verdict;
-  securityEvent?: SecurityEvent;
+import { AnalysisResult } from './analyzer';
 
-  constructor(verdict?: Verdict, securityEvent?: SecurityEvent) {
-    this.verdict = verdict ?? { allowed: true };
-    this.securityEvent = securityEvent;
-  }
-}
 
 export class NetworkAnalyzer {
   analyze(ev: NetworkEvent): AnalysisResult | undefined {
@@ -22,8 +14,6 @@ export class NetworkAnalyzer {
 
       if (ev.phase === 'request:pre') {
         result = this.analyzeUrl(ev);
-      } else if (ev.phase === 'response') {
-        result = this.analyzePayload(ev);
       }
 
       if (result?.securityEvent) {
@@ -42,20 +32,6 @@ export class NetworkAnalyzer {
       Logger.error('NetworkAnalyzer: Error during analysis', error as Error);
       return new AnalysisResult();
     }
-  }
-
-  private analyzePayload(ev: NetworkEvent): AnalysisResult {
-    const powershellResult = this.checkPowerShellScripts(ev);
-    if (powershellResult) {
-      return powershellResult;
-    }
-
-    const exfiltrationResult = this.checkExfiltrationAttempts(ev);
-    if (exfiltrationResult) {
-      return exfiltrationResult;
-    }
-
-    return new AnalysisResult();
   }
 
   private analyzeUrl(ev: NetworkEvent): AnalysisResult {
@@ -100,7 +76,7 @@ export class NetworkAnalyzer {
       const matchedDomain = match1[0];
       return new AnalysisResult(
         { allowed: false },
-        this.createSecurityEvent(ev, SeverityLevel.HIGH, [
+        new SecurityEvent(ev, ev.extension, SeverityLevel.HIGH, [
           {
             finding: matchedDomain,
             rule: 'Suspicious domains',
@@ -124,7 +100,7 @@ export class NetworkAnalyzer {
       const matchedDomain = match[0];
       return new AnalysisResult(
         { allowed: false },
-        this.createSecurityEvent(ev, SeverityLevel.HIGH, [
+        new SecurityEvent(ev, ev.extension, SeverityLevel.HIGH, [
           {
             finding: matchedDomain,
             rule: 'Exfiltration domains',
@@ -147,7 +123,7 @@ export class NetworkAnalyzer {
       const matchedDomain = match[0];
       return new AnalysisResult(
         { allowed: false },
-        this.createSecurityEvent(ev, SeverityLevel.HIGH, [
+        new SecurityEvent(ev, ev.extension, SeverityLevel.HIGH, [
           {
             finding: matchedDomain,
             rule: 'Malware download domains',
@@ -170,7 +146,7 @@ export class NetworkAnalyzer {
       const matchedDomain = match[0];
       return new AnalysisResult(
         { allowed: false },
-        this.createSecurityEvent(ev, SeverityLevel.MEDIUM, [
+        new SecurityEvent(ev, ev.extension, SeverityLevel.MEDIUM, [
           {
             finding: matchedDomain,
             rule: 'Intel domains',
@@ -198,7 +174,7 @@ export class NetworkAnalyzer {
       const matchedIp = ipv4Match[0];
       return new AnalysisResult(
         { allowed: false },
-        this.createSecurityEvent(ev, SeverityLevel.MEDIUM, [
+        new SecurityEvent(ev, ev.extension, SeverityLevel.MEDIUM, [
           {
             finding: matchedIp,
             rule: 'Unknown External IP',
@@ -211,57 +187,5 @@ export class NetworkAnalyzer {
     }
 
     return null;
-  }
-
-  private checkPowerShellScripts(ev: NetworkEvent): AnalysisResult | null {
-    const powershellPattern = /powershell(?:\.exe)?/gi;
-
-    const match = ev.payload?.match(powershellPattern);
-    if (match) {
-      return new AnalysisResult(
-        { allowed: false },
-        this.createSecurityEvent(ev, SeverityLevel.HIGH, [
-          {
-            finding: match[0],
-            rule: 'PowerShell Script Detection',
-            description: `Detected PowerShell script in response payload`,
-            confidence: 1,
-            severity: SeverityLevel.HIGH,
-          },
-        ]),
-      );
-    }
-
-    return null;
-  }
-
-  private checkExfiltrationAttempts(ev: NetworkEvent): AnalysisResult | null {
-    if (!ev.payload) {
-      return null;
-    }
-
-    const exfiltrationPattern = /curl\s+.*-X\s+POST|curl\s+.*-d\s+|POST.*application\/json|\$\([^)]*\)/gi;
-
-    const match = ev.payload.match(exfiltrationPattern);
-    if (match) {
-      return new AnalysisResult(
-        { allowed: false },
-        this.createSecurityEvent(ev, SeverityLevel.HIGH, [
-          {
-            finding: match[0],
-            rule: 'Data Exfiltration Detection',
-            description: `Detected potential data exfiltration attempt using curl/POST`,
-            confidence: 1,
-            severity: SeverityLevel.HIGH,
-          },
-        ]),
-      );
-    }
-
-    return null;
-  }
-
-  private createSecurityEvent(ev: NetworkEvent, severity: SeverityLevel, iocs: IoC[]): SecurityEvent {
-    return new SecurityEvent(ev, ev.extension, severity, iocs);
   }
 }
