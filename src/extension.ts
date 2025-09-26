@@ -14,6 +14,7 @@ export function activate(context: vscode.ExtensionContext) {
     Logger.init(context);
     Logger.info('IDE Shepherd Extension: Logger initialized');
 
+    const platform = IDEStatusService.getPlatform();    Logger.info(`IDE Shepherd Extension: Platform detected: ${platform}`);
     Logger.info('IDE Shepherd Extension: Activating module loader patcher...');
     moduleLoaderPatcher.patch();
     Logger.info('IDE Shepherd Extension: Module loader patcher activated successfully');
@@ -23,7 +24,6 @@ export function activate(context: vscode.ExtensionContext) {
     });
     context.subscriptions.push(statusCommand);
 
-    Logger.info('IDE Shepherd Extension: Activation completed successfully');
   } catch (error) {
     Logger.error('IDE Shepherd Extension: Failed to activate', error as Error);
     throw error;

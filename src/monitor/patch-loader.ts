@@ -38,21 +38,19 @@ export class ModuleLoaderPatcher {
       (Module as any)._load = function patchedLoad(request: any, parent: any, isMain: any) {
         const exports = self.originalLoad.apply(this, arguments);
         if (CONFIG.MODULES.HTTP_MODULES.includes(request) || CONFIG.MODULES.CHILD_PROCESS_MODULES.includes(request)) {
-          Logger.debug(`ModuleLoaderPatcher: Intercepted require for patchable module: ${request}`);
-          self.patchExports(exports, request, parent);
+          self.patchExports(exports, request);
         }
         return exports;
       };
 
       this.patched = true;
-      Logger.info('ModuleLoaderPatcher: Patch process completed successfully');
     } catch (error) {
       Logger.error('ModuleLoaderPatcher: Failed to complete patch process', error as Error);
       throw error;
     }
   }
 
-  private patchExports(exp: any, spec: string, parent: typeof Module | null): void {
+  private patchExports(exp: any, spec: string): void {
     if (!exp || exp.__patched__) {
       Logger.debug(`ModuleLoaderPatcher: Module ${spec} already patched or invalid, skipping`);
       return;
@@ -61,29 +59,16 @@ export class ModuleLoaderPatcher {
     Logger.debug(`ModuleLoaderPatcher: Patching exports for module: ${spec}`);
 
     try {
-      const extId = ExtensionServices.getExtensionFromParentModule(parent);
-      const extensionInfo = new ExtensionInfo(extId, true, Date.now());
-
       if (CONFIG.MODULES.HTTP_MODULES.includes(spec)) {
         const protocol: Protocol = spec.includes('https') ? 'https' : 'http';
-        Logger.debug(`ModuleLoaderPatcher: Protocol: ${protocol}, Extension ID: ${extId}`);
-        patchHttpExports(exp, protocol, extensionInfo);
+        patchHttpExports(exp, protocol);
       }
 
       if (CONFIG.MODULES.CHILD_PROCESS_MODULES.includes(spec)) {
-        Logger.debug(`ModuleLoaderPatcher: Extension ID: ${extId}`);
-        patchChildProcess(exp, extensionInfo);
+        patchChildProcess(exp);
       }
 
       Object.defineProperty(exp, '__patched__', { value: true });
-      Logger.debug(`ModuleLoaderPatcher: Marked ${spec} as patched`);
-
-      // Update IDE status using the service
-      IDEStatusService.updatePatchedExtension(extensionInfo).catch((error) => {
-        Logger.warn(`ModuleLoaderPatcher: Failed to update extension status for ${extId}: ${error.message}`);
-      });
-
-      Logger.info(`ModuleLoaderPatcher: Successfully patched ${spec} exports for extension ${extId}`);
     } catch (error) {
       Logger.error(`ModuleLoaderPatcher: Failed to patch exports for ${spec}`, error as Error);
       throw error;

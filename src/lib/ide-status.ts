@@ -5,6 +5,8 @@
 import { TargetEvent, Timestamp, ExtensionInfo, Target } from './events/ext-events';
 import { SecurityEvent, SeverityLevel } from './events/sec-events';
 
+export type PlatformType = 'windows' | 'macos' | 'linux' | 'unknown';
+
 /**
  * Global IDE status tracking
  */
@@ -21,6 +23,7 @@ export interface IDEStatus {
   monitoringStartTime: Timestamp;
   lastUpdateTime: Timestamp;
   isMonitoringActive: boolean;
+  platform: PlatformType;
 
   // Performance metrics
   totalEventProcessingTime?: number;

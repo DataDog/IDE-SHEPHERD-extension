@@ -3,7 +3,6 @@
  * These are higher-level events that contain IoCs and findings from analyzed extension events
  */
 import { ExtensionInfo, TargetEvent, Target, Timestamp } from './ext-events';
-import { NetworkEvent } from './network-events';
 
 export enum SeverityLevel {
   LOW = 'low',

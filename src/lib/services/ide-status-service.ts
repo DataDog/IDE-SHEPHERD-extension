@@ -3,9 +3,10 @@
  */
 
 import * as vscode from 'vscode';
+import * as os from 'os';
 import { ExtensionInfo, Target, Timestamp } from '../events/ext-events';
 import { SecurityEvent } from '../events/sec-events';
-import { IDEStatus } from '../ide-status';
+import { IDEStatus, PlatformType } from '../ide-status';
 
 export class IDEStatusService {
   private static _status: IDEStatus;
@@ -31,10 +32,25 @@ export class IDEStatusService {
       monitoringStartTime: Date.now(),
       lastUpdateTime: Date.now(),
       isMonitoringActive: true,
+      platform: this.detectPlatform(),
       totalEventProcessingTime: 0,
       nbrOfEventsProcessed: 0,
       memoryUsage: 0,
     };
+  }
+
+  private static detectPlatform(): PlatformType {
+    const platform = os.platform();
+    switch (platform) {
+      case 'win32':
+        return 'windows';
+      case 'darwin':
+        return 'macos';
+      case 'linux':
+        return 'linux';
+      default:
+        return 'unknown';
+    }
   }
 
   /**
@@ -61,6 +77,11 @@ export class IDEStatusService {
     } finally {
       this.releaseLock();
     }
+  }
+
+  static getPlatform(): PlatformType {
+    this.ensureInitialized();
+    return this._status.platform;
   }
 
   static async updatePatchedExtension(extension: ExtensionInfo): Promise<void> {
@@ -179,6 +200,7 @@ export class IDEStatusService {
 
     return [
       `IDE Shepherd Security Status`,
+      `- Platform: ${status.platform}`,
       `- Monitoring Status: ${status.isMonitoringActive ? '[x] Active' : '[ ] Inactive'}`,
       `- Uptime: ${uptime}`,
       `- Last Update: ${lastUpdate} ago`,
