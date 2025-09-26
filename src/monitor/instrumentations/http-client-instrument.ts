@@ -8,7 +8,6 @@ import { NetworkAnalyzer } from '../analysis/network-analyzer';
 import { NotificationService } from '../../lib/services/notification-service';
 import { ExtensionServices } from '../../lib/services/ext-service';
 
-
 // Create a local instance of NetworkAnalyzer
 const networkAnalyzer = new NetworkAnalyzer();
 
@@ -251,7 +250,6 @@ export function patchHttpExports(http: any, protocol: Protocol) {
     let urlAnalyzed = false;
     let blocked = false;
     const { push, result } = mkCollector(CONFIG.NETWORK.MAX_CAPTURE_BYTES);
-
 
     // preemptive block for malicious URLs
     if (!urlAnalyzed) {

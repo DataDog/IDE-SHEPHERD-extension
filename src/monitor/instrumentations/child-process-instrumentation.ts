@@ -40,10 +40,7 @@ function normalizeExecArgs(cmd: any, optsOrCb?: any, maybeCb?: any) {
   return { options: optsOrCb ?? undefined, callback: maybeCb };
 }
 
-export function patchChildProcess(
-  child_process: any,
-  processAnalyzer = new ProcessAnalyzer(),
-) {
+export function patchChildProcess(child_process: any, processAnalyzer = new ProcessAnalyzer()) {
   if (child_process.__patched__) {
     Logger.debug(`Child-Process Plugin: already patched, skipping`);
     return;
@@ -58,16 +55,14 @@ export function patchChildProcess(
     const extensionInfo = new ExtensionInfo(callContext.extension, true, Date.now());
 
     Logger.warn(`Child-process call context: ${callContext.extension}`);
-      // update patched extensions in ide status service
+    // update patched extensions in ide status service
     IDEStatusService.updatePatchedExtension(extensionInfo).catch((error) => {
       Logger.warn(`ModuleLoaderPatcher: Failed to update extension status for ${extensionInfo.id}: ${error.message}`);
     });
 
-
     const analysis = processAnalyzer.analyze(new ExecEvent(command, [], options, __filename, extensionInfo));
 
     if (analysis && !analysis.verdict.allowed && analysis.securityEvent) {
-
       Logger.warn(`Child-Process Plugin: blocked exec(): ${Logger.truncate(command, 120)}`);
 
       NotificationService.showSecurityBlockingInfo(command, analysis.securityEvent, 'exec');
@@ -89,5 +84,4 @@ export function patchChildProcess(
   child_process.exec = patchedExec;
 
   Object.defineProperty(child_process, '__patched__', { value: true });
-
 }

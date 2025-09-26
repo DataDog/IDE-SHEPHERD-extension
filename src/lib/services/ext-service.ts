@@ -7,7 +7,6 @@ import { Logger } from '../logger';
 import { IDEStatusService } from './ide-status-service';
 
 export class ExtensionServices {
-
   // getCallContext will yield a different result from getExtensionFromParentModule
   // iff there is ANOTHER extension patching Node's require the same way we do.
   // we use the getExtensionFromParentModule, but it is helpful to look at the stack trace to understand the call context.
@@ -60,18 +59,18 @@ export class ExtensionServices {
 
   private static getExtensionPatternsForPlatform(platform: string): RegExp[] {
     const isWindows = platform === 'windows';
-    
-      if (isWindows) {
-        return [
-          new RegExp(`(?:\\.vscode|\\.vscode-insiders)\\\\extensions\\\\([^\\\\]+)`),
-          // built-in extensions in Windows can use either / or \, why ? cuz chaos >:3
-          new RegExp(`.*[/\\\\]app[/\\\\]extensions[/\\\\]([^/\\\\]+)`),
-        ];
-      } else {
-        return [
-          new RegExp(`(?:\\.vscode|\\.vscode-insiders)/extensions/([^/]+)`),
-          new RegExp(`.*/app/extensions/([^/]+)`),
-        ];
+
+    if (isWindows) {
+      return [
+        new RegExp(`(?:\\.vscode|\\.vscode-insiders)\\\\extensions\\\\([^\\\\]+)`),
+        // built-in extensions in Windows can use either / or \, why ? cuz chaos >:3
+        new RegExp(`.*[/\\\\]app[/\\\\]extensions[/\\\\]([^/\\\\]+)`),
+      ];
+    } else {
+      return [
+        new RegExp(`(?:\\.vscode|\\.vscode-insiders)/extensions/([^/]+)`),
+        new RegExp(`.*/app/extensions/([^/]+)`),
+      ];
     }
   }
 
