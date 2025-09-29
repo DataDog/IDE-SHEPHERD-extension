@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import { ExtensionInfo, Target, Timestamp } from '../events/ext-events';
 import { SecurityEvent } from '../events/sec-events';
 import { IDEStatus } from '../ide-status';
+import { NotificationService } from './notification-service';
 
 export class IDEStatusService {
   private static _status: IDEStatus;
@@ -166,7 +167,7 @@ export class IDEStatusService {
     const status = await this.getStatus();
     const content = this.formatStatusForDisplay(status);
 
-    await this.showCustomStatusModal('IDE Shepherd Security Status', content);
+    await NotificationService.showCustomModal('IDE Shepherd Security Status', content, 'Close');
   }
 
   private static formatStatusForDisplay(status: IDEStatus): string {
@@ -215,126 +216,4 @@ export class IDEStatusService {
     return `${seconds}s`;
   }
 
-  private static async showCustomStatusModal(title: string, content: string): Promise<void> {
-    return new Promise((resolve) => {
-      const panel = vscode.window.createWebviewPanel('ideStatus', title, vscode.ViewColumn.Active, {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-      });
-
-      // HTML content for the status modal display
-      panel.webview.html = `
-                <!DOCTYPE html>
-                <html lang="en">
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>${title}</title>
-                    <style>
-                        body {
-                            font-family: var(--vscode-font-family);
-                            font-size: var(--vscode-font-size);
-                            color: var(--vscode-foreground);
-                            background: var(--vscode-editor-background);
-                            margin: 0;
-                            padding: 20px;
-                            display: flex;
-                            flex-direction: column;
-                            align-items: center;
-                            justify-content: center;
-                            min-height: 100vh;
-                        }
-                        .modal-container {
-                            background: var(--vscode-notifications-background);
-                            border: 2px solid var(--vscode-notifications-border);
-                            border-radius: 8px;
-                            padding: 24px;
-                            max-width: 600px;
-                            width: 100%;
-                            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-                        }
-                        .title {
-                            font-size: 18px;
-                            font-weight: bold;
-                            color: var(--vscode-notificationsInfoIcon-foreground);
-                            margin-bottom: 16px;
-                            text-align: center;
-                        }
-                        .content {
-                            font-family: var(--vscode-editor-font-family);
-                            white-space: pre-line;
-                            line-height: 1.4;
-                            margin-bottom: 20px;
-                            color: var(--vscode-notifications-foreground);
-                            background: var(--vscode-editor-background);
-                            padding: 16px;
-                            border-radius: 4px;
-                            border: 1px solid var(--vscode-panel-border);
-                            overflow-x: auto;
-                        }
-                        .button-container {
-                            display: flex;
-                            justify-content: center;
-                        }
-                        .ok-button {
-                            background: var(--vscode-button-background);
-                            color: var(--vscode-button-foreground);
-                            border: none;
-                            padding: 8px 16px;
-                            border-radius: 4px;
-                            cursor: pointer;
-                            font-size: 14px;
-                            min-width: 80px;
-                        }
-                        .ok-button:hover {
-                            background: var(--vscode-button-hoverBackground);
-                        }
-                        .ok-button:focus {
-                            outline: 2px solid var(--vscode-focusBorder);
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="modal-container">
-                        <div class="title">${title}</div>
-                        <div class="content">${content.replace(/\n/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;')}</div>
-                        <div class="button-container">
-                            <button class="ok-button" onclick="dismissModal()">Close</button>
-                        </div>
-                    </div>
-                    <script>
-                        function dismissModal() {
-                            vscode.postMessage({ command: 'dismiss' });
-                        }
-                        
-                        // Handle Escape key
-                        document.addEventListener('keydown', function(event) {
-                            if (event.key === 'Escape') {
-                                dismissModal();
-                            }
-                        });
-                        
-                        // Focus the button for keyboard navigation
-                        document.querySelector('.ok-button').focus();
-                        
-                        const vscode = acquireVsCodeApi();
-                    </script>
-                </body>
-                </html>
-            `;
-
-      // Handle messages from webview
-      panel.webview.onDidReceiveMessage((message) => {
-        if (message.command === 'dismiss') {
-          panel.dispose();
-          resolve();
-        }
-      });
-
-      // Handle panel disposal
-      panel.onDidDispose(() => {
-        resolve();
-      });
-    });
-  }
 }
