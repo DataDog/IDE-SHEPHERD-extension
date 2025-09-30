@@ -5,6 +5,7 @@
 import * as vscode from 'vscode';
 import { Logger } from '../logger';
 import { IDEStatusData } from '../ide-status';
+import { SecurityEvent } from '../events/sec-events';
 
 export class SidebarService {
   private static _instance: SidebarService;
@@ -214,9 +215,9 @@ class SecurityEventsViewProvider implements vscode.TreeDataProvider<SidebarTreeI
     new vscode.EventEmitter<SidebarTreeItem | undefined | null | void>();
   readonly onDidChangeTreeData: vscode.Event<SidebarTreeItem | undefined | null | void> =
     this._onDidChangeTreeData.event;
-  private _securityEvents: any[] = [];
+  private _securityEvents: SecurityEvent[] = [];
 
-  updateData(events: any[]): void {
+  updateData(events: SecurityEvent[]): void {
     this._securityEvents = events || [];
     this._onDidChangeTreeData.fire();
   }
@@ -236,14 +237,13 @@ class SecurityEventsViewProvider implements vscode.TreeDataProvider<SidebarTreeI
       const eventItems = this._securityEvents.slice(0, 10).map((event, index) => {
         const timestamp = new Date(event.timestamp).toLocaleTimeString();
         const item = new SidebarTreeItem(
-          `[${timestamp}] ${event.type || 'Security Event'}`,
+          `[${timestamp}] ${event.eventTarget.eventType.toUpperCase()} - ${event.extension.id}`,
           vscode.TreeItemCollapsibleState.Collapsed,
         );
 
         // Set icon based on event severity or type
         item.iconPath = this.getEventIcon(event);
         item.contextValue = `event-${index}`;
-        item.tooltip = event.description || 'Security event detected';
 
         return item;
       });
@@ -255,41 +255,15 @@ class SecurityEventsViewProvider implements vscode.TreeDataProvider<SidebarTreeI
         const event = this._securityEvents[eventIndex];
         const details: SidebarTreeItem[] = [];
 
-        if (event.description) {
-          details.push(new SidebarTreeItem(`Description: ${event.description}`, vscode.TreeItemCollapsibleState.None));
-        }
+        if (event.iocs && Array.isArray(event.iocs) && event.iocs.length > 0) {          
 
-        if (event.severity) {
-          const severityItem = new SidebarTreeItem(
-            `Severity: ${event.severity.toUpperCase()}`,
-            vscode.TreeItemCollapsibleState.None,
-          );
-          severityItem.iconPath = this.getSeverityIcon(event.severity);
-          details.push(severityItem);
-        }
-
-        if (event.target) {
-          details.push(new SidebarTreeItem(`Target: ${event.target}`, vscode.TreeItemCollapsibleState.None));
-        }
-
-        if (event.extensionInfo?.id) {
-          const extItem = new SidebarTreeItem(
-            `Extension: ${event.extensionInfo.id}`,
-            vscode.TreeItemCollapsibleState.None,
-          );
-          extItem.iconPath = new vscode.ThemeIcon('extensions');
-          details.push(extItem);
-        }
-
-        if (event.data) {
-          const dataStr = typeof event.data === 'string' ? event.data : JSON.stringify(event.data);
-          if (dataStr.length > 100) {
-            details.push(
-              new SidebarTreeItem(`Data: ${dataStr.substring(0, 100)}...`, vscode.TreeItemCollapsibleState.None),
-            );
-          } else {
-            details.push(new SidebarTreeItem(`Data: ${dataStr}`, vscode.TreeItemCollapsibleState.None));
+            const primaryIoC = event.getPrimaryIoC ? event.getPrimaryIoC() : event.iocs[0];
+          if (primaryIoC) {
+            details.push(new SidebarTreeItem(`Rule: ${primaryIoC.rule}`, vscode.TreeItemCollapsibleState.None));
+            details.push(new SidebarTreeItem(`Finding: ${primaryIoC.finding}`, vscode.TreeItemCollapsibleState.None));
+            details.push(new SidebarTreeItem(`Description: ${primaryIoC.description}`, vscode.TreeItemCollapsibleState.None));
           }
+          
         }
 
         return Promise.resolve(details);

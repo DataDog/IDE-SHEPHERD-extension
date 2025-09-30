@@ -86,12 +86,6 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "ide-shepherd.exportReport",
-        "title": "Export Security Report",
-        "category": "IDE Shepherd",
-        "icon": "$(export)"
-      },
-      {
         "command": "ide-shepherd.testSidebar",
         "title": "Test Sidebar (Debug)",
         "category": "IDE Shepherd",
