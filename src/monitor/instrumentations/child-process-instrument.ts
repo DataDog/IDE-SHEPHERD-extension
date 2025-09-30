@@ -38,7 +38,7 @@ function createBlockedProcess(): ChildProcess {
 function normalizeExecArgs(
   cmd: string,
   optsOrCb?: ExecOptions | ((error: ExecException | null, stdout: string, stderr: string) => void),
-  maybeCb?: (error: ExecException | null, stdout: string, stderr: string) => void
+  maybeCb?: (error: ExecException | null, stdout: string, stderr: string) => void,
 ) {
   if (typeof optsOrCb === 'function') {
     return { options: undefined, callback: optsOrCb };
@@ -46,7 +46,10 @@ function normalizeExecArgs(
   return { options: optsOrCb ?? undefined, callback: maybeCb };
 }
 
-export function patchChildProcess(childProcess: typeof import('child_process') & { __patched__?: boolean }, processAnalyzer = new ProcessAnalyzer()) {
+export function patchChildProcess(
+  childProcess: typeof import('child_process') & { __patched__?: boolean },
+  processAnalyzer = new ProcessAnalyzer(),
+) {
   if (childProcess.__patched__) {
     Logger.debug(`Child-Process Plugin: already patched, skipping`);
     return;
@@ -58,7 +61,7 @@ export function patchChildProcess(childProcess: typeof import('child_process') &
   const patchedExec = function patchedExec(
     command: string,
     optsOrCb?: ExecOptions | ((error: ExecException | null, stdout: string, stderr: string) => void),
-    maybeCb?: (error: ExecException | null, stdout: string, stderr: string) => void
+    maybeCb?: (error: ExecException | null, stdout: string, stderr: string) => void,
   ) {
     const { options, callback } = normalizeExecArgs(command, optsOrCb, maybeCb);
     const callContext = ExtensionServices.getCallContext();
