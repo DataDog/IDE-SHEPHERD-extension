@@ -18,14 +18,11 @@ export interface IDEStatusData {
   securityEvents: {
     total: number;
     network: number;
-    filesystem: number;
-    workspace: number;
+    process: number;
     recentEvents: SecurityEvent[];
   };
   performance: { avgProcessingTime: string; eventsProcessed: number; totalProcessingTime: number; memoryUsage: string };
 }
-
-export type PlatformType = 'windows' | 'macos' | 'linux' | 'unknown';
 
 /**
  * Global IDE status tracking

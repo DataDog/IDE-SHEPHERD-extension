@@ -171,11 +171,7 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
             vscode.TreeItemCollapsibleState.None,
           ),
           new SidebarTreeItem(
-            `Filesystem: ${this._statusData!.securityEvents.filesystem}`,
-            vscode.TreeItemCollapsibleState.None,
-          ),
-          new SidebarTreeItem(
-            `Workspace: ${this._statusData!.securityEvents.workspace}`,
+            `Process: ${this._statusData!.securityEvents.process}`,
             vscode.TreeItemCollapsibleState.None,
           ),
         );

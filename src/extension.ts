@@ -42,18 +42,7 @@ export function activate(context: vscode.ExtensionContext) {
     setTimeout(() => {
       IDEStatusService.showStatus();
     }, 1000);
-
-    // Register deactivation handler
-    const disposable = vscode.Disposable.from({
-      dispose: () => {
-        Logger.info('IDE Shepherd Extension: Deactivating...');
-        moduleLoaderPatcher.unpatch();
-        Logger.info('IDE Shepherd Extension: Deactivated');
-      },
-    });
-
-    context.subscriptions.push(disposable);
-
+    
     Logger.info('IDE Shepherd Extension: Activation completed successfully');
   } catch (error) {
     Logger.error('IDE Shepherd Extension: Failed to activate', error as Error);
