@@ -8,9 +8,7 @@ import { ExtensionInfo } from '../lib/events/ext-events';
 import { Logger } from '../lib/logger';
 import { CONFIG } from '../lib/config';
 import { patchHttpExports } from './instrumentations/http-client-instrument';
-import { patchChildProcess } from './instrumentations/child-process-instrumentation';
-import { ExtensionServices } from '../lib/services/ext-service';
-import { IDEStatusService } from '../lib/services/ide-status-service';
+import { patchChildProcess } from './instrumentations/child-process-instrument';
 import { Protocol } from '../lib/events/network-events';
 
 const { Module } = require('module');
