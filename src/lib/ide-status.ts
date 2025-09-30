@@ -2,8 +2,28 @@
  * IDE Status Management : keeps track of the status of the IDE monitoring, security events, and performance metrics
  */
 
-import { TargetEvent, Timestamp, ExtensionInfo, Target } from './events/ext-events';
-import { SecurityEvent, SeverityLevel } from './events/sec-events';
+import { Timestamp, ExtensionInfo, Target } from './events/ext-events';
+import { SecurityEvent } from './events/sec-events';
+
+export type PlatformType = 'windows' | 'macos' | 'linux' | 'unknown';
+
+/**
+ * Structured data interface for sidebar display
+ */
+export interface IDEStatusData {
+  isMonitoringActive: boolean;
+  uptime: string;
+  lastUpdate: string;
+  extensionsMonitored: { total: number; extensions: Array<{ id: string }> };
+  securityEvents: {
+    total: number;
+    network: number;
+    filesystem: number;
+    workspace: number;
+    recentEvents: SecurityEvent[];
+  };
+  performance: { avgProcessingTime: string; eventsProcessed: number; totalProcessingTime: number; memoryUsage: string };
+}
 
 /**
  * Global IDE status tracking

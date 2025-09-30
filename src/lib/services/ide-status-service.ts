@@ -5,7 +5,8 @@
 import * as vscode from 'vscode';
 import { ExtensionInfo, Target, Timestamp } from '../events/ext-events';
 import { SecurityEvent } from '../events/sec-events';
-import { IDEStatus } from '../ide-status';
+import { IDEStatus, IDEStatusData } from '../ide-status';
+import { SidebarService } from './sidebar-service';
 
 export class IDEStatusService {
   private static _status: IDEStatus;
@@ -164,9 +165,54 @@ export class IDEStatusService {
 
   static async showStatus(): Promise<void> {
     const status = await this.getStatus();
-    const content = this.formatStatusForDisplay(status);
 
-    await this.showCustomStatusModal('IDE Shepherd Security Status', content);
+    // Try to update sidebar with structured data
+    try {
+      const sidebarService = SidebarService.getInstance();
+      const structuredData = this.formatStatusForSidebar(status);
+      sidebarService.updateStatusView(structuredData);
+      vscode.window.showInformationMessage('Security status updated in sidebar');
+    } catch (error) {
+      // Fallback to modal if sidebar fails
+      console.error('Failed to update sidebar, falling back to modal:', error);
+      const content = this.formatStatusForDisplay(status);
+      await this.showCustomStatusModal('IDE Shepherd Security Status', content);
+    }
+  }
+
+  /**
+   * Format status data for structured sidebar display
+   */
+  private static formatStatusForSidebar(status: IDEStatus): IDEStatusData {
+    const uptime = this.formatUptime(Date.now() - status.monitoringStartTime);
+    const lastUpdate = this.formatUptime(Date.now() - status.lastUpdateTime);
+    const avgProcessingTime =
+      status.totalEventProcessingTime && status.nbrOfEventsProcessed && status.nbrOfEventsProcessed > 0
+        ? `${(status.totalEventProcessingTime / status.nbrOfEventsProcessed).toFixed(2)} ms`
+        : 'N/A';
+
+    return {
+      isMonitoringActive: status.isMonitoringActive,
+      uptime: uptime,
+      lastUpdate: `${lastUpdate} ago`,
+      extensionsMonitored: {
+        total: status.patchedExtensions.length,
+        extensions: status.patchedExtensions.map((ext) => ({ id: ext.id })),
+      },
+      securityEvents: {
+        total: status.totalSecurityEvents,
+        network: status.securityEventsByTarget.network || 0,
+        filesystem: status.securityEventsByTarget.filesystem || 0,
+        workspace: status.securityEventsByTarget.workspace || 0,
+        recentEvents: status.lastSecurityEvents || [],
+      },
+      performance: {
+        avgProcessingTime: avgProcessingTime,
+        eventsProcessed: status.nbrOfEventsProcessed || 0,
+        totalProcessingTime: status.totalEventProcessingTime || 0,
+        memoryUsage: status.memoryUsage ? `${(status.memoryUsage / 1024 / 1024).toFixed(2)} MB` : 'N/A',
+      },
+    };
   }
 
   private static formatStatusForDisplay(status: IDEStatus): string {
