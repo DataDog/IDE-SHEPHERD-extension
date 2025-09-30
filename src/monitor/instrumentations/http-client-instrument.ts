@@ -2,10 +2,11 @@ import { CONFIG } from '../../lib/config';
 import { NetworkEvent } from '../../lib/events/network-events';
 import type { Protocol } from '../../lib/events/network-events';
 import url from 'url';
-import type { ExtensionInfo } from '../../lib/events/ext-events';
+import { ExtensionInfo } from '../../lib/events/ext-events';
 import { Logger } from '../../lib/logger';
 import { NetworkAnalyzer } from '../analysis/network-analyzer';
 import { NotificationService } from '../../lib/services/notification-service';
+import { ExtensionServices } from '../../lib/services/ext-service';
 
 // Create a local instance of NetworkAnalyzer
 const networkAnalyzer = new NetworkAnalyzer();
@@ -231,16 +232,14 @@ export function normalizeArgs(httpExports: any, inputURL: any, inputOptions?: an
   return { uri, options, callback, originalUrl };
 }
 
-export function patchHttpExports(http: any, protocol: Protocol, extensionInfo: ExtensionInfo) {
-  Logger.debug(`HTTP Plugin: Starting patch for ${protocol} module, extension: ${extensionInfo.id}`);
-
+export function patchHttpExports(http: any, protocol: Protocol) {
   if (http.__patched__) {
-    Logger.debug(`HTTP Plugin: ${protocol} module already patched, skipping`);
     return;
   }
+  const callContext = ExtensionServices.getCallContext();
+  const extensionInfo = new ExtensionInfo(callContext.extension, true, Date.now());
 
   const orig = http.request.bind(http);
-  Logger.debug(`HTTP Plugin: Saved original ${protocol}.request function`);
 
   http.request = function wrapped(...args: any[]) {
     const parsed = normalizeArgs(http, args[0], args[1], args[2]);

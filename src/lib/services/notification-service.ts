@@ -5,6 +5,8 @@
 import * as vscode from 'vscode';
 import { SecurityEvent } from '../events/sec-events';
 
+type BlockedOperationType = 'request' | 'response' | 'exec' | 'spawn' | 'execSync';
+
 export class NotificationService {
   static showSecurityEventNotification(securityEvent: SecurityEvent): void {
     const message = JSON.stringify(securityEvent.getSecurityEventData(), null, 2);
@@ -16,14 +18,37 @@ export class NotificationService {
   }
 
   static async showSecurityBlockingInfo(
-    url: string,
+    target: string,
     securityEvent: SecurityEvent,
-    type: 'request' | 'response' = 'request',
+    type: BlockedOperationType = 'request',
   ): Promise<void> {
-    const title = `!!! Security Policy: ${type === 'request' ? 'Request' : 'Response'} Blocked`;
+    const getOperationTitle = (operationType: BlockedOperationType): string => {
+      switch (operationType) {
+        case 'request':
+          return 'Request';
+        case 'response':
+          return 'Response';
+        case 'exec':
+          return 'Process Execution';
+        case 'spawn':
+          return 'Process Spawn';
+        case 'execSync':
+          return 'Synchronous Process Execution';
+        default:
+          return 'Operation';
+      }
+    };
 
-    let content = `A ${type} has been blocked by IDE Shepherd's security policy.\n`;
-    content += `URL: ${url}\n\n`;
+    const title = `!!! Security Policy: ${getOperationTitle(type)} Blocked`;
+
+    let content = `A ${type} operation has been blocked by IDE Shepherd's security policy.\n`;
+
+    if (['request', 'response'].includes(type)) {
+      content += `URL: ${target}\n\n`;
+    } else {
+      content += `Command: ${target}\n\n`;
+    }
+
     content += `Summary:\n${securityEvent.getSummary()}\n\n`;
     content += `Action: The ${type} was automatically blocked to protect your workspace.`;
 

@@ -25,6 +25,8 @@ export interface IDEStatusData {
   performance: { avgProcessingTime: string; eventsProcessed: number; totalProcessingTime: number; memoryUsage: string };
 }
 
+export type PlatformType = 'windows' | 'macos' | 'linux' | 'unknown';
+
 /**
  * Global IDE status tracking
  */
@@ -41,6 +43,7 @@ export interface IDEStatus {
   monitoringStartTime: Timestamp;
   lastUpdateTime: Timestamp;
   isMonitoringActive: boolean;
+  platform: PlatformType;
 
   // Performance metrics
   totalEventProcessingTime?: number;

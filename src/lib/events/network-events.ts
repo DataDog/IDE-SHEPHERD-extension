@@ -1,7 +1,6 @@
-import { CONFIG } from '../config';
 import { Target, TargetEvent, ExtensionInfo } from './ext-events';
 
-export type Protocol = 'http' | 'https';
+export type Protocol = 'http' | 'https' | 'node:http' | 'node:https';
 export type OriginalHeaders = Record<string, string | string[] | undefined>;
 export type RequestOptions = Record<string, unknown>;
 
