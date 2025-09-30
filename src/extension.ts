@@ -37,11 +37,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(statusCommand, refreshStatusCommand, scanExtensionsCommand);
 
-    context.subscriptions.push(
-      statusCommand,
-      refreshStatusCommand,
-      scanExtensionsCommand,
-    );
+    context.subscriptions.push(statusCommand, refreshStatusCommand, scanExtensionsCommand);
 
     setTimeout(() => {
       IDEStatusService.showStatus();

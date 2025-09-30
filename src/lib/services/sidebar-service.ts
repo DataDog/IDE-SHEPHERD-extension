@@ -255,15 +255,15 @@ class SecurityEventsViewProvider implements vscode.TreeDataProvider<SidebarTreeI
         const event = this._securityEvents[eventIndex];
         const details: SidebarTreeItem[] = [];
 
-        if (event.iocs && Array.isArray(event.iocs) && event.iocs.length > 0) {          
-
-            const primaryIoC = event.getPrimaryIoC ? event.getPrimaryIoC() : event.iocs[0];
+        if (event.iocs && Array.isArray(event.iocs) && event.iocs.length > 0) {
+          const primaryIoC = event.getPrimaryIoC ? event.getPrimaryIoC() : event.iocs[0];
           if (primaryIoC) {
             details.push(new SidebarTreeItem(`Rule: ${primaryIoC.rule}`, vscode.TreeItemCollapsibleState.None));
             details.push(new SidebarTreeItem(`Finding: ${primaryIoC.finding}`, vscode.TreeItemCollapsibleState.None));
-            details.push(new SidebarTreeItem(`Description: ${primaryIoC.description}`, vscode.TreeItemCollapsibleState.None));
+            details.push(
+              new SidebarTreeItem(`Description: ${primaryIoC.description}`, vscode.TreeItemCollapsibleState.None),
+            );
           }
-          
         }
 
         return Promise.resolve(details);
