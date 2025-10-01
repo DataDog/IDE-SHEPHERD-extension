@@ -5,23 +5,23 @@ import { AnalysisResult } from './analyzer';
 import { ExecEvent } from '../../lib/events/process-events';
 
 export class ProcessAnalyzer {
+
+  private readonly checkers: Array<(ev: ExecEvent) => AnalysisResult> = [
+    this.checkPowershellScripts.bind(this),
+    this.checkCommandExec.bind(this),
+  ];
+
   analyze(ev: ExecEvent): AnalysisResult | undefined {
     const startTime = Date.now();
 
     try {
       let result = new AnalysisResult();
 
-      // Check for PowerShell execution
-      const powershellResult = this.checkPowershellScripts(ev);
-      if (powershellResult.securityEvent) {
-        result = powershellResult;
-      }
-
-      // Check for curl/wget pipe execution
-      if (!result.securityEvent) {
-        const curlPipeResult = this.checkCommandExec(ev);
-        if (curlPipeResult.securityEvent) {
-          result = curlPipeResult;
+      for (const checker of this.checkers) {
+        const checkResult = checker(ev);
+        if (checkResult.securityEvent) {
+          result = checkResult;
+          break;  // stop on first security event found
         }
       }
 
