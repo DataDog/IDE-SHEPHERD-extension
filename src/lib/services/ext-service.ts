@@ -5,6 +5,7 @@
 
 import { Logger } from '../logger';
 import { IDEStatusService } from './ide-status-service';
+import { PlatformType } from '../ide-status';
 
 export class ExtensionServices {
   // getCallContext will yield a different result from getExtensionFromParentModule
@@ -57,20 +58,17 @@ export class ExtensionServices {
     return skipPatterns.some((pattern) => line.includes(pattern));
   }
 
-  private static getExtensionPatternsForPlatform(platform: string): RegExp[] {
-    const isWindows = platform === 'windows';
+  private static getExtensionPatternsForPlatform(platform: PlatformType): RegExp[] {
+    const isWindows = platform === PlatformType.WINDOWS;
 
     if (isWindows) {
       return [
-        new RegExp(`(?:\\.vscode|\\.vscode-insiders)\\\\extensions\\\\([^\\\\]+)`),
+        new RegExp(`(?:\\.vscode|\\.vscode-insiders)\\extensions\\([^\\]+)`),
         // built-in extensions in Windows can use either / or \, why ? cuz chaos >:3
-        new RegExp(`.*[/\\\\]app[/\\\\]extensions[/\\\\]([^/\\\\]+)`),
+        new RegExp(`.*[/\\]app[/\\]extensions[/\\]([^/\\]+)`),
       ];
     } else {
-      return [
-        new RegExp(`(?:\\.vscode|\\.vscode-insiders)/extensions/([^/]+)`),
-        new RegExp(`.*/app/extensions/([^/]+)`),
-      ];
+      return [new RegExp(`(?:/.vscode(?:-insiders)?)/extensions/([^/]+)`), new RegExp(`.*/app/extensions/([^/]+)`)];
     }
   }
 

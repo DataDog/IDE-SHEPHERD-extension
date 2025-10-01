@@ -43,13 +43,13 @@ export class IDEStatusService {
     const platform = os.platform();
     switch (platform) {
       case 'win32':
-        return 'windows';
+        return PlatformType.WINDOWS;
       case 'darwin':
-        return 'macos';
+        return PlatformType.MACOS;
       case 'linux':
-        return 'linux';
+        return PlatformType.LINUX;
       default:
-        return 'unknown';
+        return PlatformType.UNKNOWN;
     }
   }
 
