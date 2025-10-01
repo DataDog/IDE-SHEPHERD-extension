@@ -47,16 +47,17 @@ export class NotificationService {
 
     const title = `!!! Security Policy: ${getOperationTitle(type)} Blocked`;
 
-    let content = `A ${type} operation has been blocked by IDE Shepherd's security policy.\n`;
+    let content = `A(n) <bold>${type}</bold> operation has been <bold>BLOCKED</bold> by IDE Shepherd's security policy.<br><br>`;
+    content += `<strong>EXTENSION:</strong> <bold>${securityEvent.extension.id}</bold><br>`;
 
     if ([BlockedOperationType.REQUEST, BlockedOperationType.RESPONSE].includes(type)) {
-      content += `URL: ${target}\n\n`;
+      content += `<strong>URL:</strong> ${target}<br><br>`;
     } else {
-      content += `Command: ${target}\n\n`;
+      content += `<strong>COMMAND:</strong><br><code>${target}</code><br><br>`;
     }
 
-    content += `Summary:\n${securityEvent.getSummary()}\n\n`;
-    content += `Action: The ${type} was automatically blocked to protect your workspace.`;
+    content += `<strong>SUMMARY:</strong><br>${securityEvent.getSummary().replace(/\n/g, '<br>')}<br><br>`;
+    content += `<strong>ACTION:</strong> The ${getOperationTitle(type).toLowerCase()} was automatically blocked to protect your workspace.`;
 
     // Create custom modal-like webview
     await this.showCustomModal(title, content);
@@ -112,6 +113,22 @@ export class NotificationService {
                             line-height: 1.5;
                             margin-bottom: 20px;
                             color: var(--vscode-notifications-foreground);
+                        }
+                        code {
+                            background: var(--vscode-textCodeBlock-background);
+                            color: var(--vscode-textPreformat-foreground);
+                            padding: 2px 6px;
+                            border-radius: 3px;
+                            font-family: var(--vscode-editor-font-family);
+                            font-size: 0.9em;
+                        }
+                        strong {
+                            color: var(--vscode-textLink-foreground);
+                            font-weight: bold;
+                        }
+                        em {
+                            color: var(--vscode-descriptionForeground);
+                            font-style: italic;
                         }
                         .button-container {
                             display: flex;

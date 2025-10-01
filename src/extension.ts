@@ -27,7 +27,6 @@ export function activate(context: vscode.ExtensionContext) {
 
     const refreshStatusCommand = vscode.commands.registerCommand('ide-shepherd.refreshStatus', () => {
       IDEStatusService.showStatus();
-      vscode.window.showInformationMessage('Security status refreshed');
     });
 
     const scanExtensionsCommand = vscode.commands.registerCommand('ide-shepherd.scanExtensions', () => {
@@ -42,7 +41,9 @@ export function activate(context: vscode.ExtensionContext) {
     setTimeout(() => {
       IDEStatusService.showStatus();
     }, 1000);
-    
+
+    IDEStatusService.startAutoRefresh();
+
     Logger.info('IDE Shepherd Extension: Activation completed successfully');
   } catch (error) {
     Logger.error('IDE Shepherd Extension: Failed to activate', error as Error);

@@ -54,7 +54,7 @@ export class ProcessAnalyzer {
       if (suspiciousFlags.test(fullCommand)) {
         return new AnalysisResult(
           { allowed: false },
-          new SecurityEvent(ev, ev.extension, SeverityLevel.LOW, [
+          new SecurityEvent(ev, ev.extension, SeverityLevel.HIGH, [
             {
               finding: fullCommand,
               rule: 'PowerShell Execution',

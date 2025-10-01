@@ -20,13 +20,8 @@ export interface IDEStatusData {
   uptime: string;
   lastUpdate: string;
   extensionsMonitored: { total: number; extensions: Array<{ id: string }> };
-  securityEvents: {
-    total: number;
-    network: number;
-    process: number;
-    recentEvents: SecurityEvent[];
-  };
-  performance: { avgProcessingTime: string; eventsProcessed: number; totalProcessingTime: number; memoryUsage: string };
+  securityEvents: { total: number; network: number; process: number; recentEvents: SecurityEvent[] };
+  performance: { avgProcessingTime: string; eventsProcessed: number; totalProcessingTime: number };
 }
 
 /**
@@ -50,5 +45,4 @@ export interface IDEStatus {
   // Performance metrics
   totalEventProcessingTime?: number;
   nbrOfEventsProcessed?: number;
-  memoryUsage?: number;
 }

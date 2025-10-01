@@ -16,4 +16,11 @@ export const CONFIG = {
   NETWORK: {
     MAX_CAPTURE_BYTES: 256 * 1024, // 256 kB
   },
+  UI: {
+    AUTO_REFRESH: {
+      ENABLED: true,
+      INTERVAL_MS: 10000, // Auto-refresh interval
+      MAX_RECENT_EVENTS: 10, // Maximum number of recent events to display
+    },
+  },
 };

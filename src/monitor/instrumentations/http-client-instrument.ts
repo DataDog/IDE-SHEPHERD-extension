@@ -7,6 +7,7 @@ import { Logger } from '../../lib/logger';
 import { NetworkAnalyzer } from '../analysis/network-analyzer';
 import { BlockedOperationType, NotificationService } from '../../lib/services/notification-service';
 import { ExtensionServices } from '../../lib/services/ext-service';
+import { IDEStatusService } from '../../lib/services/ide-status-service';
 
 // Create a local instance of NetworkAnalyzer
 const networkAnalyzer = new NetworkAnalyzer();
@@ -236,12 +237,18 @@ export function patchHttpExports(http: any, protocol: Protocol) {
   if (http.__patched__) {
     return;
   }
-  const callContext = ExtensionServices.getCallContext();
-  const extensionInfo = new ExtensionInfo(callContext.extension, true, Date.now());
 
   const orig = http.request.bind(http);
 
   http.request = function wrapped(...args: any[]) {
+    // Detect extension per-request, not per-patch
+    const callContext = ExtensionServices.getCallContext();
+    const extensionInfo = new ExtensionInfo(callContext.extension, true, Date.now());
+
+    IDEStatusService.updatePatchedExtension(extensionInfo).catch((error) => {
+      Logger.warn(`HTTP Plugin: Failed to update extension status for ${extensionInfo.id}: ${error.message}`);
+    });
+
     const parsed = normalizeArgs(http, args[0], args[1], args[2]);
     Logger.debug(`HTTP Plugin: Intercepted ${protocol} request to: ${Logger.truncate(parsed.uri, 100)}`);
 
@@ -443,5 +450,5 @@ export function patchHttpExports(http: any, protocol: Protocol) {
   };
   Object.defineProperty(http, '__patched__', { value: true });
 
-  Logger.info(`HTTP Plugin: Successfully patched ${protocol} module for extension ${extensionInfo.id}`);
+  Logger.info(`HTTP Plugin: Successfully patched ${protocol} module (extension detection per-request)`);
 }

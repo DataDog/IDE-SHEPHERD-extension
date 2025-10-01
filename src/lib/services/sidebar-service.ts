@@ -5,7 +5,8 @@
 import * as vscode from 'vscode';
 import { Logger } from '../logger';
 import { IDEStatusData } from '../ide-status';
-import { SecurityEvent } from '../events/sec-events';
+import { SecurityEvent, SeverityLevel } from '../events/sec-events';
+import { Target } from '../events/ext-events';
 
 export class SidebarService {
   private static _instance: SidebarService;
@@ -40,14 +41,6 @@ export class SidebarService {
     this._currentStatusData = data;
     this._statusProvider.updateData(data);
     this._eventsProvider.updateData(data.securityEvents.recentEvents);
-  }
-
-  addSecurityEvent(event: any): void {
-    // TODO
-  }
-
-  updateExtensionAnalysis(analysisResults: any[]): void {
-    // TODO
   }
 }
 
@@ -107,7 +100,7 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
 
   private createExtensionsItem(): SidebarTreeItem {
     const item = new SidebarTreeItem(
-      `Extensions Monitored (${this._statusData!.extensionsMonitored.total})`,
+      `Telemetry sources (${this._statusData!.extensionsMonitored.total})`,
       vscode.TreeItemCollapsibleState.Collapsed,
     );
     item.iconPath = new vscode.ThemeIcon('extensions');
@@ -160,18 +153,18 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
           children.push(item);
         });
         if (children.length === 0) {
-          children.push(new SidebarTreeItem('No extensions monitored', vscode.TreeItemCollapsibleState.None));
+          children.push(new SidebarTreeItem('No telemetry sources', vscode.TreeItemCollapsibleState.None));
         }
         break;
 
       case 'events':
         children.push(
           new SidebarTreeItem(
-            `Network: ${this._statusData!.securityEvents.network}`,
+            `${Target.getValue(Target.NETWORK)}: ${this._statusData!.securityEvents.network}`,
             vscode.TreeItemCollapsibleState.None,
           ),
           new SidebarTreeItem(
-            `Process: ${this._statusData!.securityEvents.process}`,
+            `${Target.getValue(Target.PROCESS)}: ${this._statusData!.securityEvents.process}`,
             vscode.TreeItemCollapsibleState.None,
           ),
         );
@@ -189,10 +182,6 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
           ),
           new SidebarTreeItem(
             `Total Processing Time: ${this._statusData!.performance.totalProcessingTime} ms`,
-            vscode.TreeItemCollapsibleState.None,
-          ),
-          new SidebarTreeItem(
-            `Memory Usage: ${this._statusData!.performance.memoryUsage}`,
             vscode.TreeItemCollapsibleState.None,
           ),
         );
@@ -232,8 +221,9 @@ class SecurityEventsViewProvider implements vscode.TreeDataProvider<SidebarTreeI
 
       const eventItems = this._securityEvents.slice(0, 10).map((event, index) => {
         const timestamp = new Date(event.timestamp).toLocaleTimeString();
+
         const item = new SidebarTreeItem(
-          `[${timestamp}] ${event.eventTarget.eventType.toUpperCase()} - ${event.extension.id}`,
+          `[${timestamp}] ${event.eventTarget.eventType} - ${event.extension.id}`,
           vscode.TreeItemCollapsibleState.Collapsed,
         );
 
@@ -269,49 +259,22 @@ class SecurityEventsViewProvider implements vscode.TreeDataProvider<SidebarTreeI
     return Promise.resolve([]);
   }
 
-  private getEventIcon(event: any): vscode.ThemeIcon {
-    // Determine icon based on event type or severity
+  private getEventIcon(event: SecurityEvent): vscode.ThemeIcon {
     if (event.severity) {
-      switch (event.severity.toLowerCase()) {
-        case 'critical':
+      switch (event.severity) {
+        case SeverityLevel.HIGH:
           return new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
-        case 'high':
+        case SeverityLevel.MEDIUM:
           return new vscode.ThemeIcon('warning', new vscode.ThemeColor('warningForeground'));
-        case 'medium':
+        case SeverityLevel.LOW:
           return new vscode.ThemeIcon('info', new vscode.ThemeColor('infoForeground'));
-        case 'low':
+        default:
+          // Fallback for any unknown severity levels
           return new vscode.ThemeIcon('circle-outline');
       }
     }
 
-    // Default based on event type
-    if (event.type) {
-      const type = event.type.toLowerCase();
-      if (type.includes('network') || type.includes('http')) {
-        return new vscode.ThemeIcon('globe');
-      } else if (type.includes('process') || type.includes('exec')) {
-        return new vscode.ThemeIcon('terminal');
-      } else if (type.includes('file') || type.includes('filesystem')) {
-        return new vscode.ThemeIcon('file');
-      }
-    }
-
     return new vscode.ThemeIcon('shield');
-  }
-
-  private getSeverityIcon(severity: string): vscode.ThemeIcon {
-    switch (severity.toLowerCase()) {
-      case 'critical':
-        return new vscode.ThemeIcon('error');
-      case 'high':
-        return new vscode.ThemeIcon('warning');
-      case 'medium':
-        return new vscode.ThemeIcon('info');
-      case 'low':
-        return new vscode.ThemeIcon('circle-outline');
-      default:
-        return new vscode.ThemeIcon('question');
-    }
   }
 
   private getEventIndexFromContext(contextValue?: string): number {
