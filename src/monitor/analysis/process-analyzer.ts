@@ -5,7 +5,7 @@ import { AnalysisResult } from './analyzer';
 import { ExecEvent } from '../../lib/events/process-events';
 
 export class ProcessAnalyzer {
-  private readonly checkers: Array<(ev: ExecEvent) => AnalysisResult> = [
+  private readonly checkers: ((ev: ExecEvent) => AnalysisResult)[] = [
     this.checkPowershellScripts.bind(this),
     this.checkCommandExec.bind(this),
   ];
