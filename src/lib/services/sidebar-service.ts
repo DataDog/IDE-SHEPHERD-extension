@@ -65,7 +65,7 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
 
   getChildren(element?: SidebarTreeItem): Thenable<SidebarTreeItem[]> {
     if (!this._statusData) {
-      return Promise.resolve([new SidebarTreeItem('No status data available', vscode.TreeItemCollapsibleState.None)]);
+      return Promise.resolve([new vscode.TreeItem('No status data available', vscode.TreeItemCollapsibleState.None)]);
     }
 
     if (!element) {
@@ -83,7 +83,7 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
   }
 
   private createMonitoringStatusItem(): SidebarTreeItem {
-    const item = new SidebarTreeItem('Monitoring Status', vscode.TreeItemCollapsibleState.Expanded);
+    const item = new vscode.TreeItem('Monitoring Status', vscode.TreeItemCollapsibleState.Expanded);
     item.iconPath = this._statusData!.isMonitoringActive
       ? new vscode.ThemeIcon('check', new vscode.ThemeColor('testing.iconPassed'))
       : new vscode.ThemeIcon('x', new vscode.ThemeColor('testing.iconFailed'));
@@ -92,14 +92,14 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
   }
 
   private createSystemInfoItem(): SidebarTreeItem {
-    const item = new SidebarTreeItem('System Information', vscode.TreeItemCollapsibleState.Expanded);
+    const item = new vscode.TreeItem('System Information', vscode.TreeItemCollapsibleState.Expanded);
     item.iconPath = new vscode.ThemeIcon('info');
     item.contextValue = 'system';
     return item;
   }
 
   private createExtensionsItem(): SidebarTreeItem {
-    const item = new SidebarTreeItem(
+    const item = new vscode.TreeItem(
       `Telemetry sources (${this._statusData!.extensionsMonitored.total})`,
       vscode.TreeItemCollapsibleState.Collapsed,
     );
@@ -109,7 +109,7 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
   }
 
   private createSecurityEventsItem(): SidebarTreeItem {
-    const item = new SidebarTreeItem(
+    const item = new vscode.TreeItem(
       `Security Events (${this._statusData!.securityEvents.total})`,
       vscode.TreeItemCollapsibleState.Expanded,
     );
@@ -119,7 +119,7 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
   }
 
   private createPerformanceItem(): SidebarTreeItem {
-    const item = new SidebarTreeItem('Performance Metrics', vscode.TreeItemCollapsibleState.Expanded);
+    const item = new vscode.TreeItem('Performance Metrics', vscode.TreeItemCollapsibleState.Expanded);
     item.iconPath = new vscode.ThemeIcon('pulse');
     item.contextValue = 'performance';
     return item;
@@ -132,7 +132,7 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
     switch (element.contextValue) {
       case 'monitoring':
         children.push(
-          new SidebarTreeItem(
+          new vscode.TreeItem(
             `Status: ${this._statusData!.isMonitoringActive ? '✅ Active' : '❌ Inactive'}`,
             vscode.TreeItemCollapsibleState.None,
           ),
@@ -141,29 +141,29 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
 
       case 'system':
         children.push(
-          new SidebarTreeItem(`Uptime: ${this._statusData!.uptime}`, vscode.TreeItemCollapsibleState.None),
-          new SidebarTreeItem(`Last Update: ${this._statusData!.lastUpdate}`, vscode.TreeItemCollapsibleState.None),
+          new vscode.TreeItem(`Uptime: ${this._statusData!.uptime}`, vscode.TreeItemCollapsibleState.None),
+          new vscode.TreeItem(`Last Update: ${this._statusData!.lastUpdate}`, vscode.TreeItemCollapsibleState.None),
         );
         break;
 
       case 'extensions':
         this._statusData!.extensionsMonitored.extensions.forEach((ext) => {
-          const item = new SidebarTreeItem(ext.id, vscode.TreeItemCollapsibleState.None);
+          const item = new vscode.TreeItem(ext.id, vscode.TreeItemCollapsibleState.None);
           item.iconPath = new vscode.ThemeIcon('symbol-module');
           children.push(item);
         });
         if (children.length === 0) {
-          children.push(new SidebarTreeItem('No telemetry sources', vscode.TreeItemCollapsibleState.None));
+          children.push(new vscode.TreeItem('No telemetry sources', vscode.TreeItemCollapsibleState.None));
         }
         break;
 
       case 'events':
         children.push(
-          new SidebarTreeItem(
+          new vscode.TreeItem(
             `${Target.getValue(Target.NETWORK)}: ${this._statusData!.securityEvents.network}`,
             vscode.TreeItemCollapsibleState.None,
           ),
-          new SidebarTreeItem(
+          new vscode.TreeItem(
             `${Target.getValue(Target.PROCESS)}: ${this._statusData!.securityEvents.process}`,
             vscode.TreeItemCollapsibleState.None,
           ),
@@ -172,15 +172,15 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
 
       case 'performance':
         children.push(
-          new SidebarTreeItem(
+          new vscode.TreeItem(
             `Avg Processing Time: ${this._statusData!.performance.avgProcessingTime}`,
             vscode.TreeItemCollapsibleState.None,
           ),
-          new SidebarTreeItem(
+          new vscode.TreeItem(
             `Events Processed: ${this._statusData!.performance.eventsProcessed}`,
             vscode.TreeItemCollapsibleState.None,
           ),
-          new SidebarTreeItem(
+          new vscode.TreeItem(
             `Total Processing Time: ${this._statusData!.performance.totalProcessingTime} ms`,
             vscode.TreeItemCollapsibleState.None,
           ),
@@ -215,14 +215,14 @@ class SecurityEventsViewProvider implements vscode.TreeDataProvider<SidebarTreeI
     if (!element) {
       if (this._securityEvents.length === 0) {
         return Promise.resolve([
-          new SidebarTreeItem('No recent security events', vscode.TreeItemCollapsibleState.None),
+          new vscode.TreeItem('No recent security events', vscode.TreeItemCollapsibleState.None),
         ]);
       }
 
       const eventItems = this._securityEvents.slice(0, 10).map((event, index) => {
         const timestamp = new Date(event.timestamp).toLocaleTimeString();
 
-        const item = new SidebarTreeItem(
+        const item = new vscode.TreeItem(
           `[${timestamp}] ${event.eventTarget.eventType} - ${event.extension.id}`,
           vscode.TreeItemCollapsibleState.Collapsed,
         );
@@ -244,10 +244,10 @@ class SecurityEventsViewProvider implements vscode.TreeDataProvider<SidebarTreeI
         if (event.iocs && Array.isArray(event.iocs) && event.iocs.length > 0) {
           const primaryIoC = event.getPrimaryIoC ? event.getPrimaryIoC() : event.iocs[0];
           if (primaryIoC) {
-            details.push(new SidebarTreeItem(`Rule: ${primaryIoC.rule}`, vscode.TreeItemCollapsibleState.None));
-            details.push(new SidebarTreeItem(`Finding: ${primaryIoC.finding}`, vscode.TreeItemCollapsibleState.None));
+            details.push(new vscode.TreeItem(`Rule: ${primaryIoC.rule}`, vscode.TreeItemCollapsibleState.None));
+            details.push(new vscode.TreeItem(`Finding: ${primaryIoC.finding}`, vscode.TreeItemCollapsibleState.None));
             details.push(
-              new SidebarTreeItem(`Description: ${primaryIoC.description}`, vscode.TreeItemCollapsibleState.None),
+              new vscode.TreeItem(`Description: ${primaryIoC.description}`, vscode.TreeItemCollapsibleState.None),
             );
           }
         }
@@ -302,7 +302,7 @@ class ExtensionsAnalysisViewProvider implements vscode.TreeDataProvider<SidebarT
 
   getChildren(element?: SidebarTreeItem): Thenable<SidebarTreeItem[]> {
     // TODO
-    return Promise.resolve([new SidebarTreeItem('No analysis data', vscode.TreeItemCollapsibleState.None)]);
+    return Promise.resolve([new vscode.TreeItem('No analysis data', vscode.TreeItemCollapsibleState.None)]);
   }
 }
 
@@ -321,20 +321,13 @@ class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTreeItem> {
 
   getChildren(element?: SidebarTreeItem): Thenable<SidebarTreeItem[]> {
     const settings = [
-      new SidebarTreeItem('Enable Monitoring', vscode.TreeItemCollapsibleState.None),
-      new SidebarTreeItem('Auto Scan Extensions', vscode.TreeItemCollapsibleState.None),
-      new SidebarTreeItem('Notification Level', vscode.TreeItemCollapsibleState.None),
+      new vscode.TreeItem('Enable Monitoring', vscode.TreeItemCollapsibleState.None),
+      new vscode.TreeItem('Auto Scan Extensions', vscode.TreeItemCollapsibleState.None),
+      new vscode.TreeItem('Notification Level', vscode.TreeItemCollapsibleState.None),
     ];
     return Promise.resolve(settings);
   }
 }
 
-// Single generic tree item class
-class SidebarTreeItem extends vscode.TreeItem {
-  constructor(
-    public readonly label: string,
-    public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-  ) {
-    super(label, collapsibleState);
-  }
-}
+// Use vscode.TreeItem directly instead of unnecessary wrapper class
+type SidebarTreeItem = vscode.TreeItem;

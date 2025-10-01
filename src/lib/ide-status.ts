@@ -19,7 +19,7 @@ export interface IDEStatusData {
   isMonitoringActive: boolean;
   uptime: string;
   lastUpdate: string;
-  extensionsMonitored: { total: number; extensions: Array<{ id: string }> };
+  extensionsMonitored: { total: number; extensions: { id: string }[] };
   securityEvents: { total: number; network: number; process: number; recentEvents: SecurityEvent[] };
   performance: { avgProcessingTime: string; eventsProcessed: number; totalProcessingTime: number };
 }
