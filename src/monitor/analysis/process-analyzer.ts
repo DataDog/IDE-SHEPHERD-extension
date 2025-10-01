@@ -5,7 +5,6 @@ import { AnalysisResult } from './analyzer';
 import { ExecEvent } from '../../lib/events/process-events';
 
 export class ProcessAnalyzer {
-
   private readonly checkers: Array<(ev: ExecEvent) => AnalysisResult> = [
     this.checkPowershellScripts.bind(this),
     this.checkCommandExec.bind(this),
@@ -21,7 +20,7 @@ export class ProcessAnalyzer {
         const checkResult = checker(ev);
         if (checkResult.securityEvent) {
           result = checkResult;
-          break;  // stop on first security event found
+          break; // stop on first security event found
         }
       }
 
