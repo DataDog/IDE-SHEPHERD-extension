@@ -6,10 +6,8 @@ import * as vscode from 'vscode';
 import * as os from 'os';
 import { ExtensionInfo, Target, Timestamp } from '../events/ext-events';
 import { SecurityEvent } from '../events/sec-events';
-import { IDEStatus, IDEStatusData } from '../ide-status';
+import { IDEStatus, IDEStatusData, PlatformType } from '../ide-status';
 import { SidebarService } from './sidebar-service';
-
-export type PlatformType = 'windows' | 'macos' | 'linux' | 'unknown';
 
 export class IDEStatusService {
   private static _status: IDEStatus;
@@ -46,13 +44,13 @@ export class IDEStatusService {
     const platform = os.platform();
     switch (platform) {
       case 'win32':
-        return 'windows';
+        return PlatformType.WINDOWS;
       case 'darwin':
-        return 'macos';
+        return PlatformType.MACOS;
       case 'linux':
-        return 'linux';
+        return PlatformType.LINUX;
       default:
-        return 'unknown';
+        return PlatformType.UNKNOWN;
     }
   }
 

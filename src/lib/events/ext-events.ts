@@ -52,5 +52,5 @@ export abstract class TargetEvent<T extends Target> {
   /**
    *  Serialised representation that can be logged, shipped or embedded in a SecurityEvent.
    */
-  abstract toJSON(): Record<string, unknown>;
+  abstract toJSON(): string;
 }

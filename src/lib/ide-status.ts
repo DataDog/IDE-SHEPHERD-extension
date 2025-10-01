@@ -5,7 +5,12 @@
 import { Timestamp, ExtensionInfo, Target } from './events/ext-events';
 import { SecurityEvent } from './events/sec-events';
 
-export type PlatformType = 'windows' | 'macos' | 'linux' | 'unknown';
+export enum PlatformType {
+  WINDOWS = 'windows',
+  MACOS = 'macos',
+  LINUX = 'linux',
+  UNKNOWN = 'unknown',
+}
 
 /**
  * Structured data interface for sidebar display

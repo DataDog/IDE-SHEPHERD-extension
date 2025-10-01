@@ -12,8 +12,8 @@ export class ExecEvent extends TargetEvent<Target.PROCESS> {
     super(Target.PROCESS, extensionInfo, hookFile, timestamp);
   }
 
-  toJSON(): Record<string, unknown> {
-    return {
+  toJSON(): string {
+    return JSON.stringify({
       eventId: this.eventId,
       timestamp: this.timestamp,
       eventType: this.eventType,
@@ -22,6 +22,6 @@ export class ExecEvent extends TargetEvent<Target.PROCESS> {
       cmd: this.cmd,
       args: this.args,
       options: this.options,
-    };
+    });
   }
 }

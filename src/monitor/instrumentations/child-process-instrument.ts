@@ -4,7 +4,7 @@ import { promisify } from 'util';
 import { ChildProcess, ExecOptions, ExecException } from 'child_process';
 
 import { Logger } from '../../lib/logger';
-import { NotificationService } from '../../lib/services/notification-service';
+import { BlockedOperationType, NotificationService } from '../../lib/services/notification-service';
 import { ExtensionInfo } from '../../lib/events/ext-events';
 import { ProcessAnalyzer } from '../analysis/process-analyzer';
 import { ExecEvent } from '../../lib/events/process-events';
@@ -77,7 +77,7 @@ export function patchChildProcess(
     if (analysis && !analysis.verdict.allowed && analysis.securityEvent) {
       Logger.warn(`Child-Process Plugin: blocked exec(): ${Logger.truncate(command, 120)}`);
 
-      NotificationService.showSecurityBlockingInfo(command, analysis.securityEvent, 'exec');
+      NotificationService.showSecurityBlockingInfo(command, analysis.securityEvent, BlockedOperationType.EXEC);
 
       return createBlockedProcess();
     }
