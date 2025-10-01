@@ -86,8 +86,8 @@ export class NetworkEvent extends TargetEvent<Target.NETWORK> {
     return this.phase === 'response';
   }
 
-  toJSON(): Record<string, unknown> {
-    return {
+  toJSON(): string {
+    return JSON.stringify({
       eventId: this.eventId,
       timestamp: this.timestamp,
       eventType: this.eventType,
@@ -106,6 +106,6 @@ export class NetworkEvent extends TargetEvent<Target.NETWORK> {
       payload: this.payload,
       truncated: this.truncated,
       correlationId: this.correlationId,
-    };
+    });
   }
 }

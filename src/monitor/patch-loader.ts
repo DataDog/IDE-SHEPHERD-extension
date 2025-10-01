@@ -35,7 +35,13 @@ export class ModuleLoaderPatcher {
 
       (Module as any)._load = function patchedLoad(request: any, parent: any, isMain: any) {
         const exports = self.originalLoad.apply(this, arguments);
-        if (CONFIG.MODULES.HTTP_MODULES.includes(request) || CONFIG.MODULES.CHILD_PROCESS_MODULES.includes(request)) {
+
+        const toHook: string[] = [];
+        for (const moduleGroup of [CONFIG.MODULES.HTTP_MODULES, CONFIG.MODULES.CHILD_PROCESS_MODULES]) {
+          toHook.push(...moduleGroup);
+        }
+
+        if (toHook.includes(request)) {
           self.patchExports(exports, request);
         }
         return exports;
