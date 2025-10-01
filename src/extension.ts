@@ -15,7 +15,7 @@ export function activate(context: vscode.ExtensionContext) {
     Logger.info('IDE Shepherd Extension: Logger initialized');
 
     const sidebarService = SidebarService.getInstance();
-    sidebarService.initialize(context);
+    sidebarService.initialize();
 
     Logger.info('IDE Shepherd Extension: Activating module loader patcher...');
     moduleLoaderPatcher.patch();

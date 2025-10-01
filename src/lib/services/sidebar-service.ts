@@ -3,7 +3,6 @@
  */
 
 import * as vscode from 'vscode';
-import { Logger } from '../logger';
 import { IDEStatusData } from '../ide-status';
 import { SecurityEvent, SeverityLevel } from '../events/sec-events';
 import { Target } from '../events/ext-events';
@@ -30,7 +29,7 @@ export class SidebarService {
     return SidebarService._instance;
   }
 
-  initialize(context: vscode.ExtensionContext): void {
+  initialize(): void {
     vscode.window.registerTreeDataProvider('ide-shepherd-status', this._statusProvider);
     vscode.window.registerTreeDataProvider('ide-shepherd-events', this._eventsProvider);
     vscode.window.registerTreeDataProvider('ide-shepherd-extensions', this._extensionsProvider);
@@ -227,7 +226,6 @@ class SecurityEventsViewProvider implements vscode.TreeDataProvider<SidebarTreeI
           vscode.TreeItemCollapsibleState.Collapsed,
         );
 
-        // Set icon based on event severity or type
         item.iconPath = this.getEventIcon(event);
         item.contextValue = `event-${index}`;
 
@@ -269,7 +267,6 @@ class SecurityEventsViewProvider implements vscode.TreeDataProvider<SidebarTreeI
         case SeverityLevel.LOW:
           return new vscode.ThemeIcon('info', new vscode.ThemeColor('infoForeground'));
         default:
-          // Fallback for any unknown severity levels
           return new vscode.ThemeIcon('circle-outline');
       }
     }
@@ -329,5 +326,4 @@ class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTreeItem> {
   }
 }
 
-// Use vscode.TreeItem directly instead of unnecessary wrapper class
 type SidebarTreeItem = vscode.TreeItem;
