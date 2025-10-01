@@ -3,9 +3,10 @@
  */
 
 import * as vscode from 'vscode';
+import * as os from 'os';
 import { ExtensionInfo, Target, Timestamp } from '../events/ext-events';
 import { SecurityEvent } from '../events/sec-events';
-import { IDEStatus } from '../ide-status';
+import { IDEStatus, PlatformType } from '../ide-status';
 
 export class IDEStatusService {
   private static _status: IDEStatus;
@@ -26,15 +27,30 @@ export class IDEStatusService {
     return {
       patchedExtensions: [],
       totalSecurityEvents: 0,
-      securityEventsByTarget: { [Target.NETWORK]: 0, [Target.FILESYSTEM]: 0, [Target.WORKSPACE]: 0 },
+      securityEventsByTarget: { [Target.NETWORK]: 0, [Target.PROCESS]: 0 },
       lastSecurityEvents: [],
       monitoringStartTime: Date.now(),
       lastUpdateTime: Date.now(),
       isMonitoringActive: true,
+      platform: this.detectPlatform(),
       totalEventProcessingTime: 0,
       nbrOfEventsProcessed: 0,
       memoryUsage: 0,
     };
+  }
+
+  private static detectPlatform(): PlatformType {
+    const platform = os.platform();
+    switch (platform) {
+      case 'win32':
+        return PlatformType.WINDOWS;
+      case 'darwin':
+        return PlatformType.MACOS;
+      case 'linux':
+        return PlatformType.LINUX;
+      default:
+        return PlatformType.UNKNOWN;
+    }
   }
 
   /**
@@ -61,6 +77,11 @@ export class IDEStatusService {
     } finally {
       this.releaseLock();
     }
+  }
+
+  static getPlatform(): PlatformType {
+    this.ensureInitialized();
+    return this._status.platform;
   }
 
   static async updatePatchedExtension(extension: ExtensionInfo): Promise<void> {
@@ -179,6 +200,7 @@ export class IDEStatusService {
 
     return [
       `IDE Shepherd Security Status`,
+      `- Platform: ${status.platform}`,
       `- Monitoring Status: ${status.isMonitoringActive ? '[x] Active' : '[ ] Inactive'}`,
       `- Uptime: ${uptime}`,
       `- Last Update: ${lastUpdate} ago`,
@@ -188,8 +210,7 @@ export class IDEStatusService {
       `- Security Events:`,
       `\t* Total: ${status.totalSecurityEvents}`,
       `\t* Network: ${status.securityEventsByTarget.network || 0}`,
-      `\t* Filesystem: ${status.securityEventsByTarget.filesystem || 0}`,
-      `\t* Workspace: ${status.securityEventsByTarget.workspace || 0}`,
+      `\t* Process: ${status.securityEventsByTarget.process || 0}`,
       `- Performance:`,
       `\t* Avg Processing Time: ${avgProcessingTime} ms`,
       `\t\t* Events Processed: ${status.nbrOfEventsProcessed} | Total Processing Time: ${status.totalEventProcessingTime} ms`,

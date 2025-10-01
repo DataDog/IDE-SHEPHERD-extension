@@ -3,7 +3,6 @@
  * These are higher-level events that contain IoCs and findings from analyzed extension events
  */
 import { ExtensionInfo, TargetEvent, Target, Timestamp } from './ext-events';
-import { NetworkEvent } from './network-events';
 
 export enum SeverityLevel {
   LOW = 'low',
@@ -58,10 +57,10 @@ export class SecurityEvent {
 
   public readonly iocs: IoC[];
 
-  public readonly originalEvent: NetworkEvent;
+  public readonly originalEvent: TargetEvent<Target>;
 
   constructor(
-    originalEvent: NetworkEvent,
+    originalEvent: TargetEvent<Target>,
     extension: ExtensionInfo,
     severity: SeverityLevel,
     iocs: IoC[],

@@ -2,10 +2,11 @@ import { CONFIG } from '../../lib/config';
 import { NetworkEvent } from '../../lib/events/network-events';
 import type { Protocol } from '../../lib/events/network-events';
 import url from 'url';
-import type { ExtensionInfo } from '../../lib/events/ext-events';
+import { ExtensionInfo } from '../../lib/events/ext-events';
 import { Logger } from '../../lib/logger';
 import { NetworkAnalyzer } from '../analysis/network-analyzer';
-import { NotificationService } from '../../lib/services/notification-service';
+import { BlockedOperationType, NotificationService } from '../../lib/services/notification-service';
+import { ExtensionServices } from '../../lib/services/ext-service';
 
 // Create a local instance of NetworkAnalyzer
 const networkAnalyzer = new NetworkAnalyzer();
@@ -231,16 +232,14 @@ export function normalizeArgs(httpExports: any, inputURL: any, inputOptions?: an
   return { uri, options, callback, originalUrl };
 }
 
-export function patchHttpExports(http: any, protocol: Protocol, extensionInfo: ExtensionInfo) {
-  Logger.debug(`HTTP Plugin: Starting patch for ${protocol} module, extension: ${extensionInfo.id}`);
-
+export function patchHttpExports(http: any, protocol: Protocol) {
   if (http.__patched__) {
-    Logger.debug(`HTTP Plugin: ${protocol} module already patched, skipping`);
     return;
   }
+  const callContext = ExtensionServices.getCallContext();
+  const extensionInfo = new ExtensionInfo(callContext.extension, true, Date.now());
 
   const orig = http.request.bind(http);
-  Logger.debug(`HTTP Plugin: Saved original ${protocol}.request function`);
 
   http.request = function wrapped(...args: any[]) {
     const parsed = normalizeArgs(http, args[0], args[1], args[2]);
@@ -274,7 +273,7 @@ export function patchHttpExports(http: any, protocol: Protocol, extensionInfo: E
       if (urlResult && !urlResult.verdict.allowed && urlResult.securityEvent) {
         blocked = true;
         Logger.warn(`HTTP Plugin: Blocked request based on URL analysis: ${parsed.uri}`);
-        NotificationService.showSecurityBlockingInfo(parsed.uri, urlResult.securityEvent, 'request');
+        NotificationService.showSecurityBlockingInfo(parsed.uri, urlResult.securityEvent, BlockedOperationType.REQUEST);
       }
     }
 
@@ -308,7 +307,11 @@ export function patchHttpExports(http: any, protocol: Protocol, extensionInfo: E
         if (chunkResult && !chunkResult.verdict.allowed && chunkResult.securityEvent) {
           blocked = true;
           Logger.warn(`HTTP Plugin: Blocked request based on chunk analysis: ${data}`);
-          NotificationService.showSecurityBlockingInfo(parsed.uri, chunkResult.securityEvent, 'request');
+          NotificationService.showSecurityBlockingInfo(
+            parsed.uri,
+            chunkResult.securityEvent,
+            BlockedOperationType.REQUEST,
+          );
           return c?.length || 0; // Don't send this chunk
         }
 
@@ -346,7 +349,11 @@ export function patchHttpExports(http: any, protocol: Protocol, extensionInfo: E
           const blockedReq = createDynamicMock(req);
 
           // Show security notification
-          NotificationService.showSecurityBlockingInfo(parsed.uri, analysisResult.securityEvent, 'request');
+          NotificationService.showSecurityBlockingInfo(
+            parsed.uri,
+            analysisResult.securityEvent,
+            BlockedOperationType.REQUEST,
+          );
 
           return blockedReq;
         } else {
@@ -387,7 +394,11 @@ export function patchHttpExports(http: any, protocol: Protocol, extensionInfo: E
           Logger.warn(`HTTP Plugin: Blocked response based on data analysis: ${parsed.uri}`);
           responseBlocked = true;
           res.destroy();
-          NotificationService.showSecurityBlockingInfo(parsed.uri, dataAnalysis.securityEvent, 'response');
+          NotificationService.showSecurityBlockingInfo(
+            parsed.uri,
+            dataAnalysis.securityEvent,
+            BlockedOperationType.RESPONSE,
+          );
         }
       });
 
@@ -414,7 +425,11 @@ export function patchHttpExports(http: any, protocol: Protocol, extensionInfo: E
         const finalAnalysis = networkAnalyzer.analyze(finalEvent);
         if (finalAnalysis && !finalAnalysis.verdict.allowed && finalAnalysis.securityEvent) {
           Logger.warn(`HTTP Plugin: Blocked response based on final analysis: ${parsed.uri}`);
-          NotificationService.showSecurityBlockingInfo(parsed.uri, finalAnalysis.securityEvent, 'response');
+          NotificationService.showSecurityBlockingInfo(
+            parsed.uri,
+            finalAnalysis.securityEvent,
+            BlockedOperationType.RESPONSE,
+          );
         }
       });
     });

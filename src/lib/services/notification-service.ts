@@ -5,6 +5,14 @@
 import * as vscode from 'vscode';
 import { SecurityEvent } from '../events/sec-events';
 
+export enum BlockedOperationType {
+  REQUEST = 'request',
+  RESPONSE = 'response',
+  EXEC = 'exec',
+  SPAWN = 'spawn',
+  EXEC_SYNC = 'execSync',
+}
+
 export class NotificationService {
   static showSecurityEventNotification(securityEvent: SecurityEvent): void {
     const message = JSON.stringify(securityEvent.getSecurityEventData(), null, 2);
@@ -16,14 +24,37 @@ export class NotificationService {
   }
 
   static async showSecurityBlockingInfo(
-    url: string,
+    target: string,
     securityEvent: SecurityEvent,
-    type: 'request' | 'response' = 'request',
+    type: BlockedOperationType = BlockedOperationType.REQUEST,
   ): Promise<void> {
-    const title = `!!! Security Policy: ${type === 'request' ? 'Request' : 'Response'} Blocked`;
+    const getOperationTitle = (operationType: BlockedOperationType): string => {
+      switch (operationType) {
+        case BlockedOperationType.REQUEST:
+          return 'Request';
+        case BlockedOperationType.RESPONSE:
+          return 'Response';
+        case BlockedOperationType.EXEC:
+          return 'Process Execution';
+        case BlockedOperationType.SPAWN:
+          return 'Process Spawn';
+        case BlockedOperationType.EXEC_SYNC:
+          return 'Synchronous Process Execution';
+        default:
+          return 'Operation';
+      }
+    };
 
-    let content = `A ${type} has been blocked by IDE Shepherd's security policy.\n`;
-    content += `URL: ${url}\n\n`;
+    const title = `!!! Security Policy: ${getOperationTitle(type)} Blocked`;
+
+    let content = `A ${type} operation has been blocked by IDE Shepherd's security policy.\n`;
+
+    if ([BlockedOperationType.REQUEST, BlockedOperationType.RESPONSE].includes(type)) {
+      content += `URL: ${target}\n\n`;
+    } else {
+      content += `Command: ${target}\n\n`;
+    }
+
     content += `Summary:\n${securityEvent.getSummary()}\n\n`;
     content += `Action: The ${type} was automatically blocked to protect your workspace.`;
 
