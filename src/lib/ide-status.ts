@@ -4,6 +4,7 @@
 
 import { Timestamp, ExtensionInfo, Target } from './events/ext-events';
 import { SecurityEvent } from './events/sec-events';
+import { BatchAnalysisResult } from './heuristics';
 
 export enum PlatformType {
   WINDOWS = 'windows',
@@ -22,6 +23,7 @@ export interface IDEStatusData {
   extensionsMonitored: { total: number; extensions: { id: string }[] };
   securityEvents: { total: number; network: number; process: number; recentEvents: SecurityEvent[] };
   performance: { avgProcessingTime: string; eventsProcessed: number; totalProcessingTime: number };
+  extensionAnalysis?: { results: BatchAnalysisResult; totalExtensions: number; analyzedExtensions: number };
 }
 
 /**

@@ -65,12 +65,12 @@ export class NotificationService {
 
   private static async showCustomModal(title: string, content: string): Promise<void> {
     return new Promise((resolve) => {
-      const panel = vscode.window.createWebviewPanel('securityAlert', title, vscode.ViewColumn.Active, {
+      const panel = vscode.window.createWebviewPanel('customModal', title, vscode.ViewColumn.Active, {
         enableScripts: true,
         retainContextWhenHidden: true,
       });
 
-      // HTML content for the modal-like display
+      // HTML content for the modal display
       panel.webview.html = `
                 <!DOCTYPE html>
                 <html lang="en">

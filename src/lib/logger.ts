@@ -49,7 +49,7 @@ export class Logger {
   }
 
   // For network request/response body
-  static truncate(text: any, maxLength = CONFIG.LOGGER.MAX_TRUNCATE_LENGTH): string {
+  static truncate(text: String, maxLength = CONFIG.LOGGER.MAX_TRUNCATE_LENGTH): string {
     if (!text) {
       return '';
     }
