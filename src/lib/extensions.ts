@@ -14,7 +14,7 @@ export interface ExtensionPackageJSON {
   repository?: string | { url?: string };
   homepage?: string;
   activationEvents?: string[];
-  contributes?: { commands?: Array<{ command: string; title?: string; when?: string }> };
+  contributes?: { commands?: { command: string; title?: string; when?: string }[] };
   scripts?: Record<string, string>;
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
