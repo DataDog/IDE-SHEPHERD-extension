@@ -3,11 +3,13 @@ name: Release
 on:
   push:
     branches: [main]
+    paths:
+      - 'package.json'
   workflow_dispatch:
 
 permissions:
-  contents: read
-  packages: read # for the moment
+  contents: write
+  packages: read
 
 jobs:
   package-validation:
@@ -17,6 +19,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0 # Fetch full history for version comparison
 
       - name: Setup Node.js
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
@@ -24,23 +28,84 @@ jobs:
           node-version: '20.x'
           cache: 'npm'
 
+      - name: Check if version was bumped
+        id: version-check
+        run: |
+          # Get current version from package.json
+          CURRENT_VERSION=$(jq -r '.version' package.json)
+          echo "Current version: $CURRENT_VERSION"
+
+          # Get previous version from the last commit that changed package.json (excluding current commit)
+          PREVIOUS_VERSION=$(git show HEAD~1:package.json | jq -r '.version' 2>/dev/null || echo "0.0.0")
+          echo "Previous version: $PREVIOUS_VERSION"
+
+          # Compare versions
+          if [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
+            echo "Version was bumped from $PREVIOUS_VERSION to $CURRENT_VERSION"
+            echo "version_bumped=true" >> $GITHUB_OUTPUT
+            echo "new_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+            echo "previous_version=$PREVIOUS_VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "::warning::Version was not bumped in package.json (still $CURRENT_VERSION). Skipping release process."
+            echo "version_bumped=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
       - name: Install dependencies
+        if: steps.version-check.outputs.version_bumped == 'true'
         run: npm ci
 
       - name: Install vsce
+        if: steps.version-check.outputs.version_bumped == 'true'
         run: npm install -g @vscode/vsce
 
       - name: Validate extension manifest
+        if: steps.version-check.outputs.version_bumped == 'true'
         run: |
           vsce ls
           echo "Extension manifest validated successfully"
 
       - name: Package extension
+        if: steps.version-check.outputs.version_bumped == 'true'
         run: vsce package --no-dependencies
 
-      - name: Upload VSIX artifact
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+      - name: Create Git tag
+        if: steps.version-check.outputs.version_bumped == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag "v${{ steps.version-check.outputs.new_version }}"
+          git push origin "v${{ steps.version-check.outputs.new_version }}"
+
+      - name: Create GitHub Release
+        if: steps.version-check.outputs.version_bumped == 'true'
+        uses: actions/create-release@v1
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: vscode-extension-${{ github.sha }}
-          path: '*.vsix'
-          retention-days: 30
+          tag_name: 'v${{ steps.version-check.outputs.new_version }}'
+          release_name: 'Release v${{ steps.version-check.outputs.new_version }}'
+          body: |
+            ## What's Changed
+
+            Version bumped from ${{ steps.version-check.outputs.previous_version }} to ${{ steps.version-check.outputs.new_version }}
+
+            ## Installation
+
+            Download the `.vsix` file from the assets below and install it in VS Code using:
+            - Command Palette: `Extensions: Install from VSIX...`
+            - Or drag and drop the file into the Extensions view
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        if: steps.version-check.outputs.version_bumped == 'true'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./ide-shepherd-extension-${{ steps.version-check.outputs.new_version }}.vsix
+          asset_name: ide-shepherd-extension-${{ steps.version-check.outputs.new_version }}.vsix
+          asset_content_type: application/zip
