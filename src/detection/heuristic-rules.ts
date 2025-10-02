@@ -23,17 +23,6 @@ export const HEURISTIC_RULES: HeuristicRule[] = [
     },
   },
   {
-    id: 'missing_publisher',
-    name: 'Missing Publisher',
-    description: 'no or suspicious publisher information',
-    category: PatternCategory.Metadata,
-    severity: SeverityLevel.MEDIUM,
-    check: (pkg: ExtensionPackageJSON) => {
-      const publisher = pkg.publisher || '';
-      return !publisher || publisher.length < 3;
-    },
-  },
-  {
     id: 'missing_repository',
     name: 'Missing Repository',
     description: 'no repository or homepage link',

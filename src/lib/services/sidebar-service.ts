@@ -7,7 +7,7 @@ import { IDEStatusData } from '../ide-status';
 import { SecurityEvent, SeverityLevel } from '../events/sec-events';
 import { Target } from '../events/ext-events';
 import { MetadataAnalyzer } from '../../scanner/metadata-analyzer';
-import { ExtensionsRepository } from '../extensions';
+import { ExtensionPackageJSON, ExtensionsRepository } from '../extensions';
 import { BatchAnalysisResult, RiskLevel } from '../heuristics';
 
 export class SidebarService {
@@ -526,7 +526,7 @@ class ExtensionsAnalysisViewProvider implements vscode.TreeDataProvider<SidebarT
 
       const extensionsForAnalysis = userExtensions
         .filter((ext) => ext.packageJSON)
-        .map((ext) => ({ id: ext.id, packageJSON: ext.packageJSON }));
+        .map((ext) => ({ id: ext.id, packageJSON: ext.packageJSON as ExtensionPackageJSON }));
 
       this._analysisResults = MetadataAnalyzer.analyzeBatch(extensionsForAnalysis);
       this._onDidChangeTreeData.fire();
