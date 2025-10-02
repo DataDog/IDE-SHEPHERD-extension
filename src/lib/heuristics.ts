@@ -2,6 +2,7 @@
  * Heuristics - Interfaces and rule definitions for extension security analysis
  */
 import { SeverityLevel } from './events/sec-events';
+import type { ExtensionPackageJSON } from './extensions';
 
 export enum PatternCategory {
   Metadata = 'metadata',
@@ -36,8 +37,8 @@ export interface HeuristicRule {
   description: string;
   category: PatternCategory;
   severity: SeverityLevel;
-  check: (packageJSON: any) => boolean;
-  getDetails?: (packageJSON: any) => string;
+  check: (packageJSON: ExtensionPackageJSON) => boolean;
+  getDetails?: (packageJSON: ExtensionPackageJSON) => string;
 }
 
 export interface BatchAnalysisResult {

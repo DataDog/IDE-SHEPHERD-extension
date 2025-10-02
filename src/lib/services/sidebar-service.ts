@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import { IDEStatusData } from '../ide-status';
 import { SecurityEvent, SeverityLevel } from '../events/sec-events';
 import { Target } from '../events/ext-events';
-import { MetadataAnalyzer } from '../../scanner/metadata-heuristics';
+import { MetadataAnalyzer } from '../../scanner/metadata-analyzer';
 import { ExtensionsRepository } from '../extensions';
 import { BatchAnalysisResult, RiskLevel } from '../heuristics';
 
@@ -49,7 +49,7 @@ export class SidebarService {
     this._extensionsProvider.runAnalysis();
   }
 
-  getExtensionAnalysisData(): { results: BatchAnalysisResult; totalExtensions: number; analyzedExtensions: number; } {
+  getExtensionAnalysisData(): { results: BatchAnalysisResult; totalExtensions: number; analyzedExtensions: number } {
     return this._extensionsProvider.getAnalysisData();
   }
 }
@@ -123,7 +123,7 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
     const analysisData = this._statusData!.extensionAnalysis;
     let label = 'Extension Analysis';
     let icon = new vscode.ThemeIcon('shield');
-    
+
     if (analysisData) {
       const { summary } = analysisData.results;
       if (summary.high > 0) {
@@ -137,7 +137,7 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
         icon = new vscode.ThemeIcon('check', new vscode.ThemeColor('testing.iconPassed'));
       }
     }
-    
+
     const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
     item.iconPath = icon;
     item.contextValue = 'extension-analysis';
@@ -201,7 +201,7 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
             new vscode.TreeItem(`Total Extensions: ${summary.total}`, vscode.TreeItemCollapsibleState.None),
             new vscode.TreeItem(`High Risk: ${summary.high}`, vscode.TreeItemCollapsibleState.None),
             new vscode.TreeItem(`Medium Risk: ${summary.medium}`, vscode.TreeItemCollapsibleState.None),
-            new vscode.TreeItem(`Low Risk: ${summary.low}`, vscode.TreeItemCollapsibleState.None)
+            new vscode.TreeItem(`Low Risk: ${summary.low}`, vscode.TreeItemCollapsibleState.None),
           );
         } else {
           children.push(new vscode.TreeItem('No analysis data available', vscode.TreeItemCollapsibleState.None));
@@ -344,7 +344,7 @@ class ExtensionsAnalysisViewProvider implements vscode.TreeDataProvider<SidebarT
     new vscode.EventEmitter<SidebarTreeItem | undefined | null | void>();
   readonly onDidChangeTreeData: vscode.Event<SidebarTreeItem | undefined | null | void> =
     this._onDidChangeTreeData.event;
-  
+
   private _analysisResults: BatchAnalysisResult | null = null;
   private _extensionsRepo: ExtensionsRepository;
 
@@ -373,7 +373,7 @@ class ExtensionsAnalysisViewProvider implements vscode.TreeDataProvider<SidebarT
     if (this._analysisResults) {
       const summaryItem = new vscode.TreeItem(
         `Results (${this._analysisResults.summary.total} extensions)`,
-        vscode.TreeItemCollapsibleState.Expanded
+        vscode.TreeItemCollapsibleState.Expanded,
       );
       summaryItem.iconPath = new vscode.ThemeIcon('list-tree');
       summaryItem.contextValue = 'results-summary';
@@ -383,7 +383,7 @@ class ExtensionsAnalysisViewProvider implements vscode.TreeDataProvider<SidebarT
       if (this._analysisResults.summary.high > 0) {
         const highRiskItem = new vscode.TreeItem(
           `High Risk (${this._analysisResults.summary.high})`,
-          vscode.TreeItemCollapsibleState.Collapsed
+          vscode.TreeItemCollapsibleState.Collapsed,
         );
         highRiskItem.iconPath = new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
         highRiskItem.contextValue = 'high-risk';
@@ -393,7 +393,7 @@ class ExtensionsAnalysisViewProvider implements vscode.TreeDataProvider<SidebarT
       if (this._analysisResults.summary.medium > 0) {
         const mediumRiskItem = new vscode.TreeItem(
           `Medium Risk (${this._analysisResults.summary.medium})`,
-          vscode.TreeItemCollapsibleState.Collapsed
+          vscode.TreeItemCollapsibleState.Collapsed,
         );
         mediumRiskItem.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('warningForeground'));
         mediumRiskItem.contextValue = 'medium-risk';
@@ -403,7 +403,7 @@ class ExtensionsAnalysisViewProvider implements vscode.TreeDataProvider<SidebarT
       if (this._analysisResults.summary.low > 0) {
         const lowRiskItem = new vscode.TreeItem(
           `Low Risk (${this._analysisResults.summary.low})`,
-          vscode.TreeItemCollapsibleState.Collapsed
+          vscode.TreeItemCollapsibleState.Collapsed,
         );
         lowRiskItem.iconPath = new vscode.ThemeIcon('info', new vscode.ThemeColor('infoForeground'));
         lowRiskItem.contextValue = 'low-risk';
@@ -420,14 +420,18 @@ class ExtensionsAnalysisViewProvider implements vscode.TreeDataProvider<SidebarT
     switch (element.contextValue) {
       case 'results-summary':
         if (this._analysisResults) {
-          children.push(new vscode.TreeItem(
-            `Total Extensions: ${this._analysisResults.summary.total}`,
-            vscode.TreeItemCollapsibleState.None
-          ));
-          children.push(new vscode.TreeItem(
-            `Risk Distribution: ${this._analysisResults.summary.high}H, ${this._analysisResults.summary.medium}M, ${this._analysisResults.summary.low}L`,
-            vscode.TreeItemCollapsibleState.None
-          ));
+          children.push(
+            new vscode.TreeItem(
+              `Total Extensions: ${this._analysisResults.summary.total}`,
+              vscode.TreeItemCollapsibleState.None,
+            ),
+          );
+          children.push(
+            new vscode.TreeItem(
+              `Risk Distribution: ${this._analysisResults.summary.high}H, ${this._analysisResults.summary.medium}M, ${this._analysisResults.summary.low}L`,
+              vscode.TreeItemCollapsibleState.None,
+            ),
+          );
         }
         break;
 
@@ -460,19 +464,19 @@ class ExtensionsAnalysisViewProvider implements vscode.TreeDataProvider<SidebarT
     }
 
     return this._analysisResults.results
-      .filter(result => result.overallRisk === riskLevel)
-      .map(result => {
+      .filter((result) => result.overallRisk === riskLevel)
+      .map((result) => {
         const item = new vscode.TreeItem(
           `${result.extensionId} (${result.riskScore})`,
-          result.suspiciousPatterns.length > 0 
-            ? vscode.TreeItemCollapsibleState.Collapsed 
-            : vscode.TreeItemCollapsibleState.None
+          result.suspiciousPatterns.length > 0
+            ? vscode.TreeItemCollapsibleState.Collapsed
+            : vscode.TreeItemCollapsibleState.None,
         );
-        
+
         item.iconPath = new vscode.ThemeIcon('extensions');
         item.contextValue = `extension-${result.extensionId}`;
         item.tooltip = `Risk Score: ${result.riskScore}\nPatterns: ${result.suspiciousPatterns.length}`;
-        
+
         return item;
       });
   }
@@ -482,20 +486,20 @@ class ExtensionsAnalysisViewProvider implements vscode.TreeDataProvider<SidebarT
       return [];
     }
 
-    const result = this._analysisResults.results.find(r => r.extensionId === extensionId);
+    const result = this._analysisResults.results.find((r) => r.extensionId === extensionId);
     if (!result) {
       return [];
     }
 
-    return result.suspiciousPatterns.map(pattern => {
+    return result.suspiciousPatterns.map((pattern) => {
       const item = new vscode.TreeItem(
         `${pattern.pattern}: ${pattern.description}`,
-        vscode.TreeItemCollapsibleState.None
+        vscode.TreeItemCollapsibleState.None,
       );
-      
+
       item.iconPath = this.getPatternIcon(pattern.severity);
       item.tooltip = `Category: ${pattern.category}\nSeverity: ${pattern.severity}`;
-      
+
       return item;
     });
   }
@@ -519,17 +523,13 @@ class ExtensionsAnalysisViewProvider implements vscode.TreeDataProvider<SidebarT
   runAnalysis(): void {
     try {
       const userExtensions = this._extensionsRepo.getUserExtensions();
-      
+
       const extensionsForAnalysis = userExtensions
-        .filter(ext => ext.packageJSON)
-        .map(ext => ({
-          id: ext.id,
-          packageJSON: ext.packageJSON
-        }));
+        .filter((ext) => ext.packageJSON)
+        .map((ext) => ({ id: ext.id, packageJSON: ext.packageJSON }));
 
       this._analysisResults = MetadataAnalyzer.analyzeBatch(extensionsForAnalysis);
       this._onDidChangeTreeData.fire();
-
     } catch (error) {
       vscode.window.showErrorMessage(`Extension analysis failed: ${error}`);
     }
@@ -538,21 +538,14 @@ class ExtensionsAnalysisViewProvider implements vscode.TreeDataProvider<SidebarT
   /**
    * Get current analysis data for status integration
    */
-  getAnalysisData(): { results: BatchAnalysisResult; totalExtensions: number; analyzedExtensions: number; } {
+  getAnalysisData(): { results: BatchAnalysisResult; totalExtensions: number; analyzedExtensions: number } {
     const userExtensions = this._extensionsRepo.getUserExtensions();
-    const extensionsWithPackageJSON = userExtensions.filter(ext => ext.packageJSON);
+    const extensionsWithPackageJSON = userExtensions.filter((ext) => ext.packageJSON);
 
     // Return empty results if no analysis has been performed yet
-    const results = this._analysisResults || {
-      results: [],
-      summary: { total: 0, low: 0, medium: 0, high: 0 }
-    };
+    const results = this._analysisResults || { results: [], summary: { total: 0, low: 0, medium: 0, high: 0 } };
 
-    return {
-      results,
-      totalExtensions: userExtensions.length,
-      analyzedExtensions: extensionsWithPackageJSON.length
-    };
+    return { results, totalExtensions: userExtensions.length, analyzedExtensions: extensionsWithPackageJSON.length };
   }
 }
 

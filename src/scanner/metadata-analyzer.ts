@@ -4,7 +4,7 @@
 
 import { Logger } from '../lib/logger';
 import { HeuristicResult, SuspiciousPattern, BatchAnalysisResult, RiskScoring, RiskLevel } from '../lib/heuristics';
-import { HeuristicRules } from '../detection/heuristic-rules';
+import { getAllRules, getRuleById } from '../detection/heuristic-rules';
 
 export class MetadataAnalyzer {
   /**
@@ -15,12 +15,12 @@ export class MetadataAnalyzer {
 
     const detectedPatterns: SuspiciousPattern[] = [];
 
-    const rules = HeuristicRules.getAllRules();
+    const rules = getAllRules();
     for (const rule of rules) {
       try {
         if (rule.check(packageJSON)) {
           detectedPatterns.push({
-            pattern: rule.id,
+            pattern: rule.name,
             severity: rule.severity,
             description: rule.description,
             category: rule.category,
@@ -72,7 +72,7 @@ export class MetadataAnalyzer {
     packageJSON: any,
     ruleId: string,
   ): { matches: boolean; details?: string } {
-    const rule = HeuristicRules.getRuleById(ruleId);
+    const rule = getRuleById(ruleId);
     if (!rule) {
       throw new Error(`Rule not found: ${ruleId}`);
     }

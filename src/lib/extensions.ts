@@ -5,12 +5,26 @@
 import * as vscode from 'vscode';
 import { Logger } from './logger';
 
+export interface ExtensionPackageJSON {
+  name?: string;
+  description?: string;
+  publisher?: string;
+  version?: string;
+  category?: string;
+  repository?: string | { url?: string };
+  homepage?: string;
+  activationEvents?: string[];
+  contributes?: { commands?: Array<{ command: string; title?: string; when?: string }> };
+  scripts?: Record<string, string>;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+}
 export interface Extension {
   id: string;
   isActive: boolean;
   isBuiltIn: boolean;
   extensionPath: string;
-  packageJSON?: any;
+  packageJSON?: ExtensionPackageJSON;
 }
 
 export class ExtensionsRepository {
