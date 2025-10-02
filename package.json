@@ -8,23 +8,175 @@
     "vscode": "^1.99.3"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Security"
   ],
+  "icon": "resources/icons/icon_dark.png",
   "activationEvents": [
     "*"
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ide-shepherd-explorer",
+          "title": "IDE Shepherd",
+          "icon": "$(shield)"
+        }
+      ]
+    },
+    "views": {
+      "ide-shepherd-explorer": [
+        {
+          "id": "ide-shepherd-status",
+          "name": "Security Status",
+          "when": "true",
+          "contextualTitle": "IDE Shepherd Security Status"
+        },
+        {
+          "id": "ide-shepherd-extensions",
+          "name": "Extensions Analysis",
+          "when": "true",
+          "contextualTitle": "Extension Security Analysis"
+        },
+        {
+          "id": "ide-shepherd-events",
+          "name": "Security Events",
+          "when": "true",
+          "contextualTitle": "Recent Security Events"
+        },
+        {
+          "id": "ide-shepherd-settings",
+          "name": "Settings",
+          "when": "true",
+          "contextualTitle": "IDE Shepherd Settings"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "ide-shepherd.showStatus",
-        "title": "Show Status",
-        "category": "IDE Shepherd"
+        "title": "Show Security Status",
+        "category": "IDE Shepherd",
+        "icon": "$(info)"
       },
       {
-        "command": "ide-shepherd.showWelcome",
-        "title": "Show Welcome & Help",
-        "category": "IDE Shepherd"
+        "command": "ide-shepherd.scanExtensions",
+        "title": "Scan Extensions",
+        "category": "IDE Shepherd",
+        "icon": "$(search)"
+      },
+      {
+        "command": "ide-shepherd.showEvents",
+        "title": "Show Security Events",
+        "category": "IDE Shepherd",
+        "icon": "$(list-unordered)"
+      },
+      {
+        "command": "ide-shepherd.openSettings",
+        "title": "Open Settings",
+        "category": "IDE Shepherd",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "ide-shepherd.refreshStatus",
+        "title": "Refresh Status",
+        "category": "IDE Shepherd",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "ide-shepherd.testSidebar",
+        "title": "Test Sidebar (Debug)",
+        "category": "IDE Shepherd",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "ide-shepherd.testEvents",
+        "title": "Test Security Events (Debug)",
+        "category": "IDE Shepherd",
+        "icon": "$(bug)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "ide-shepherd.refreshStatus",
+          "when": "view == ide-shepherd-status",
+          "group": "navigation"
+        },
+        {
+          "command": "ide-shepherd.scanExtensions",
+          "when": "view == ide-shepherd-extensions",
+          "group": "navigation"
+        },
+        {
+          "command": "ide-shepherd.exportReport",
+          "when": "view == ide-shepherd-events",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "ide-shepherd.showStatus",
+          "when": "true"
+        },
+        {
+          "command": "ide-shepherd.scanExtensions",
+          "when": "true"
+        },
+        {
+          "command": "ide-shepherd.showEvents",
+          "when": "true"
+        }
+      ]
+    },
+    "configuration": {
+      "type": "object",
+      "title": "IDE Shepherd",
+      "properties": {
+        "ide-shepherd.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable IDE Shepherd security monitoring"
+        },
+        "ide-shepherd.autoScan": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically scan extensions on startup"
+        },
+        "ide-shepherd.notificationLevel": {
+          "type": "string",
+          "enum": ["all", "high", "critical", "none"],
+          "default": "high",
+          "description": "Minimum security level for notifications"
+        },
+        "ide-shepherd.maxEvents": {
+          "type": "number",
+          "default": 100,
+          "minimum": 10,
+          "maximum": 1000,
+          "description": "Maximum number of security events to keep"
+        },
+        "ide-shepherd.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show IDE Shepherd status in status bar"
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "ide-shepherd.showStatus",
+        "key": "ctrl+shift+s",
+        "mac": "cmd+shift+s",
+        "when": "true"
+      },
+      {
+        "command": "ide-shepherd.scanExtensions",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "true"
       }
     ]
   },

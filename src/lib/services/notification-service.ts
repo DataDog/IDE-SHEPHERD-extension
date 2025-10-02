@@ -5,6 +5,14 @@
 import * as vscode from 'vscode';
 import { SecurityEvent } from '../events/sec-events';
 
+export enum BlockedOperationType {
+  REQUEST = 'request',
+  RESPONSE = 'response',
+  EXEC = 'exec',
+  SPAWN = 'spawn',
+  EXEC_SYNC = 'execSync',
+}
+
 export class NotificationService {
   static showSecurityEventNotification(securityEvent: SecurityEvent): void {
     const message = JSON.stringify(securityEvent.getSecurityEventData(), null, 2);
@@ -15,10 +23,47 @@ export class NotificationService {
     vscode.window.showInformationMessage(message);
   }
 
-  /**
-   * Show a custom modal with title and content
-   */
-  static async showCustomModal(title: string, content: string, buttonText: string = 'Close'): Promise<void> {
+  static async showSecurityBlockingInfo(
+    target: string,
+    securityEvent: SecurityEvent,
+    type: BlockedOperationType = BlockedOperationType.REQUEST,
+  ): Promise<void> {
+    const getOperationTitle = (operationType: BlockedOperationType): string => {
+      switch (operationType) {
+        case BlockedOperationType.REQUEST:
+          return 'Request';
+        case BlockedOperationType.RESPONSE:
+          return 'Response';
+        case BlockedOperationType.EXEC:
+          return 'Process Execution';
+        case BlockedOperationType.SPAWN:
+          return 'Process Spawn';
+        case BlockedOperationType.EXEC_SYNC:
+          return 'Synchronous Process Execution';
+        default:
+          return 'Operation';
+      }
+    };
+
+    const title = `!!! Security Policy: ${getOperationTitle(type)} Blocked`;
+
+    let content = `A(n) <bold>${type}</bold> operation has been <bold>BLOCKED</bold> by IDE Shepherd's security policy.<br><br>`;
+    content += `<strong>EXTENSION:</strong> <bold>${securityEvent.extension.id}</bold><br>`;
+
+    if ([BlockedOperationType.REQUEST, BlockedOperationType.RESPONSE].includes(type)) {
+      content += `<strong>URL:</strong> ${target}<br><br>`;
+    } else {
+      content += `<strong>COMMAND:</strong><br><code>${target}</code><br><br>`;
+    }
+
+    content += `<strong>SUMMARY:</strong><br>${securityEvent.getSummary().replace(/\n/g, '<br>')}<br><br>`;
+    content += `<strong>ACTION:</strong> The ${getOperationTitle(type).toLowerCase()} was automatically blocked to protect your workspace.`;
+
+    // Create custom modal-like webview
+    await this.showCustomModal(title, content);
+  }
+
+  private static async showCustomModal(title: string, content: string): Promise<void> {
     return new Promise((resolve) => {
       const panel = vscode.window.createWebviewPanel('customModal', title, vscode.ViewColumn.Active, {
         enableScripts: true,
@@ -27,104 +72,114 @@ export class NotificationService {
 
       // HTML content for the modal display
       panel.webview.html = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>${title}</title>
-            <style>
-                body {
-                    font-family: var(--vscode-font-family);
-                    font-size: var(--vscode-font-size);
-                    color: var(--vscode-foreground);
-                    background: var(--vscode-editor-background);
-                    margin: 0;
-                    padding: 20px;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    min-height: 100vh;
-                }
-                .modal-container {
-                    background: var(--vscode-notifications-background);
-                    border: 2px solid var(--vscode-notifications-border);
-                    border-radius: 8px;
-                    padding: 24px;
-                    max-width: 600px;
-                    width: 100%;
-                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-                }
-                .title {
-                    font-size: 18px;
-                    font-weight: bold;
-                    color: var(--vscode-notificationsInfoIcon-foreground);
-                    margin-bottom: 16px;
-                    text-align: center;
-                }
-                .content {
-                    font-family: var(--vscode-editor-font-family);
-                    white-space: pre-line;
-                    line-height: 1.4;
-                    margin-bottom: 20px;
-                    color: var(--vscode-notifications-foreground);
-                    background: var(--vscode-editor-background);
-                    padding: 16px;
-                    border-radius: 4px;
-                    border: 1px solid var(--vscode-panel-border);
-                    overflow-x: auto;
-                }
-                .button-container {
-                    display: flex;
-                    justify-content: center;
-                }
-                .modal-button {
-                    background: var(--vscode-button-background);
-                    color: var(--vscode-button-foreground);
-                    border: none;
-                    padding: 8px 16px;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    font-size: 14px;
-                    min-width: 80px;
-                }
-                .modal-button:hover {
-                    background: var(--vscode-button-hoverBackground);
-                }
-                .modal-button:focus {
-                    outline: 2px solid var(--vscode-focusBorder);
-                }
-            </style>
-        </head>
-        <body>
-            <div class="modal-container">
-                <div class="title">${title}</div>
-                <div class="content">${content.replace(/\n/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;')}</div>
-                <div class="button-container">
-                    <button class="modal-button" onclick="dismissModal()">${buttonText}</button>
-                </div>
-            </div>
-            <script>
-                function dismissModal() {
-                    vscode.postMessage({ command: 'dismiss' });
-                }
-                
-                // Handle Escape key
-                document.addEventListener('keydown', function(event) {
-                    if (event.key === 'Escape') {
-                        dismissModal();
-                    }
-                });
-                
-                // Focus the button for keyboard navigation
-                document.querySelector('.modal-button').focus();
-                
-                const vscode = acquireVsCodeApi();
-            </script>
-        </body>
-        </html>
-      `;
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>${title}</title>
+                    <style>
+                        body {
+                            font-family: var(--vscode-font-family);
+                            font-size: var(--vscode-font-size);
+                            color: var(--vscode-foreground);
+                            background: var(--vscode-editor-background);
+                            margin: 0;
+                            padding: 20px;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            min-height: 100vh;
+                        }
+                        .modal-container {
+                            background: var(--vscode-notifications-background);
+                            border: 2px solid var(--vscode-notifications-border);
+                            border-radius: 8px;
+                            padding: 24px;
+                            max-width: 500px;
+                            width: 100%;
+                            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+                        }
+                        .title {
+                            font-size: 16px;
+                            font-weight: bold;
+                            color: var(--vscode-notificationsWarningIcon-foreground);
+                            margin-bottom: 16px;
+                            text-align: center;
+                        }
+                        .content {
+                            white-space: pre-line;
+                            line-height: 1.5;
+                            margin-bottom: 20px;
+                            color: var(--vscode-notifications-foreground);
+                        }
+                        code {
+                            background: var(--vscode-textCodeBlock-background);
+                            color: var(--vscode-textPreformat-foreground);
+                            padding: 2px 6px;
+                            border-radius: 3px;
+                            font-family: var(--vscode-editor-font-family);
+                            font-size: 0.9em;
+                        }
+                        strong {
+                            color: var(--vscode-textLink-foreground);
+                            font-weight: bold;
+                        }
+                        em {
+                            color: var(--vscode-descriptionForeground);
+                            font-style: italic;
+                        }
+                        .button-container {
+                            display: flex;
+                            justify-content: center;
+                        }
+                        .ok-button {
+                            background: var(--vscode-button-background);
+                            color: var(--vscode-button-foreground);
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            min-width: 80px;
+                        }
+                        .ok-button:hover {
+                            background: var(--vscode-button-hoverBackground);
+                        }
+                        .ok-button:focus {
+                            outline: 2px solid var(--vscode-focusBorder);
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="modal-container">
+                        <div class="title">${title}</div>
+                        <div class="content">${content.replace(/\n/g, '<br>')}</div>
+                        <div class="button-container">
+                            <button class="ok-button" onclick="dismissModal()">Acknowledge</button>
+                        </div>
+                    </div>
+                    <script>
+                        function dismissModal() {
+                            vscode.postMessage({ command: 'dismiss' });
+                        }
+                        
+                        // Handle Escape key
+                        document.addEventListener('keydown', function(event) {
+                            if (event.key === 'Escape') {
+                                dismissModal();
+                            }
+                        });
+                        
+                        // Focus the button for keyboard navigation
+                        document.querySelector('.ok-button').focus();
+                        
+                        const vscode = acquireVsCodeApi();
+                    </script>
+                </body>
+                </html>
+            `;
 
       // Handle messages from webview
       panel.webview.onDidReceiveMessage((message) => {

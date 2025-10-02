@@ -8,9 +8,19 @@ export const CONFIG = {
     NAME: 'IDE Shepherd',
     OUTPUT_CHANNEL_NAME: 'IDE Shepherd Extension',
   },
-  MODULES: { HTTP_MODULES: ['http', 'https', 'node:http', 'node:https'] },
+  MODULES: {
+    HTTP_MODULES: ['http', 'https', 'node:http', 'node:https'],
+    CHILD_PROCESS_MODULES: ['child_process', 'node:child_process'],
+  },
   LOGGER: { MAX_TRUNCATE_LENGTH: 1000, LEVELS: { INFO: 'INFO', WARN: 'WARN', ERROR: 'ERROR', DEBUG: 'DEBUG' } },
   NETWORK: {
     MAX_CAPTURE_BYTES: 256 * 1024, // 256 kB
+  },
+  UI: {
+    AUTO_REFRESH: {
+      ENABLED: true,
+      INTERVAL_MS: 10000, // Auto-refresh interval
+      MAX_RECENT_EVENTS: 10, // Maximum number of recent events to display
+    },
   },
 };

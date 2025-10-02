@@ -6,13 +6,16 @@
 import * as vscode from 'vscode';
 import { Logger } from './lib/logger';
 import { moduleLoaderPatcher } from './monitor/index';
-import { NotificationService } from './lib/services/notification-service';
 import { IDEStatusService } from './lib/services/ide-status-service';
+import { SidebarService } from './lib/services/sidebar-service';
 
 export function activate(context: vscode.ExtensionContext) {
   try {
     Logger.init(context);
     Logger.info('IDE Shepherd Extension: Logger initialized');
+
+    const sidebarService = SidebarService.getInstance();
+    sidebarService.initialize();
 
     Logger.info('IDE Shepherd Extension: Activating module loader patcher...');
     moduleLoaderPatcher.patch();
@@ -21,27 +24,29 @@ export function activate(context: vscode.ExtensionContext) {
     const statusCommand = vscode.commands.registerCommand('ide-shepherd.showStatus', () => {
       IDEStatusService.showStatus();
     });
-    context.subscriptions.push(statusCommand);
 
-    // Register deactivation handler
-    const disposable = vscode.Disposable.from({
-      dispose: () => {
-        Logger.info('IDE Shepherd Extension: Deactivating...');
-        moduleLoaderPatcher.unpatch();
-        Logger.info('IDE Shepherd Extension: Deactivated');
-      },
+    const refreshStatusCommand = vscode.commands.registerCommand('ide-shepherd.refreshStatus', () => {
+      IDEStatusService.showStatus();
     });
 
-    context.subscriptions.push(disposable);
+    const scanExtensionsCommand = vscode.commands.registerCommand('ide-shepherd.scanExtensions', () => {
+      vscode.window.showInformationMessage('Extension security scan started...');
+      // TODO: Integrate with actual extension scanning when available
+    });
+
+    context.subscriptions.push(statusCommand, refreshStatusCommand, scanExtensionsCommand);
+
+    context.subscriptions.push(statusCommand, refreshStatusCommand, scanExtensionsCommand);
+
+    setTimeout(() => {
+      IDEStatusService.showStatus();
+    }, 1000);
+
+    IDEStatusService.startAutoRefresh();
 
     Logger.info('IDE Shepherd Extension: Activation completed successfully');
   } catch (error) {
     Logger.error('IDE Shepherd Extension: Failed to activate', error as Error);
     throw error;
   }
-}
-
-export function deactivate() {
-  Logger.info('IDE Shepherd Extension: Deactivation called');
-  moduleLoaderPatcher.unpatch();
 }

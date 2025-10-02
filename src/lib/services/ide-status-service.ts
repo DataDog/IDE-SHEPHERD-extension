@@ -3,15 +3,20 @@
  */
 
 import * as vscode from 'vscode';
+import * as os from 'os';
 import { ExtensionInfo, Target, Timestamp } from '../events/ext-events';
 import { SecurityEvent } from '../events/sec-events';
-import { IDEStatus } from '../ide-status';
-import { NotificationService } from './notification-service';
+import { IDEStatus, IDEStatusData, PlatformType } from '../ide-status';
+import { SidebarService } from './sidebar-service';
+import { CONFIG } from '../config';
+import { Logger } from '../logger';
+
+const AUTO_REFRESH_CONFIG = CONFIG.UI.AUTO_REFRESH;
 
 export class IDEStatusService {
   private static _status: IDEStatus;
   private static _lock = false;
-  private static readonly MAX_RECENT_EVENTS = 10;
+  private static _refreshInterval: NodeJS.Timeout | null = null;
 
   // Logger output channel (moved from old IDEStatusManager)
   public static _outputChannel: any = null;
@@ -27,15 +32,29 @@ export class IDEStatusService {
     return {
       patchedExtensions: [],
       totalSecurityEvents: 0,
-      securityEventsByTarget: { [Target.NETWORK]: 0, [Target.FILESYSTEM]: 0, [Target.WORKSPACE]: 0 },
+      securityEventsByTarget: { [Target.NETWORK]: 0, [Target.PROCESS]: 0 },
       lastSecurityEvents: [],
       monitoringStartTime: Date.now(),
       lastUpdateTime: Date.now(),
       isMonitoringActive: true,
+      platform: this.detectPlatform(),
       totalEventProcessingTime: 0,
       nbrOfEventsProcessed: 0,
-      memoryUsage: 0,
     };
+  }
+
+  private static detectPlatform(): PlatformType {
+    const platform = os.platform();
+    switch (platform) {
+      case 'win32':
+        return PlatformType.WINDOWS;
+      case 'darwin':
+        return PlatformType.MACOS;
+      case 'linux':
+        return PlatformType.LINUX;
+      default:
+        return PlatformType.UNKNOWN;
+    }
   }
 
   /**
@@ -52,16 +71,24 @@ export class IDEStatusService {
     this._lock = false;
   }
 
-  // === Core Status Management Methods ===
-
   static async getStatus(): Promise<IDEStatus> {
     this.ensureInitialized();
     await this.acquireLock();
     try {
-      return JSON.parse(JSON.stringify(this._status)); // deep copy
+      return {
+        ...this._status,
+        patchedExtensions: [...this._status.patchedExtensions],
+        securityEventsByTarget: { ...this._status.securityEventsByTarget },
+        lastSecurityEvents: [...this._status.lastSecurityEvents],
+      };
     } finally {
       this.releaseLock();
     }
+  }
+
+  static getPlatform(): PlatformType {
+    this.ensureInitialized();
+    return this._status.platform;
   }
 
   static async updatePatchedExtension(extension: ExtensionInfo): Promise<void> {
@@ -108,17 +135,24 @@ export class IDEStatusService {
 
       // Add to recent events queue
       this._status.lastSecurityEvents.unshift(event);
-      if (this._status.lastSecurityEvents.length > this.MAX_RECENT_EVENTS) {
-        this._status.lastSecurityEvents = this._status.lastSecurityEvents.slice(0, this.MAX_RECENT_EVENTS);
+      if (this._status.lastSecurityEvents.length > AUTO_REFRESH_CONFIG.MAX_RECENT_EVENTS) {
+        this._status.lastSecurityEvents = this._status.lastSecurityEvents.slice(
+          0,
+          AUTO_REFRESH_CONFIG.MAX_RECENT_EVENTS,
+        );
       }
 
       this._status.lastUpdateTime = Date.now();
     } finally {
       this.releaseLock();
     }
+
+    this.autoRefreshStatusDisplay().catch((error) => {
+      Logger.error(`Failed to refresh after security event: ${error}`);
+    });
   }
 
-  static async updatePerformanceMetrics(processingTime?: number, memoryUsage?: number): Promise<void> {
+  static async updatePerformanceMetrics(processingTime?: number): Promise<void> {
     this.ensureInitialized();
     await this.acquireLock();
     try {
@@ -129,10 +163,6 @@ export class IDEStatusService {
       ) {
         this._status.totalEventProcessingTime += processingTime; // in ms
         this._status.nbrOfEventsProcessed++;
-      }
-
-      if (memoryUsage !== undefined) {
-        this._status.memoryUsage = memoryUsage;
       }
 
       this._status.lastUpdateTime = Date.now();
@@ -161,41 +191,103 @@ export class IDEStatusService {
     }
   }
 
-  // === Display Methods ===
+  /**
+   * Start auto-refresh with 10-second interval
+   */
+  static startAutoRefresh(): void {
+    if (this._refreshInterval) {
+      clearInterval(this._refreshInterval);
+    }
+
+    Logger.info(`[AUTO-REFRESH] Starting auto-refresh interval (${AUTO_REFRESH_CONFIG.INTERVAL_MS}ms)`);
+    this._refreshInterval = setInterval(() => {
+      this.autoRefreshStatusDisplay();
+    }, AUTO_REFRESH_CONFIG.INTERVAL_MS);
+  }
+
+  /**
+   * Stop auto-refresh interval
+   */
+  static stopAutoRefresh(): void {
+    if (this._refreshInterval) {
+      Logger.info('[AUTO-REFRESH] Stopping auto-refresh interval');
+      clearInterval(this._refreshInterval);
+      this._refreshInterval = null;
+    }
+  }
+
+  /**
+   * Enable or disable auto-refresh of status display
+   */
+  static setAutoRefreshEnabled(enabled: boolean): void {
+    AUTO_REFRESH_CONFIG.ENABLED = enabled;
+    if (enabled) {
+      this.startAutoRefresh();
+    } else {
+      this.stopAutoRefresh();
+    }
+  }
+
+  static isAutoRefreshEnabled(): boolean {
+    return AUTO_REFRESH_CONFIG.ENABLED;
+  }
+
+  private static async autoRefreshStatusDisplay(): Promise<void> {
+    if (!AUTO_REFRESH_CONFIG.ENABLED) {
+      return;
+    }
+
+    try {
+      Logger.info('[AUTO-REFRESH] Refreshing status display');
+      await this.showStatus();
+    } catch (error) {
+      Logger.error(`[AUTO-REFRESH] Error: ${error}`);
+    }
+  }
 
   static async showStatus(): Promise<void> {
     const status = await this.getStatus();
-    const content = this.formatStatusForDisplay(status);
 
-    await NotificationService.showCustomModal('IDE Shepherd Security Status', content, 'Close');
+    try {
+      const sidebarService = SidebarService.getInstance();
+      const structuredData = this.formatStatusForSidebar(status);
+      sidebarService.updateStatusView(structuredData);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Error updating security status: ${error}`);
+    }
   }
 
-  private static formatStatusForDisplay(status: IDEStatus): string {
+  /**
+   * Format status data for structured sidebar display
+   */
+  private static formatStatusForSidebar(status: IDEStatus): IDEStatusData {
     const uptime = this.formatUptime(Date.now() - status.monitoringStartTime);
     const lastUpdate = this.formatUptime(Date.now() - status.lastUpdateTime);
     const avgProcessingTime =
       status.totalEventProcessingTime && status.nbrOfEventsProcessed && status.nbrOfEventsProcessed > 0
-        ? status.totalEventProcessingTime / status.nbrOfEventsProcessed
+        ? `${(status.totalEventProcessingTime / status.nbrOfEventsProcessed).toFixed(2)} ms`
         : 'N/A';
 
-    return [
-      `IDE Shepherd Security Status`,
-      `- Monitoring Status: ${status.isMonitoringActive ? '[x] Active' : '[ ] Inactive'}`,
-      `- Uptime: ${uptime}`,
-      `- Last Update: ${lastUpdate} ago`,
-      `- Extensions Monitored:`,
-      `\t* Total Patched: ${status.patchedExtensions.length}`,
-      ...status.patchedExtensions.map((ext) => `\t\t-> ${ext.id}`),
-      `- Security Events:`,
-      `\t* Total: ${status.totalSecurityEvents}`,
-      `\t* Network: ${status.securityEventsByTarget.network || 0}`,
-      `\t* Filesystem: ${status.securityEventsByTarget.filesystem || 0}`,
-      `\t* Workspace: ${status.securityEventsByTarget.workspace || 0}`,
-      `- Performance:`,
-      `\t* Avg Processing Time: ${avgProcessingTime} ms`,
-      `\t\t* Events Processed: ${status.nbrOfEventsProcessed} | Total Processing Time: ${status.totalEventProcessingTime} ms`,
-      `\t* Memory Usage: ${status.memoryUsage ? `${(status.memoryUsage / 1024 / 1024).toFixed(2)} MB` : 'N/A'}`,
-    ].join('\n');
+    return {
+      isMonitoringActive: status.isMonitoringActive,
+      uptime: uptime,
+      lastUpdate: `${lastUpdate} ago`,
+      extensionsMonitored: {
+        total: status.patchedExtensions.length,
+        extensions: status.patchedExtensions.map((ext) => ({ id: ext.id })),
+      },
+      securityEvents: {
+        total: status.totalSecurityEvents,
+        network: status.securityEventsByTarget.Network || 0,
+        process: status.securityEventsByTarget.Process || 0,
+        recentEvents: status.lastSecurityEvents || [],
+      },
+      performance: {
+        avgProcessingTime: avgProcessingTime,
+        eventsProcessed: status.nbrOfEventsProcessed || 0,
+        totalProcessingTime: status.totalEventProcessingTime || 0,
+      },
+    };
   }
 
   private static formatUptime(ms: number): string {
@@ -215,5 +307,4 @@ export class IDEStatusService {
     }
     return `${seconds}s`;
   }
-
 }

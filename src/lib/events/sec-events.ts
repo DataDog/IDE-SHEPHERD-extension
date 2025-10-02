@@ -3,7 +3,6 @@
  * These are higher-level events that contain IoCs and findings from analyzed extension events
  */
 import { ExtensionInfo, TargetEvent, Target, Timestamp } from './ext-events';
-import { NetworkEvent } from './network-events';
 
 export enum SeverityLevel {
   LOW = 'low',
@@ -58,10 +57,10 @@ export class SecurityEvent {
 
   public readonly iocs: IoC[];
 
-  public readonly originalEvent: NetworkEvent;
+  public readonly originalEvent: TargetEvent<Target>;
 
   constructor(
-    originalEvent: NetworkEvent,
+    originalEvent: TargetEvent<Target>,
     extension: ExtensionInfo,
     severity: SeverityLevel,
     iocs: IoC[],
@@ -92,7 +91,7 @@ export class SecurityEvent {
   // customize it later to grab attention cuz they have the attention span of a goldfish, myself included
   getSummary(): string {
     const primaryIoC = this.getPrimaryIoC();
-    return `- Critical threat: ${primaryIoC.rule} detected in\n- Extension: ${this.extension.id}\n- Rule description: ${primaryIoC.description}\n- Severity: ${primaryIoC.severity}`;
+    return `\t- Triggered Rule: ${primaryIoC.rule}\n\t- Rule description: ${primaryIoC.description}\n\t- Severity: ${primaryIoC.severity}`;
   }
 
   getSecurityEventData(): Record<string, any> {

@@ -1,7 +1,6 @@
-import { CONFIG } from '../config';
 import { Target, TargetEvent, ExtensionInfo } from './ext-events';
 
-export type Protocol = 'http' | 'https';
+export type Protocol = 'http' | 'https' | 'node:http' | 'node:https';
 export type OriginalHeaders = Record<string, string | string[] | undefined>;
 export type RequestOptions = Record<string, unknown>;
 
@@ -87,8 +86,8 @@ export class NetworkEvent extends TargetEvent<Target.NETWORK> {
     return this.phase === 'response';
   }
 
-  toJSON(): Record<string, unknown> {
-    return {
+  toJSON(): string {
+    return JSON.stringify({
       eventId: this.eventId,
       timestamp: this.timestamp,
       eventType: this.eventType,
@@ -107,6 +106,6 @@ export class NetworkEvent extends TargetEvent<Target.NETWORK> {
       payload: this.payload,
       truncated: this.truncated,
       correlationId: this.correlationId,
-    };
+    });
   }
 }
