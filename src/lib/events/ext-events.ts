@@ -23,8 +23,25 @@ export class ExtensionInfo {
  * High-level class of the event.  Extend in the future for FS, Child-Process …
  */
 export enum Target {
-  NETWORK = 'network',
-  PROCESS = 'process',
+  NETWORK = 'Network',
+  PROCESS = 'Process',
+}
+
+export namespace Target {
+  export function getValue(target: Target): string {
+    return target;
+  }
+
+  export function getIcon(target: Target): string {
+    switch (target) {
+      case Target.NETWORK:
+        return 'globe';
+      case Target.PROCESS:
+        return 'terminal';
+      default:
+        return 'question';
+    }
+  }
 }
 
 /**

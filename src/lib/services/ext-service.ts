@@ -63,12 +63,12 @@ export class ExtensionServices {
 
     if (isWindows) {
       return [
-        new RegExp(`(?:\\.vscode|\\.vscode-insiders)\\extensions\\([^\\]+)`),
+        new RegExp(`(?:\\.vscode|\\.vscode-insiders)\\\\extensions\\\\([^\\\\]+)`),
         // built-in extensions in Windows can use either / or \, why ? cuz chaos >:3
-        new RegExp(`.*[/\\]app[/\\]extensions[/\\]([^/\\]+)`),
+        new RegExp(`.*[/\\\\]app[/\\\\]extensions[/\\\\]([^/\\\\]+)`),
       ];
     } else {
-      return [new RegExp(`(?:/.vscode(?:-insiders)?)/extensions/([^/]+)`), new RegExp(`.*/app/extensions/([^/]+)`)];
+      return [new RegExp(`(?:\\.vscode(?:-insiders)?)/extensions/([^/]+)`), new RegExp(`.*/app/extensions/([^/]+)`)];
     }
   }
 
