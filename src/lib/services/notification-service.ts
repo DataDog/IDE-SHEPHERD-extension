@@ -195,21 +195,4 @@ export class NotificationService {
       });
     });
   }
-
-  static async showSecurityBlockingInfo(
-    url: string,
-    securityEvent: SecurityEvent,
-    type: 'request' | 'response' = 'request',
-  ): Promise<void> {
-    const title = `!!! Security Policy: ${type === 'request' ? 'Request' : 'Response'} Blocked`;
-
-    let content = `A ${type} has been blocked by IDE Shepherd's security policy.\n`;
-    content += `URL: ${url}\n\n`;
-    content += `Summary:\n${securityEvent.getSummary()}\n\n`;
-    content += `Action: The ${type} was automatically blocked to protect your workspace.`;
-
-    // Create custom modal-like webview
-    await this.showCustomModal(title, content);
-  }
-
 }

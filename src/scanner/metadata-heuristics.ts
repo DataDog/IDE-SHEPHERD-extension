@@ -3,12 +3,7 @@
  */
 
 import { Logger } from '../lib/logger';
-import { 
-  HeuristicResult, 
-  SuspiciousPattern, 
-  BatchAnalysisResult,
-  RiskScoring 
-} from '../lib/heuristics';
+import { HeuristicResult, SuspiciousPattern, BatchAnalysisResult, RiskScoring, RiskLevel } from '../lib/heuristics';
 import { HeuristicRules } from '../detection/heuristic-rules';
 
 export class MetadataAnalyzer {
@@ -17,9 +12,9 @@ export class MetadataAnalyzer {
    */
   static analyzeExtension(extensionId: string, packageJSON: any): HeuristicResult {
     Logger.debug(`MetadataAnalyzer: Analyzing extension ${extensionId}`);
-    
+
     const detectedPatterns: SuspiciousPattern[] = [];
-    
+
     const rules = HeuristicRules.getAllRules();
     for (const rule of rules) {
       try {
@@ -28,25 +23,23 @@ export class MetadataAnalyzer {
             pattern: rule.id,
             severity: rule.severity,
             description: rule.description,
-            category: rule.category
+            category: rule.category,
           });
+          Logger.debug(`MetadataAnalyzer: Detected pattern ${rule.id} in ${extensionId}`);
         }
       } catch (error) {
         Logger.warn(`MetadataAnalyzer: Error applying rule ${rule.id} to ${extensionId}: ${error}`);
       }
     }
-    
+
     const riskScore = RiskScoring.calculateScore(detectedPatterns);
     const overallRisk = RiskScoring.determineRiskLevel(riskScore);
-    
-    Logger.info(`MetadataAnalyzer: Extension ${extensionId} - Risk: ${overallRisk} (${riskScore}/100), Patterns: ${detectedPatterns.length}`);
-    
-    return {
-      extensionId,
-      suspiciousPatterns: detectedPatterns,
-      riskScore,
-      overallRisk
-    };
+
+    Logger.info(
+      `MetadataAnalyzer: Extension ${extensionId} - Risk: ${overallRisk} (${riskScore}), Patterns: ${detectedPatterns.length}`,
+    );
+
+    return { extensionId, suspiciousPatterns: detectedPatterns, riskScore, overallRisk };
   }
 
   /**
@@ -54,26 +47,31 @@ export class MetadataAnalyzer {
    */
   static analyzeBatch(extensions: Array<{ id: string; packageJSON: any }>): BatchAnalysisResult {
     Logger.info(`MetadataAnalyzer: Starting batch analysis of ${extensions.length} extensions`);
-    
-    const results = extensions.map(ext => this.analyzeExtension(ext.id, ext.packageJSON));
-    
+
+    const results = extensions.map((ext) => this.analyzeExtension(ext.id, ext.packageJSON));
+
     const summary = {
       total: results.length,
-      low: results.filter(r => r.overallRisk === 'low').length,
-      medium: results.filter(r => r.overallRisk === 'medium').length,
-      high: results.filter(r => r.overallRisk === 'high').length,
-      critical: results.filter(r => r.overallRisk === 'critical').length,
+      low: results.filter((r) => r.overallRisk === RiskLevel.Low).length,
+      medium: results.filter((r) => r.overallRisk === RiskLevel.Medium).length,
+      high: results.filter((r) => r.overallRisk === RiskLevel.High).length,
     };
-    
-    Logger.info(`MetadataAnalyzer: Batch analysis complete - ${summary.critical} critical, ${summary.high} high, ${summary.medium} medium, ${summary.low} low risk extensions`);
-    
+
+    Logger.info(
+      `MetadataAnalyzer: Batch analysis complete - ${summary.high} high, ${summary.medium} medium, ${summary.low} low risk extensions`,
+    );
+
     return { results, summary };
   }
 
   /**
    * Get detailed analysis for a specific rule
    */
-  static analyzeWithRule(extensionId: string, packageJSON: any, ruleId: string): { matches: boolean; details?: string } {
+  static analyzeWithRule(
+    extensionId: string,
+    packageJSON: any,
+    ruleId: string,
+  ): { matches: boolean; details?: string } {
     const rule = HeuristicRules.getRuleById(ruleId);
     if (!rule) {
       throw new Error(`Rule not found: ${ruleId}`);
@@ -82,7 +80,7 @@ export class MetadataAnalyzer {
     try {
       const matches = rule.check(packageJSON);
       const details = rule.getDetails ? rule.getDetails(packageJSON) : undefined;
-      
+
       return { matches, details };
     } catch (error) {
       Logger.warn(`MetadataAnalyzer: Error applying rule ${ruleId} to ${extensionId}: ${error}`);

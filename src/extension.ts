@@ -30,8 +30,8 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     const scanExtensionsCommand = vscode.commands.registerCommand('ide-shepherd.scanExtensions', () => {
-      vscode.window.showInformationMessage('Extension security scan started...');
-      // TODO: Integrate with actual extension scanning when available
+      const sidebarService = SidebarService.getInstance();
+      sidebarService.triggerExtensionAnalysis();
     });
 
     context.subscriptions.push(statusCommand, refreshStatusCommand, scanExtensionsCommand);

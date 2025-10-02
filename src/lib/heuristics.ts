@@ -1,14 +1,24 @@
 /**
  * Heuristics - Interfaces and rule definitions for extension security analysis
  */
+import { SeverityLevel } from './events/sec-events';
 
-export type MetadataSeverityLevel = 'low' | 'medium' | 'high' | 'critical';
-export type PatternCategory = 'metadata' | 'permissions' | 'activation' | 'commands';  // add advisories for dependencies
-export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+export enum PatternCategory {
+  Metadata = 'metadata',
+  Activation = 'activation',
+  Commands = 'commands', // add advisories for dependencies
+}
+
+export enum RiskLevel {
+  None = 'none',
+  Low = 'low',
+  Medium = 'medium',
+  High = 'high',
+}
 
 export interface SuspiciousPattern {
   pattern: string;
-  severity: MetadataSeverityLevel;
+  severity: SeverityLevel;
   description: string;
   category: PatternCategory;
 }
@@ -25,53 +35,46 @@ export interface HeuristicRule {
   name: string;
   description: string;
   category: PatternCategory;
-  severity: MetadataSeverityLevel;
+  severity: SeverityLevel;
   check: (packageJSON: any) => boolean;
   getDetails?: (packageJSON: any) => string;
 }
 
 export interface BatchAnalysisResult {
   results: HeuristicResult[];
-  summary: {
-    total: number;
-    low: number;
-    medium: number;
-    high: number;
-    critical: number;
-  };
+  summary: { total: number; low: number; medium: number; high: number };
 }
 
 /**
  * Risk scoring configuration - centralize the scoring and move it to config
  */
 export class RiskScoring {
-  static readonly SEVERITY_WEIGHTS: Record<MetadataSeverityLevel, number> = {
-    low: 10,
-    medium: 25,
-    high: 50,
-    critical: 100
+  static readonly SEVERITY_WEIGHTS: Record<SeverityLevel, number> = {
+    [SeverityLevel.LOW]: 20,
+    [SeverityLevel.MEDIUM]: 50,
+    [SeverityLevel.HIGH]: 80,
   };
 
-  static readonly RISK_THRESHOLDS = {
-    low: 0,
-    medium: 25,
-    high: 50,
-    critical: 80
-  };
+  static readonly RISK_THRESHOLDS = { low: 20, medium: 40, high: 80 };
 
   static calculateScore(patterns: SuspiciousPattern[]): number {
     let totalScore = 0;
     for (const pattern of patterns) {
       totalScore += this.SEVERITY_WEIGHTS[pattern.severity];
     }
-    return Math.min(totalScore, 100);
+    return totalScore;
   }
 
   static determineRiskLevel(riskScore: number): RiskLevel {
-    if (riskScore >= this.RISK_THRESHOLDS.critical) return 'critical';
-    if (riskScore >= this.RISK_THRESHOLDS.high) return 'high';
-    if (riskScore >= this.RISK_THRESHOLDS.medium) return 'medium';
-    return 'low';
+    if (riskScore >= this.RISK_THRESHOLDS.high) {
+      return RiskLevel.High;
+    }
+    if (riskScore >= this.RISK_THRESHOLDS.medium) {
+      return RiskLevel.Medium;
+    }
+    if (riskScore >= this.RISK_THRESHOLDS.low) {
+      return RiskLevel.Low;
+    }
+    return RiskLevel.None;
   }
 }
-

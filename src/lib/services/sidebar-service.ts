@@ -6,6 +6,9 @@ import * as vscode from 'vscode';
 import { IDEStatusData } from '../ide-status';
 import { SecurityEvent, SeverityLevel } from '../events/sec-events';
 import { Target } from '../events/ext-events';
+import { MetadataAnalyzer } from '../../scanner/metadata-heuristics';
+import { ExtensionsRepository } from '../extensions';
+import { BatchAnalysisResult, RiskLevel } from '../heuristics';
 
 export class SidebarService {
   private static _instance: SidebarService;
@@ -41,6 +44,14 @@ export class SidebarService {
     this._statusProvider.updateData(data);
     this._eventsProvider.updateData(data.securityEvents.recentEvents);
   }
+
+  triggerExtensionAnalysis(): void {
+    this._extensionsProvider.runAnalysis();
+  }
+
+  getExtensionAnalysisData(): { results: BatchAnalysisResult; totalExtensions: number; analyzedExtensions: number; } {
+    return this._extensionsProvider.getAnalysisData();
+  }
 }
 
 /**
@@ -72,6 +83,7 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
         this.createMonitoringStatusItem(),
         this.createSystemInfoItem(),
         this.createExtensionsItem(),
+        this.createExtensionAnalysisItem(),
         this.createSecurityEventsItem(),
         this.createPerformanceItem(),
       ]);
@@ -107,6 +119,30 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
     return item;
   }
 
+  private createExtensionAnalysisItem(): SidebarTreeItem {
+    const analysisData = this._statusData!.extensionAnalysis;
+    let label = 'Extension Analysis';
+    let icon = new vscode.ThemeIcon('shield');
+    
+    if (analysisData) {
+      const { summary } = analysisData.results;
+      if (summary.high > 0) {
+        label = `Extension Analysis (${summary.high} high risk)`;
+        icon = new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
+      } else if (summary.medium > 0) {
+        label = `Extension Analysis (${summary.medium} medium risk)`;
+        icon = new vscode.ThemeIcon('warning', new vscode.ThemeColor('warningForeground'));
+      } else {
+        label = `Extension Analysis (${summary.total} analyzed)`;
+        icon = new vscode.ThemeIcon('check', new vscode.ThemeColor('testing.iconPassed'));
+      }
+    }
+    
+    const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
+    item.iconPath = icon;
+    item.contextValue = 'extension-analysis';
+    return item;
+  }
   private createSecurityEventsItem(): SidebarTreeItem {
     const item = new vscode.TreeItem(
       `Security Events (${this._statusData!.securityEvents.total})`,
@@ -153,6 +189,22 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
         });
         if (children.length === 0) {
           children.push(new vscode.TreeItem('No telemetry sources', vscode.TreeItemCollapsibleState.None));
+        }
+        break;
+
+      case 'extension-analysis':
+        const analysisData = this._statusData!.extensionAnalysis;
+        if (analysisData) {
+          const { results } = analysisData;
+          const { summary } = results;
+          children.push(
+            new vscode.TreeItem(`Total Extensions: ${summary.total}`, vscode.TreeItemCollapsibleState.None),
+            new vscode.TreeItem(`High Risk: ${summary.high}`, vscode.TreeItemCollapsibleState.None),
+            new vscode.TreeItem(`Medium Risk: ${summary.medium}`, vscode.TreeItemCollapsibleState.None),
+            new vscode.TreeItem(`Low Risk: ${summary.low}`, vscode.TreeItemCollapsibleState.None)
+          );
+        } else {
+          children.push(new vscode.TreeItem('No analysis data available', vscode.TreeItemCollapsibleState.None));
         }
         break;
 
@@ -292,14 +344,215 @@ class ExtensionsAnalysisViewProvider implements vscode.TreeDataProvider<SidebarT
     new vscode.EventEmitter<SidebarTreeItem | undefined | null | void>();
   readonly onDidChangeTreeData: vscode.Event<SidebarTreeItem | undefined | null | void> =
     this._onDidChangeTreeData.event;
+  
+  private _analysisResults: BatchAnalysisResult | null = null;
+  private _extensionsRepo: ExtensionsRepository;
+
+  constructor() {
+    this._extensionsRepo = ExtensionsRepository.getInstance();
+    this.runAnalysis();
+  }
 
   getTreeItem(element: SidebarTreeItem): vscode.TreeItem {
     return element;
   }
 
   getChildren(element?: SidebarTreeItem): Thenable<SidebarTreeItem[]> {
-    // TODO
-    return Promise.resolve([new vscode.TreeItem('No analysis data', vscode.TreeItemCollapsibleState.None)]);
+    if (!element) {
+      return Promise.resolve(this.getRootItems());
+    }
+
+    const children = this.getChildrenForItem(element);
+    return Promise.resolve(children);
+  }
+
+  private getRootItems(): SidebarTreeItem[] {
+    const items: SidebarTreeItem[] = [];
+
+    // Results summary if available
+    if (this._analysisResults) {
+      const summaryItem = new vscode.TreeItem(
+        `Results (${this._analysisResults.summary.total} extensions)`,
+        vscode.TreeItemCollapsibleState.Expanded
+      );
+      summaryItem.iconPath = new vscode.ThemeIcon('list-tree');
+      summaryItem.contextValue = 'results-summary';
+      items.push(summaryItem);
+
+      // Risk level breakdown
+      if (this._analysisResults.summary.high > 0) {
+        const highRiskItem = new vscode.TreeItem(
+          `High Risk (${this._analysisResults.summary.high})`,
+          vscode.TreeItemCollapsibleState.Collapsed
+        );
+        highRiskItem.iconPath = new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
+        highRiskItem.contextValue = 'high-risk';
+        items.push(highRiskItem);
+      }
+
+      if (this._analysisResults.summary.medium > 0) {
+        const mediumRiskItem = new vscode.TreeItem(
+          `Medium Risk (${this._analysisResults.summary.medium})`,
+          vscode.TreeItemCollapsibleState.Collapsed
+        );
+        mediumRiskItem.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('warningForeground'));
+        mediumRiskItem.contextValue = 'medium-risk';
+        items.push(mediumRiskItem);
+      }
+
+      if (this._analysisResults.summary.low > 0) {
+        const lowRiskItem = new vscode.TreeItem(
+          `Low Risk (${this._analysisResults.summary.low})`,
+          vscode.TreeItemCollapsibleState.Collapsed
+        );
+        lowRiskItem.iconPath = new vscode.ThemeIcon('info', new vscode.ThemeColor('infoForeground'));
+        lowRiskItem.contextValue = 'low-risk';
+        items.push(lowRiskItem);
+      }
+    }
+
+    return items;
+  }
+
+  private getChildrenForItem(element: SidebarTreeItem): SidebarTreeItem[] {
+    const children: SidebarTreeItem[] = [];
+
+    switch (element.contextValue) {
+      case 'results-summary':
+        if (this._analysisResults) {
+          children.push(new vscode.TreeItem(
+            `Total Extensions: ${this._analysisResults.summary.total}`,
+            vscode.TreeItemCollapsibleState.None
+          ));
+          children.push(new vscode.TreeItem(
+            `Risk Distribution: ${this._analysisResults.summary.high}H, ${this._analysisResults.summary.medium}M, ${this._analysisResults.summary.low}L`,
+            vscode.TreeItemCollapsibleState.None
+          ));
+        }
+        break;
+
+      case 'high-risk':
+        children.push(...this.getExtensionsByRisk(RiskLevel.High));
+        break;
+
+      case 'medium-risk':
+        children.push(...this.getExtensionsByRisk(RiskLevel.Medium));
+        break;
+
+      case 'low-risk':
+        children.push(...this.getExtensionsByRisk(RiskLevel.Low));
+        break;
+
+      default:
+        if (element.contextValue?.startsWith('extension-')) {
+          const extensionId = element.contextValue.replace('extension-', '');
+          children.push(...this.getExtensionPatterns(extensionId));
+        }
+        break;
+    }
+
+    return children;
+  }
+
+  private getExtensionsByRisk(riskLevel: RiskLevel): SidebarTreeItem[] {
+    if (!this._analysisResults) {
+      return [];
+    }
+
+    return this._analysisResults.results
+      .filter(result => result.overallRisk === riskLevel)
+      .map(result => {
+        const item = new vscode.TreeItem(
+          `${result.extensionId} (${result.riskScore})`,
+          result.suspiciousPatterns.length > 0 
+            ? vscode.TreeItemCollapsibleState.Collapsed 
+            : vscode.TreeItemCollapsibleState.None
+        );
+        
+        item.iconPath = new vscode.ThemeIcon('extensions');
+        item.contextValue = `extension-${result.extensionId}`;
+        item.tooltip = `Risk Score: ${result.riskScore}\nPatterns: ${result.suspiciousPatterns.length}`;
+        
+        return item;
+      });
+  }
+
+  private getExtensionPatterns(extensionId: string): SidebarTreeItem[] {
+    if (!this._analysisResults) {
+      return [];
+    }
+
+    const result = this._analysisResults.results.find(r => r.extensionId === extensionId);
+    if (!result) {
+      return [];
+    }
+
+    return result.suspiciousPatterns.map(pattern => {
+      const item = new vscode.TreeItem(
+        `${pattern.pattern}: ${pattern.description}`,
+        vscode.TreeItemCollapsibleState.None
+      );
+      
+      item.iconPath = this.getPatternIcon(pattern.severity);
+      item.tooltip = `Category: ${pattern.category}\nSeverity: ${pattern.severity}`;
+      
+      return item;
+    });
+  }
+
+  private getPatternIcon(severity: SeverityLevel): vscode.ThemeIcon {
+    switch (severity) {
+      case SeverityLevel.HIGH:
+        return new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
+      case SeverityLevel.MEDIUM:
+        return new vscode.ThemeIcon('warning', new vscode.ThemeColor('warningForeground'));
+      case SeverityLevel.LOW:
+        return new vscode.ThemeIcon('info', new vscode.ThemeColor('infoForeground'));
+      default:
+        return new vscode.ThemeIcon('circle-outline');
+    }
+  }
+
+  /**
+   * Run extension analysis using MetadataAnalyzer
+   */
+  runAnalysis(): void {
+    try {
+      const userExtensions = this._extensionsRepo.getUserExtensions();
+      
+      const extensionsForAnalysis = userExtensions
+        .filter(ext => ext.packageJSON)
+        .map(ext => ({
+          id: ext.id,
+          packageJSON: ext.packageJSON
+        }));
+
+      this._analysisResults = MetadataAnalyzer.analyzeBatch(extensionsForAnalysis);
+      this._onDidChangeTreeData.fire();
+
+    } catch (error) {
+      vscode.window.showErrorMessage(`Extension analysis failed: ${error}`);
+    }
+  }
+
+  /**
+   * Get current analysis data for status integration
+   */
+  getAnalysisData(): { results: BatchAnalysisResult; totalExtensions: number; analyzedExtensions: number; } {
+    const userExtensions = this._extensionsRepo.getUserExtensions();
+    const extensionsWithPackageJSON = userExtensions.filter(ext => ext.packageJSON);
+
+    // Return empty results if no analysis has been performed yet
+    const results = this._analysisResults || {
+      results: [],
+      summary: { total: 0, low: 0, medium: 0, high: 0 }
+    };
+
+    return {
+      results,
+      totalExtensions: userExtensions.length,
+      analyzedExtensions: extensionsWithPackageJSON.length
+    };
   }
 }
 

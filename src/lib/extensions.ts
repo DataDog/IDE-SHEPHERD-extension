@@ -19,7 +19,7 @@ export class ExtensionsRepository {
   private _disposables: vscode.Disposable[] = [];
 
   private constructor() {
-    this.setupExtensionListeners();  // update extensions repository upon installation/update/disabling/enabling of extensions
+    this.setupExtensionListeners(); // update extensions repository upon installation/update/disabling/enabling of extensions
     this.buildRepository();
   }
 
@@ -36,7 +36,7 @@ export class ExtensionsRepository {
   private buildRepository(): void {
     try {
       Logger.debug('ExtensionsRepository: Building extensions repository...');
-      
+
       const vsCodeExtensions = vscode.extensions.all;
       Logger.debug(`ExtensionsRepository: Found ${vsCodeExtensions.length} total extensions`);
 
@@ -68,12 +68,12 @@ export class ExtensionsRepository {
       vscode.extensions.onDidChange(() => {
         Logger.debug('ExtensionsRepository: Extension change detected, rebuilding repository...');
         this.buildRepository();
-      })
+      }),
     );
   }
 
   dispose(): void {
-    this._disposables.forEach(disposable => disposable.dispose());
+    this._disposables.forEach((disposable) => disposable.dispose());
     this._disposables = [];
   }
 
@@ -86,36 +86,31 @@ export class ExtensionsRepository {
   }
 
   getActiveExtensions(): Extension[] {
-    return Array.from(this._extensions.values()).filter(ext => ext.isActive);
+    return Array.from(this._extensions.values()).filter((ext) => ext.isActive);
   }
 
   getBuiltInExtensions(): Extension[] {
-    return Array.from(this._extensions.values()).filter(ext => ext.isBuiltIn);
+    return Array.from(this._extensions.values()).filter((ext) => ext.isBuiltIn);
   }
 
   getUserExtensions(): Extension[] {
-    return Array.from(this._extensions.values()).filter(ext => !ext.isBuiltIn);
+    return Array.from(this._extensions.values()).filter((ext) => !ext.isBuiltIn && !ext.id.includes('ide-shepherd')); // TODO: evolve this into an allow list
   }
 
   getExtensionsByPublisher(publisher: string): Extension[] {
-    return Array.from(this._extensions.values()).filter(ext => 
-      ext.packageJSON?.publisher?.toLowerCase() === publisher.toLowerCase()
+    return Array.from(this._extensions.values()).filter(
+      (ext) => ext.packageJSON?.publisher?.toLowerCase() === publisher.toLowerCase(),
     );
   }
 
-  getStatistics(): {
-    total: number;
-    active: number;
-    builtIn: number;
-    userInstalled: number;
-  } {
+  getStatistics(): { total: number; active: number; builtIn: number; userInstalled: number } {
     const extensions = Array.from(this._extensions.values());
-    
+
     return {
       total: extensions.length,
-      active: extensions.filter(ext => ext.isActive).length,
-      builtIn: extensions.filter(ext => ext.isBuiltIn).length,
-      userInstalled: extensions.filter(ext => !ext.isBuiltIn).length,
+      active: extensions.filter((ext) => ext.isActive).length,
+      builtIn: extensions.filter((ext) => ext.isBuiltIn).length,
+      userInstalled: extensions.filter((ext) => !ext.isBuiltIn).length,
     };
   }
 
@@ -124,13 +119,10 @@ export class ExtensionsRepository {
    */
   private isBuiltInExtension(extension: vscode.Extension<any>): boolean {
     const path = extension.extensionPath.toLowerCase();
-    
-    const builtInPatterns = [
-      '/resources/app/extensions/',
-      '\\resources\\app\\extensions\\',
-    ];
 
-    return builtInPatterns.some(pattern => path.includes(pattern.toLowerCase()));
+    const builtInPatterns = ['/resources/app/extensions/', '\\resources\\app\\extensions\\'];
+
+    return builtInPatterns.some((pattern) => path.includes(pattern.toLowerCase()));
   }
 
   getExtensionFromPath(filePath: string): Extension | undefined {
@@ -139,7 +131,7 @@ export class ExtensionsRepository {
         return extension;
       }
     }
-    
+
     return undefined;
   }
 
