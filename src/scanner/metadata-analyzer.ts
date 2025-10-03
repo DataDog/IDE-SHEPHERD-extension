@@ -5,12 +5,13 @@
 import { Logger } from '../lib/logger';
 import { HeuristicResult, SuspiciousPattern, BatchAnalysisResult, RiskScoring, RiskLevel } from '../lib/heuristics';
 import { getAllRules, getRuleById } from '../detection/heuristic-rules';
+import { ExtensionPackageJSON } from '../lib/extensions';
 
 export class MetadataAnalyzer {
   /**
    * Analyze an extension's package.json for suspicious patterns
    */
-  static analyzeExtension(extensionId: string, packageJSON: any): HeuristicResult {
+  static analyzeExtension(extensionId: string, packageJSON: ExtensionPackageJSON): HeuristicResult {
     Logger.debug(`MetadataAnalyzer: Analyzing extension ${extensionId}`);
 
     const detectedPatterns: SuspiciousPattern[] = [];
@@ -45,7 +46,7 @@ export class MetadataAnalyzer {
   /**
    * Analyze multiple extensions and return summary
    */
-  static analyzeBatch(extensions: Array<{ id: string; packageJSON: any }>): BatchAnalysisResult {
+  static analyzeBatch(extensions: { id: string; packageJSON: ExtensionPackageJSON }[]): BatchAnalysisResult {
     Logger.info(`MetadataAnalyzer: Starting batch analysis of ${extensions.length} extensions`);
 
     const results = extensions.map((ext) => this.analyzeExtension(ext.id, ext.packageJSON));
@@ -69,7 +70,7 @@ export class MetadataAnalyzer {
    */
   static analyzeWithRule(
     extensionId: string,
-    packageJSON: any,
+    packageJSON: ExtensionPackageJSON,
     ruleId: string,
   ): { matches: boolean; details?: string } {
     const rule = getRuleById(ruleId);

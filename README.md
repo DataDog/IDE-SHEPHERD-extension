@@ -2,25 +2,77 @@
 
 IDE Shepherd is a Visual Studio Code extension capable of securely monitoring the IDE activity in real time, protecting your workspace from malicious extensions and network requests.
 
-### Development
+## Development
 
-1. **Install VSCE (VS Code Extension Manager)**
+### Prerequisites
+
+- Node.js (20.x recommended)
+- VS Code (1.99.3)
+
+### Development Setup
+
+1. **Clone the repository**
 
    ```bash
-   npm install -g @vscode/vsce ## you might need to run npm fund
+   git clone <repository-url>
+   cd IDE-SHEPHERD-extension
    ```
 
-2. **Install Dependencies**
+2. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-3. **Package the Extension**
+3. **Install VS Code Extension Manager (optional, for packaging)**
+   ```bash
+   npm install -g @vscode/vsce
+   ```
+
+### Development Workflow
+
+1. **Compile TypeScript**
+
+   ```bash
+   npm run compile
+   # Or for continuous compilation during development:
+   npm run watch
+   ```
+
+2. **Run formatting**
+
+   ```bash
+   npm run format
+   npm run format:check
+   ```
+
+3. **Type checking**
+
+   ```bash
+   npm run typecheck
+   ```
+
+4. **Run tests**
+
+   ```bash
+   npm test
+   ```
+
+5. **Package the extension into a VSIX file**
    ```bash
    vsce package
    ```
-   This creates a `.vsix` file (e.g., `ide-shepherd-1.0.0.vsix`)
+
+### Testing the Extension
+
+1. **Install from local package**
+
+   ```bash
+   code --install-extension ide-shepherd-extension-*.vsix
+   ```
+
+2. **Reload VS Code**
+   - Restart VS Code or reload the window (`Ctrl+Shift+P` → "Developer: Reload Window")
 
 ### Installation
 
@@ -39,13 +91,10 @@ IDE Shepherd is a Visual Studio Code extension capable of securely monitoring th
 
 The extension automatically starts monitoring when VS Code loads:
 
+- **Module Patching**: Intercepts and monitors HTTP requests and child process executions
+- **Real-time Analysis**: Analyzes network traffic and process spawning for security threats
+
 ### Viewing Status & Logs
-
-#### First-Time Setup
-
-- **Welcome Message**: Automatically displayed on first installation with setup guide
-- **Manual Help**: Command Palette > `IDE Shepherd: Show Welcome & Help` > Access help anytime
-- **Smart Tips**: Helpful usage tips appear periodically based on your activity
 
 #### IDE Status Command
 
@@ -55,14 +104,42 @@ Command Palette (`Ctrl+Shift+P`) > `IDE Shepherd: Show Status` > View monitoring
 
 Command Palette (`Ctrl+Shift+P`) > `Developer: Show Logs` > `IDE Shepherd Extension` > View detailed logs of all monitoring activity
 
-### Testing Security Blocking
+## Security Detection Rules
 
-A PoC malicious has been updated to DD repos with restricted access under the name: `tmp_proof_of_concept`. The vsix is already uploaded there and can be installed with
+IDE Shepherd employs multiple layers of security detection to identify potentially malicious extensions and network activity:
 
-```bash
-code --install-extension mal_xt_poc.vsix
-```
+### Metadata Heuristics
 
-It prompts the user for a github API, and upon executing `GitHub CopiIot: Fix This` (note: capital 'I' instead of 'l'), it exfiltrates data to a discord webhook.
+| Rule ID               | Detection Name      | Category   | Severity | Description                                                          |
+| --------------------- | ------------------- | ---------- | -------- | -------------------------------------------------------------------- |
+| `missing_repository`  | Missing Repository  | Metadata   | Low      | Extensions without repository or homepage links                      |
+| `suspicious_version`  | Suspicious Version  | Metadata   | Low      | Suspicious version patterns (0.0.0, 99.99.99, etc.)                  |
+| `hidden_commands`     | Hidden Commands     | Commands   | Low      | Registered commands not exposed in UI                                |
+| `generic_category`    | Generic Category    | Metadata   | Medium   | Extensions categorized as "Other"                                    |
+| `wildcard_activation` | Wildcard Activation | Activation | Medium   | Extensions that activate on all events (\*)                          |
+| `void_description`    | Void Description    | Metadata   | Medium   | Extensions with no description or very short description (<10 chars) |
 
-IDE Shepherd extension already supports shady link detection and will block this malicious request based on its destination URL.
+### Network Monitoring
+
+| Detection Type     | Severity | Description                                       |
+| ------------------ | -------- | ------------------------------------------------- |
+| Suspicious Domains | High     | Requests to known malicious or suspicious domains |
+
+### Process Monitoring
+
+| Detection Type      | Severity | Description                                        |
+| ------------------- | -------- | -------------------------------------------------- |
+| Suspicious Commands | High     | Execution of potentially dangerous system commands |
+
+## Limitations
+
+### Extension Development Host
+
+- **Deactivate Before Development**: You must deactivate IDE Shepherd before opening the Extension Development Host (`F5` or "Run Extension"). The module patching system can interfere with the extension development environment. Therefore it is recommended to disable the extension in VS Code settings before running extension development.
+
+### Security Posture
+
+- **Blocks by Default**: IDE Shepherd takes a conservative approach and may flag legitimate extensions with suspicious patterns
+- **False Positives**: Some legitimate extensions may trigger heuristic rules (e.g., extensions with minimal descriptions)
+- **Manual Review**: High-risk detections should be manually reviewed before taking action
+- **Extension Kind**: IDE Shepherd's monitoring is limited to workspace and ui extensions and doesn't extend to "web"
