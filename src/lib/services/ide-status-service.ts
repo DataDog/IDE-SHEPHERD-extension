@@ -238,7 +238,6 @@ export class IDEStatusService {
     }
 
     try {
-      Logger.info('[AUTO-REFRESH] Refreshing status display');
       await this.showStatus();
     } catch (error) {
       Logger.error(`[AUTO-REFRESH] Error: ${error}`);

@@ -4,6 +4,10 @@
   "description": "A security extension capable of realtime monitoring from within the IDE",
   "version": "0.0.2",
   "publisher": "datadog",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DataDog/IDE-Shepherd-extension"
+  },
   "engines": {
     "vscode": "^1.99.3"
   },
@@ -108,11 +112,6 @@
         {
           "command": "ide-shepherd.scanExtensions",
           "when": "view == ide-shepherd-extensions",
-          "group": "navigation"
-        },
-        {
-          "command": "ide-shepherd.exportReport",
-          "when": "view == ide-shepherd-events",
           "group": "navigation"
         }
       ],
