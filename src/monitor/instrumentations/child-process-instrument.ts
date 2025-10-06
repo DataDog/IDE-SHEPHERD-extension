@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import { Readable, Writable } from 'stream';
 import { promisify } from 'util';
 import { ChildProcess, ExecOptions, ExecException, SpawnOptions } from 'child_process';
+import { Buffer } from 'buffer';
 
 import { Logger } from '../../lib/logger';
 import { BlockedOperationType, NotificationService } from '../../lib/services/notification-service';
@@ -62,7 +63,7 @@ export function patchChildProcess(
     command: string,
     optsOrCb?: ExecOptions | ((error: ExecException | null, stdout: string, stderr: string) => void),
     maybeCb?: (error: ExecException | null, stdout: string, stderr: string) => void,
-  ) {
+  ): ChildProcess {
     const { options, callback } = normalizeExecArgs(command, optsOrCb, maybeCb);
     const callContext = ExtensionServices.getCallContext();
     const extensionInfo = new ExtensionInfo(callContext.extension, true, Date.now());
@@ -82,7 +83,21 @@ export function patchChildProcess(
       return createBlockedProcess();
     }
 
-    return (origExec as any)(command, options, callback);
+    const wrappedCallback = callback
+      ? (error: ExecException | null, stdout: string | Buffer, stderr: string | Buffer) => {
+          callback(error, String(stdout), String(stderr));
+        }
+      : undefined;
+    // handle the overloads of the exec function
+    if (options && wrappedCallback) {
+      return origExec(command, options, wrappedCallback);
+    } else if (wrappedCallback) {
+      return origExec(command, wrappedCallback);
+    } else if (options) {
+      return origExec(command, options);
+    } else {
+      return origExec(command);
+    }
   };
 
   const promisifiedExec = (command: string, options?: ExecOptions): Promise<{ stdout: string; stderr: string }> => {
@@ -106,13 +121,19 @@ export function patchChildProcess(
         return;
       }
 
-      (origExec as any)(command, options, (error: ExecException | null, stdout: string, stderr: string) => {
+      const callback = (error: ExecException | null, stdout: string | Buffer, stderr: string | Buffer) => {
         if (error) {
           reject(error);
         } else {
-          resolve({ stdout, stderr });
+          resolve({ stdout: String(stdout), stderr: String(stderr) });
         }
-      });
+      };
+
+      if (options) {
+        origExec(command, options, callback);
+      } else {
+        origExec(command, callback);
+      }
     });
   };
 
@@ -127,11 +148,14 @@ export function patchChildProcess(
 
   // Patch spawn function
   const origSpawn = childProcess.spawn.bind(childProcess);
-  const patchedSpawn = function patchedSpawn(
+
+  function patchedSpawn(command: string, options?: SpawnOptions): ChildProcess;
+  function patchedSpawn(command: string, args: readonly string[], options?: SpawnOptions): ChildProcess;
+  function patchedSpawn(
     command: string,
-    args?: ReadonlyArray<string> | SpawnOptions,
+    args?: readonly string[] | SpawnOptions,
     options?: SpawnOptions,
-  ) {
+  ): ChildProcess {
     // spawn can be called with (command, options) or (command, args, options)
     const actualArgs = Array.isArray(args) ? args : [];
     const actualOptions = Array.isArray(args) ? options : args;
@@ -144,15 +168,30 @@ export function patchChildProcess(
     });
 
     const analysis = processAnalyzer.analyze(
-      new ExecEvent(command, actualArgs as string[], actualOptions, __filename, extensionInfo),
+      new ExecEvent(command, actualArgs, actualOptions, __filename, extensionInfo),
     );
     if (analysis && !analysis.verdict.allowed && analysis.securityEvent) {
       Logger.warn(`Child-Process Plugin: blocked spawn(): ${Logger.truncate(command, 120)}`);
       NotificationService.showSecurityBlockingInfo(command, analysis.securityEvent, BlockedOperationType.SPAWN);
       return createBlockedProcess();
     }
-    return (origSpawn as any)(command, actualArgs, actualOptions);
-  };
+
+    if (Array.isArray(args)) {
+      if (options) {
+        return origSpawn(command, args, options);
+      } else {
+        return origSpawn(command, args);
+      }
+    } else {
+      // we need to cast because TypeScript can't narrow the union properly
+      const spawnOpts = args as SpawnOptions | undefined;
+      if (spawnOpts) {
+        return origSpawn(command, [], spawnOpts);
+      } else {
+        return origSpawn(command, []);
+      }
+    }
+  }
 
   childProcess.spawn = patchedSpawn as typeof childProcess.spawn;
 
