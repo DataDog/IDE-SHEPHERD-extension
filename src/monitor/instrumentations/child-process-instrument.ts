@@ -89,7 +89,8 @@ export function patchChildProcess(
         }
       : undefined;
 
-    return origExec(command, options as any, wrappedCallback as any) as ChildProcess;
+    // Handle the overloads properly by checking what's defined
+    return origExec(command, options, wrappedCallback) as ChildProcess;
   };
 
   const promisifiedExec = (command: string, options?: ExecOptions): Promise<{ stdout: string; stderr: string }> => {
@@ -121,11 +122,7 @@ export function patchChildProcess(
         }
       };
 
-      if (options) {
-        origExec(command, options, callback);
-      } else {
-        origExec(command, callback);
-      }
+      origExec(command, options, callback);
     });
   };
 
