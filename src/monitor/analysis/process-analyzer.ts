@@ -80,8 +80,8 @@ export class ProcessAnalyzer {
         new SecurityEvent(ev, ev.extension, SeverityLevel.HIGH, [
           {
             finding: fullCommand,
-            rule: 'Remote Code Execution via Pipe',
-            description: `Detected remote code execution attempt: ${fullCommand}`,
+            rule: 'Command Injection',
+            description: `Detected command injection attempt: ${fullCommand}`,
             confidence: 1,
             severity: SeverityLevel.HIGH,
           },
