@@ -146,7 +146,12 @@
         },
         "ide-shepherd.notificationLevel": {
           "type": "string",
-          "enum": ["all", "high", "critical", "none"],
+          "enum": [
+            "all",
+            "high",
+            "critical",
+            "none"
+          ],
           "default": "high",
           "description": "Minimum security level for notifications"
         },

@@ -85,9 +85,40 @@ export function patchChildProcess(
     return (origExec as any)(command, options, callback);
   };
 
-  // preserve the __promisify__ property for util.promisify() compatibility
-  Object.defineProperty(patchedExec, '__promisify__', {
-    value: promisify(origExec),
+  const promisifiedExec = (command: string, options?: ExecOptions): Promise<{ stdout: string; stderr: string }> => {
+    return new Promise((resolve, reject) => {
+      const callContext = ExtensionServices.getCallContext();
+      const extensionInfo = new ExtensionInfo(callContext.extension, true, Date.now());
+
+      // update patched extensions in ide status service
+      IDEStatusService.updatePatchedExtension(extensionInfo).catch((error) => {
+        Logger.warn(`ModuleLoaderPatcher: Failed to update extension status for ${extensionInfo.id}: ${error.message}`);
+      });
+
+      const analysis = processAnalyzer.analyze(new ExecEvent(command, [], options, __filename, extensionInfo));
+
+      if (analysis && !analysis.verdict.allowed && analysis.securityEvent) {
+        Logger.warn(`Child-Process Plugin: blocked exec(): ${Logger.truncate(command, 120)}`);
+
+        NotificationService.showSecurityBlockingInfo(command, analysis.securityEvent, BlockedOperationType.EXEC);
+
+        const proc = createBlockedProcess();
+        proc.once('error', reject);
+        return;
+      }
+
+      (origExec as any)(command, options, (error: ExecException | null, stdout: string, stderr: string) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve({ stdout, stderr });
+        }
+      });
+    });
+  };
+
+  Object.defineProperty(patchedExec, promisify.custom, {
+    value: promisifiedExec,
     writable: false,
     enumerable: false,
     configurable: true,
