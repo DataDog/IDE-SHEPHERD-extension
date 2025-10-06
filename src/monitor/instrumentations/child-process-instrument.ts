@@ -88,16 +88,8 @@ export function patchChildProcess(
           callback(error, String(stdout), String(stderr));
         }
       : undefined;
-    // handle the overloads of the exec function
-    if (options && wrappedCallback) {
-      return origExec(command, options, wrappedCallback);
-    } else if (wrappedCallback) {
-      return origExec(command, wrappedCallback);
-    } else if (options) {
-      return origExec(command, options);
-    } else {
-      return origExec(command);
-    }
+
+    return origExec(command, options as any, wrappedCallback as any) as ChildProcess;
   };
 
   const promisifiedExec = (command: string, options?: ExecOptions): Promise<{ stdout: string; stderr: string }> => {
