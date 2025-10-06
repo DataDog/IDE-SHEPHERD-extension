@@ -15,14 +15,12 @@ export class SidebarService {
   private _statusProvider: SecurityStatusViewProvider;
   private _eventsProvider: SecurityEventsViewProvider;
   private _extensionsProvider: ExtensionsAnalysisViewProvider;
-  private _settingsProvider: SettingsViewProvider;
   private _currentStatusData: IDEStatusData | null = null;
 
   private constructor() {
     this._statusProvider = new SecurityStatusViewProvider();
     this._eventsProvider = new SecurityEventsViewProvider();
     this._extensionsProvider = new ExtensionsAnalysisViewProvider();
-    this._settingsProvider = new SettingsViewProvider();
   }
 
   static getInstance(): SidebarService {
@@ -36,7 +34,6 @@ export class SidebarService {
     vscode.window.registerTreeDataProvider('ide-shepherd-status', this._statusProvider);
     vscode.window.registerTreeDataProvider('ide-shepherd-events', this._eventsProvider);
     vscode.window.registerTreeDataProvider('ide-shepherd-extensions', this._extensionsProvider);
-    vscode.window.registerTreeDataProvider('ide-shepherd-settings', this._settingsProvider);
   }
 
   updateStatusView(data: IDEStatusData): void {
@@ -83,7 +80,6 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
         this.createMonitoringStatusItem(),
         this.createSystemInfoItem(),
         this.createExtensionsItem(),
-        this.createExtensionAnalysisItem(),
         this.createSecurityEventsItem(),
         this.createPerformanceItem(),
       ]);
@@ -119,30 +115,6 @@ class SecurityStatusViewProvider implements vscode.TreeDataProvider<SidebarTreeI
     return item;
   }
 
-  private createExtensionAnalysisItem(): SidebarTreeItem {
-    const analysisData = this._statusData!.extensionAnalysis;
-    let label = 'Extension Analysis';
-    let icon = new vscode.ThemeIcon('shield');
-
-    if (analysisData) {
-      const { summary } = analysisData.results;
-      if (summary.high > 0) {
-        label = `Extension Analysis (${summary.high} high risk)`;
-        icon = new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
-      } else if (summary.medium > 0) {
-        label = `Extension Analysis (${summary.medium} medium risk)`;
-        icon = new vscode.ThemeIcon('warning', new vscode.ThemeColor('warningForeground'));
-      } else {
-        label = `Extension Analysis (${summary.total} analyzed)`;
-        icon = new vscode.ThemeIcon('check', new vscode.ThemeColor('testing.iconPassed'));
-      }
-    }
-
-    const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
-    item.iconPath = icon;
-    item.contextValue = 'extension-analysis';
-    return item;
-  }
   private createSecurityEventsItem(): SidebarTreeItem {
     const item = new vscode.TreeItem(
       `Security Events (${this._statusData!.securityEvents.total})`,
@@ -546,29 +518,6 @@ class ExtensionsAnalysisViewProvider implements vscode.TreeDataProvider<SidebarT
     const results = this._analysisResults || { results: [], summary: { total: 0, low: 0, medium: 0, high: 0 } };
 
     return { results, totalExtensions: userExtensions.length, analyzedExtensions: extensionsWithPackageJSON.length };
-  }
-}
-
-/**
- * Tree data provider for settings view
- */
-class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTreeItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<SidebarTreeItem | undefined | null | void> =
-    new vscode.EventEmitter<SidebarTreeItem | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<SidebarTreeItem | undefined | null | void> =
-    this._onDidChangeTreeData.event;
-
-  getTreeItem(element: SidebarTreeItem): vscode.TreeItem {
-    return element;
-  }
-
-  getChildren(element?: SidebarTreeItem): Thenable<SidebarTreeItem[]> {
-    const settings = [
-      new vscode.TreeItem('Enable Monitoring', vscode.TreeItemCollapsibleState.None),
-      new vscode.TreeItem('Auto Scan Extensions', vscode.TreeItemCollapsibleState.None),
-      new vscode.TreeItem('Notification Level', vscode.TreeItemCollapsibleState.None),
-    ];
-    return Promise.resolve(settings);
   }
 }
 
