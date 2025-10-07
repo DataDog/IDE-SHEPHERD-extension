@@ -49,12 +49,6 @@
           "name": "Security Events",
           "when": "true",
           "contextualTitle": "Recent Security Events"
-        },
-        {
-          "id": "ide-shepherd-settings",
-          "name": "Settings",
-          "when": "true",
-          "contextualTitle": "IDE Shepherd Settings"
         }
       ]
     },
@@ -76,12 +70,6 @@
         "title": "Show Security Events",
         "category": "IDE Shepherd",
         "icon": "$(list-unordered)"
-      },
-      {
-        "command": "ide-shepherd.openSettings",
-        "title": "Open Settings",
-        "category": "IDE Shepherd",
-        "icon": "$(settings-gear)"
       },
       {
         "command": "ide-shepherd.refreshStatus",
