@@ -15,7 +15,7 @@
     "Other",
     "Security"
   ],
-  "icon": "resources/icons/icon_dark.png",
+  "icon": "resources/icons/icon.png",
   "activationEvents": [
     "*"
   ],
