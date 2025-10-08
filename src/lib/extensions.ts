@@ -20,7 +20,8 @@ export interface ExtensionPackageJSON {
   devDependencies?: Record<string, string>;
 }
 export interface Extension {
-  id: string;
+  id: string; // Versioned ID: "publisher.name-1.0.0"
+  displayName: string; // Non-versioned: "publisher.name"
   isActive: boolean;
   isBuiltIn: boolean;
   extensionPath: string;
@@ -57,15 +58,23 @@ export class ExtensionsRepository {
       this._extensions.clear();
 
       for (const ext of vsCodeExtensions) {
+        const version = ext.packageJSON?.version || '0.0.0';
+        const versionedId = `${ext.id}-${version}`;
+
+        Logger.debug(
+          `ExtensionsRepository: Building extension - Original ID: ${ext.id}, Version: ${version}, Versioned ID: ${versionedId}`,
+        );
+
         const extensionInfo: Extension = {
-          id: ext.id,
+          id: versionedId, // Store versioned ID
+          displayName: ext.id, // Store original ID for display
           isActive: ext.isActive,
           isBuiltIn: this.isBuiltInExtension(ext),
           extensionPath: ext.extensionPath,
           packageJSON: ext.packageJSON,
         };
 
-        this._extensions.set(ext.id, extensionInfo);
+        this._extensions.set(versionedId, extensionInfo);
       }
 
       Logger.debug(`ExtensionsRepository: Successfully loaded ${this._extensions.size} extensions`);
@@ -147,7 +156,18 @@ export class ExtensionsRepository {
         return extension;
       }
     }
+    return undefined;
+  }
 
+  /**
+   * Get extension by display name (non-versioned ID)
+   */
+  getExtensionByDisplayName(displayName: string): Extension | undefined {
+    for (const extension of this._extensions.values()) {
+      if (extension.displayName === displayName) {
+        return extension;
+      }
+    }
     return undefined;
   }
 

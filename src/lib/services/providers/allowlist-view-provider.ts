@@ -5,6 +5,7 @@
 import * as vscode from 'vscode';
 import { AllowListService } from '../allowlist-service';
 import { ExtensionsRepository } from '../../extensions';
+import { Logger } from '../../logger';
 
 type SidebarTreeItem = vscode.TreeItem;
 
@@ -32,7 +33,7 @@ export class AllowListViewProvider implements vscode.TreeDataProvider<SidebarTre
   async handleRemoveFromAllowList(extensionId: string): Promise<void> {
     try {
       const result = await vscode.window.showWarningMessage(
-        `Remove ${extensionId} from allow list? Future suspicious operations will be blocked.`,
+        `Remove ${extensionId} from allow list? Future suspicious operations by this extension will be blocked.`,
         'Yes',
         'No',
       );
@@ -58,7 +59,7 @@ export class AllowListViewProvider implements vscode.TreeDataProvider<SidebarTre
       }
 
       const quickPickItems = availableExtensions.map((ext) => ({
-        label: ext.id,
+        label: ext.displayName,
         description: ext.packageJSON?.description || '',
         detail: `Publisher: ${ext.packageJSON?.publisher || 'Unknown'} | Version: ${ext.packageJSON?.version || 'Unknown'}`,
         extensionId: ext.id,
@@ -72,7 +73,7 @@ export class AllowListViewProvider implements vscode.TreeDataProvider<SidebarTre
 
       if (selected) {
         await this._allowListService.addToUserAllowList(selected.extensionId);
-        vscode.window.showInformationMessage(`${selected.extensionId} added to allow list`);
+        vscode.window.showInformationMessage(`${selected.label} added to allow list`);
         this.refresh();
       }
     } catch (error) {
@@ -158,10 +159,12 @@ export class AllowListViewProvider implements vscode.TreeDataProvider<SidebarTre
           children.push(new vscode.TreeItem('No built-in extensions', vscode.TreeItemCollapsibleState.None));
         } else {
           builtInExtensions.slice(0, 50).forEach((extId) => {
-            const item = new vscode.TreeItem(extId, vscode.TreeItemCollapsibleState.None);
+            const extension = this._extensionsRepo.getExtensionById(extId);
+            const displayLabel = extension?.displayName || extId;
+            const item = new vscode.TreeItem(displayLabel, vscode.TreeItemCollapsibleState.None);
             item.iconPath = new vscode.ThemeIcon('symbol-module');
             item.contextValue = 'builtin-extension';
-            item.tooltip = `Built-in extension: ${extId}`;
+            item.tooltip = `Built-in extension: ${displayLabel}`;
             children.push(item);
           });
           if (builtInExtensions.length > 50) {
@@ -180,10 +183,13 @@ export class AllowListViewProvider implements vscode.TreeDataProvider<SidebarTre
           children.push(new vscode.TreeItem('No trusted publisher extensions', vscode.TreeItemCollapsibleState.None));
         } else {
           trustedPublisherExtensions.slice(0, 50).forEach((extId) => {
-            const item = new vscode.TreeItem(extId, vscode.TreeItemCollapsibleState.None);
+            const extension = this._extensionsRepo.getExtensionById(extId);
+            const displayLabel = extension?.displayName || extId;
+
+            const item = new vscode.TreeItem(displayLabel, vscode.TreeItemCollapsibleState.None);
             item.iconPath = new vscode.ThemeIcon('verified');
             item.contextValue = 'trusted-publisher-extension';
-            item.tooltip = `Trusted publisher extension: ${extId}`;
+            item.tooltip = `Trusted publisher extension: ${displayLabel}`;
             children.push(item);
           });
           if (trustedPublisherExtensions.length > 50) {
@@ -202,10 +208,16 @@ export class AllowListViewProvider implements vscode.TreeDataProvider<SidebarTre
           children.push(new vscode.TreeItem('No allowed extensions', vscode.TreeItemCollapsibleState.None));
         } else {
           userExtensions.forEach((extId) => {
-            const item = new vscode.TreeItem(extId, vscode.TreeItemCollapsibleState.None);
+            // Look up the extension to get its display name
+            const extension = this._extensionsRepo.getExtensionById(extId);
+            const displayLabel = extension?.displayName || extId;
+
+            const item = new vscode.TreeItem(displayLabel, vscode.TreeItemCollapsibleState.None);
             item.iconPath = new vscode.ThemeIcon('extensions');
             item.contextValue = 'user-allowed-extension';
-            item.tooltip = `Click to remove from allow list`;
+            item.tooltip = extension
+              ? `${displayLabel} (v${extension.packageJSON?.version})\nClick to remove from allow list`
+              : `${extId}\nClick to remove from allow list`;
 
             item.command = {
               command: 'ide-shepherd.removeFromAllowList',
