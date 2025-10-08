@@ -3,8 +3,7 @@
  *
  * Two types of allow lists:
  * 1. Built-in/First-party extensions (automatically populated, read-only via API)
- * 2. Trusted publisher extensions (shipped default trusted publishers + can be manually managed by users)
- * 3. User-installed extensions (manually managed by users when a false positive is suspected)
+ * 2. User-installed extensions (manually managed by users when a false positive is suspected)
  */
 
 import * as vscode from 'vscode';
