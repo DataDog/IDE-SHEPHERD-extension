@@ -1,6 +1,7 @@
 import { IoC, SeverityLevel, SecurityEvent } from '../../lib/events/sec-events';
 import { Logger } from '../../lib/logger';
 import { IDEStatusService } from '../../lib/services/ide-status-service';
+import { AllowListService } from '../../lib/services/allowlist-service';
 import { AnalysisResult } from './analyzer';
 import { ExecEvent } from '../../lib/events/process-events';
 
@@ -24,10 +25,21 @@ export class ProcessAnalyzer {
         }
       }
 
+      // Check if the extension is on the allow list
+      const allowListService = AllowListService.getInstance();
+      const isAllowed = allowListService.isAllowed(ev.extension.id);
+
       if (result?.securityEvent) {
-        IDEStatusService.emitSecurityEvent(result.securityEvent).catch((error) => {
-          Logger.error(`ProcessAnalyzer: Failed to record security event: ${error.message}`);
-        });
+        if (isAllowed) {
+          Logger.warn(
+            `ProcessAnalyzer: Extension ${ev.extension.id} is on allow list. Activity detected but not blocked: ${ev.cmd}`,
+          );
+          result = new AnalysisResult({ allowed: true });
+        } else {
+          IDEStatusService.emitSecurityEvent(result.securityEvent).catch((error) => {
+            Logger.error(`ProcessAnalyzer: Failed to record security event: ${error.message}`);
+          });
+        }
       }
 
       const endTime = Date.now();

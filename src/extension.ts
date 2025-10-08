@@ -8,11 +8,18 @@ import { Logger } from './lib/logger';
 import { moduleLoaderPatcher } from './monitor/index';
 import { IDEStatusService } from './lib/services/ide-status-service';
 import { SidebarService } from './lib/services/sidebar-service';
+import { AllowListService } from './lib/services/allowlist-service';
 
 export function activate(context: vscode.ExtensionContext) {
   try {
     Logger.init(context);
     Logger.info('IDE Shepherd Extension: Logger initialized');
+
+    // Initialize Allow List Service
+    const allowListService = AllowListService.getInstance();
+    allowListService.initialize(context).then(() => {
+      Logger.info('IDE Shepherd Extension: Allow List Service initialized');
+    });
 
     const sidebarService = SidebarService.getInstance();
     sidebarService.initialize();
@@ -30,13 +37,30 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     const scanExtensionsCommand = vscode.commands.registerCommand('ide-shepherd.scanExtensions', () => {
-      const sidebarService = SidebarService.getInstance();
       sidebarService.triggerExtensionAnalysis();
     });
 
-    context.subscriptions.push(statusCommand, refreshStatusCommand, scanExtensionsCommand);
+    const removeFromAllowListCommand = vscode.commands.registerCommand(
+      'ide-shepherd.removeFromAllowList',
+      (extensionId: string) => sidebarService.removeFromAllowList(extensionId),
+    );
 
-    context.subscriptions.push(statusCommand, refreshStatusCommand, scanExtensionsCommand);
+    const addToAllowListCommand = vscode.commands.registerCommand('ide-shepherd.addToAllowList', () =>
+      sidebarService.addToAllowList(),
+    );
+
+    const clearAllowListCommand = vscode.commands.registerCommand('ide-shepherd.clearAllowList', () =>
+      sidebarService.clearAllowList(),
+    );
+
+    context.subscriptions.push(
+      statusCommand,
+      refreshStatusCommand,
+      scanExtensionsCommand,
+      removeFromAllowListCommand,
+      addToAllowListCommand,
+      clearAllowListCommand,
+    );
 
     setTimeout(() => {
       IDEStatusService.showStatus();

@@ -108,7 +108,7 @@ export class ExtensionsRepository {
   }
 
   getUserExtensions(): Extension[] {
-    return Array.from(this._extensions.values()).filter((ext) => !ext.isBuiltIn && !ext.id.includes('ide-shepherd')); // TODO: evolve this into an allow list
+    return Array.from(this._extensions.values()).filter((ext) => !ext.isBuiltIn);
   }
 
   getExtensionsByPublisher(publisher: string): Extension[] {
