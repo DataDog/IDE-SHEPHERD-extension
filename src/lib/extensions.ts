@@ -108,7 +108,9 @@ export class ExtensionsRepository {
   }
 
   getUserExtensions(): Extension[] {
-    return Array.from(this._extensions.values()).filter((ext) => !ext.isBuiltIn);
+    return Array.from(this._extensions.values()).filter(
+      (ext) => !ext.isBuiltIn && !ext.id.includes('ide-shepherd-extension'),
+    );
   }
 
   getExtensionsByPublisher(publisher: string): Extension[] {
