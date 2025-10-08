@@ -16,7 +16,7 @@ export class AnalysisResult {
    * If the extension is on the allowlist, logs a warning and marks as allowed.
    * Otherwise, emits the security event if one exists.
    */
-  processWithAllowList(extensionId: string, context: string, analyzerName: string): AnalysisResult {
+  checkAgainstAllowList(extensionId: string, context: string, analyzerName: string): AnalysisResult {
     if (!this.securityEvent) {
       return this;
     }

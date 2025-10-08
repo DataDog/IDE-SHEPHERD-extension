@@ -141,7 +141,7 @@ export class AllowListService {
     try {
       const savedState = this._context.globalState.get<AllowListState>(AllowListService.STORAGE_KEY);
 
-      if (savedState && savedState.userExtensions) {
+      if (savedState?.userExtensions) {
         this._userAllowList = new Set(savedState.userExtensions);
         Logger.info(`AllowListService: Loaded ${this._userAllowList.size} user-allowed extensions`);
       } else {

@@ -24,7 +24,7 @@ export class ProcessAnalyzer {
         }
       }
 
-      result = result.processWithAllowList(ev.extension.id, ev.cmd, 'ProcessAnalyzer');
+      result = result.checkAgainstAllowList(ev.extension.id, ev.cmd, 'ProcessAnalyzer');
 
       const endTime = Date.now();
       const processingTime = endTime - startTime;
