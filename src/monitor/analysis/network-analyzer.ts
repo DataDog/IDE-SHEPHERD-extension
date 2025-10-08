@@ -15,11 +15,8 @@ export class NetworkAnalyzer {
         result = this.analyzeUrl(ev);
       }
 
-      if (result?.securityEvent) {
-        IDEStatusService.emitSecurityEvent(result.securityEvent).catch((error) => {
-          Logger.error(`NetworkAnalyzer: Failed to record security event: ${error.message}`);
-        });
-      }
+      result = result.checkAgainstAllowList(ev.extension.id, ev.url, 'NetworkAnalyzer');
+
       const endTime = Date.now();
       const processingTime = endTime - startTime; // in ms
       IDEStatusService.updatePerformanceMetrics(processingTime).catch((error) => {

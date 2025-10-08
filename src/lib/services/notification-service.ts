@@ -4,6 +4,9 @@
 
 import * as vscode from 'vscode';
 import { SecurityEvent } from '../events/sec-events';
+import { AllowListService } from './allowlist-service';
+import { SidebarService } from './sidebar-service';
+import { Logger } from '../logger';
 
 export enum BlockedOperationType {
   REQUEST = 'request',
@@ -59,11 +62,10 @@ export class NotificationService {
     content += `<strong>SUMMARY:</strong><br>${securityEvent.getSummary().replace(/\n/g, '<br>')}<br><br>`;
     content += `<strong>ACTION:</strong> The ${getOperationTitle(type).toLowerCase()} was automatically blocked to protect your workspace.`;
 
-    // Create custom modal-like webview
-    await this.showCustomModal(title, content);
+    await this.showCustomModal(title, content, securityEvent.extension.id);
   }
 
-  private static async showCustomModal(title: string, content: string): Promise<void> {
+  private static async showCustomModal(title: string, content: string, extensionId?: string): Promise<void> {
     return new Promise((resolve) => {
       const panel = vscode.window.createWebviewPanel('customModal', title, vscode.ViewColumn.Active, {
         enableScripts: true,
@@ -132,11 +134,10 @@ export class NotificationService {
                         }
                         .button-container {
                             display: flex;
+                            gap: 12px;
                             justify-content: center;
                         }
-                        .ok-button {
-                            background: var(--vscode-button-background);
-                            color: var(--vscode-button-foreground);
+                        .ok-button, .ignore-button {
                             border: none;
                             padding: 8px 16px;
                             border-radius: 4px;
@@ -144,10 +145,21 @@ export class NotificationService {
                             font-size: 14px;
                             min-width: 80px;
                         }
+                        .ok-button {
+                            background: var(--vscode-button-background);
+                            color: var(--vscode-button-foreground);
+                        }
                         .ok-button:hover {
                             background: var(--vscode-button-hoverBackground);
                         }
-                        .ok-button:focus {
+                        .ignore-button {
+                            background: var(--vscode-button-secondaryBackground);
+                            color: var(--vscode-button-secondaryForeground);
+                        }
+                        .ignore-button:hover {
+                            background: var(--vscode-button-secondaryHoverBackground);
+                        }
+                        .ok-button:focus, .ignore-button:focus {
                             outline: 2px solid var(--vscode-focusBorder);
                         }
                     </style>
@@ -157,12 +169,19 @@ export class NotificationService {
                         <div class="title">${title}</div>
                         <div class="content">${content.replace(/\n/g, '<br>')}</div>
                         <div class="button-container">
-                            <button class="ok-button" onclick="dismissModal()">Acknowledge</button>
+                            <button class="ok-button" onclick="dismissModal()">Continue blocking</button>
+                            ${extensionId ? '<button class="ignore-button" onclick="ignoreExtension()">Ignore & Allow</button>' : ''}
                         </div>
                     </div>
                     <script>
+                        const vscode = acquireVsCodeApi();
+                        
                         function dismissModal() {
                             vscode.postMessage({ command: 'dismiss' });
+                        }
+                        
+                        function ignoreExtension() {
+                            vscode.postMessage({ command: 'ignore' });
                         }
                         
                         // Handle Escape key
@@ -174,16 +193,32 @@ export class NotificationService {
                         
                         // Focus the button for keyboard navigation
                         document.querySelector('.ok-button').focus();
-                        
-                        const vscode = acquireVsCodeApi();
                     </script>
                 </body>
                 </html>
             `;
 
       // Handle messages from webview
-      panel.webview.onDidReceiveMessage((message) => {
+      panel.webview.onDidReceiveMessage(async (message) => {
         if (message.command === 'dismiss') {
+          panel.dispose();
+          resolve();
+        } else if (message.command === 'ignore' && extensionId) {
+          try {
+            const allowListService = AllowListService.getInstance();
+            await allowListService.addToUserAllowList(extensionId);
+            Logger.info(`NotificationService: Added ${extensionId} to allow list`);
+
+            const sidebarService = SidebarService.getInstance();
+            sidebarService.refreshAllowListView();
+
+            vscode.window.showInformationMessage(
+              `Extension ${extensionId} has been added to the allow list. Future operations will be allowed.`,
+            );
+          } catch (error) {
+            Logger.error(`NotificationService: Failed to add extension to allow list`, error as Error);
+            vscode.window.showErrorMessage(`Failed to add extension to allow list: ${error}`);
+          }
           panel.dispose();
           resolve();
         }

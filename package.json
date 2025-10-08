@@ -2,7 +2,7 @@
   "name": "ide-shepherd-extension",
   "displayName": "ide-shepherd-extension",
   "description": "A security extension capable of realtime monitoring from within the IDE",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "datadog",
   "repository": {
     "type": "git",
@@ -45,6 +45,12 @@
           "contextualTitle": "Extension Security Analysis"
         },
         {
+          "id": "ide-shepherd-allowlist",
+          "name": "Allow Lists",
+          "when": "true",
+          "contextualTitle": "Extension Allow Lists"
+        },
+        {
           "id": "ide-shepherd-events",
           "name": "Security Events",
           "when": "true",
@@ -78,6 +84,24 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "ide-shepherd.addToAllowList",
+        "title": "Add Extension to Allow List",
+        "category": "IDE Shepherd",
+        "icon": "$(add)"
+      },
+      {
+        "command": "ide-shepherd.removeFromAllowList",
+        "title": "Remove Extension from Allow List",
+        "category": "IDE Shepherd",
+        "icon": "$(remove)"
+      },
+      {
+        "command": "ide-shepherd.clearAllowList",
+        "title": "Clear User Allow List",
+        "category": "IDE Shepherd",
+        "icon": "$(trash)"
+      },
+      {
         "command": "ide-shepherd.testSidebar",
         "title": "Test Sidebar (Debug)",
         "category": "IDE Shepherd",
@@ -101,6 +125,11 @@
           "command": "ide-shepherd.scanExtensions",
           "when": "view == ide-shepherd-extensions",
           "group": "navigation"
+        },
+        {
+          "command": "ide-shepherd.addToAllowList",
+          "when": "view == ide-shepherd-allowlist",
+          "group": "navigation"
         }
       ],
       "commandPalette": [
@@ -114,6 +143,14 @@
         },
         {
           "command": "ide-shepherd.showEvents",
+          "when": "true"
+        },
+        {
+          "command": "ide-shepherd.addToAllowList",
+          "when": "true"
+        },
+        {
+          "command": "ide-shepherd.clearAllowList",
           "when": "true"
         }
       ]

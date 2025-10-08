@@ -24,11 +24,7 @@ export class ProcessAnalyzer {
         }
       }
 
-      if (result?.securityEvent) {
-        IDEStatusService.emitSecurityEvent(result.securityEvent).catch((error) => {
-          Logger.error(`ProcessAnalyzer: Failed to record security event: ${error.message}`);
-        });
-      }
+      result = result.checkAgainstAllowList(ev.extension.id, ev.cmd, 'ProcessAnalyzer');
 
       const endTime = Date.now();
       const processingTime = endTime - startTime;

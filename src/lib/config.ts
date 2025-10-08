@@ -23,4 +23,16 @@ export const CONFIG = {
       MAX_RECENT_EVENTS: 10, // Maximum number of recent events to display
     },
   },
+  ALLOWLIST: {
+    DEFAULT_TRUSTED_PUBLISHERS: [
+      'vscode',
+      'ms-vscode',
+      'ms-python',
+      'ms-dotnettools',
+      'redhat',
+      'github',
+      'git',
+      'datadog',
+    ],
+  },
 };
