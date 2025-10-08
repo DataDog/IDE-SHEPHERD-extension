@@ -3,6 +3,7 @@ import { NetworkEvent } from '../../lib/events/network-events';
 import { Logger } from '../../lib/logger';
 import { IDEStatusService } from '../../lib/services/ide-status-service';
 import { AnalysisResult } from './analyzer';
+import { AllowListService } from '../../lib/services/allowlist-service';
 
 export class NetworkAnalyzer {
   analyze(ev: NetworkEvent): AnalysisResult | undefined {
@@ -15,10 +16,21 @@ export class NetworkAnalyzer {
         result = this.analyzeUrl(ev);
       }
 
+      // Check if the extension is on the allow list
+      const allowListService = AllowListService.getInstance();
+      const isAllowed = allowListService.isAllowed(ev.extension.id);
+
       if (result?.securityEvent) {
-        IDEStatusService.emitSecurityEvent(result.securityEvent).catch((error) => {
-          Logger.error(`NetworkAnalyzer: Failed to record security event: ${error.message}`);
-        });
+        if (isAllowed) {
+          Logger.warn(
+            `NetworkAnalyzer: Extension ${ev.extension.id} is on allow list. Activity detected but not blocked: ${ev.url}`,
+          );
+          result = new AnalysisResult({ allowed: true });
+        } else {
+          IDEStatusService.emitSecurityEvent(result.securityEvent).catch((error) => {
+            Logger.error(`NetworkAnalyzer: Failed to record security event: ${error.message}`);
+          });
+        }
       }
       const endTime = Date.now();
       const processingTime = endTime - startTime; // in ms
