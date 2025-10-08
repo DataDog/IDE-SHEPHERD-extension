@@ -169,7 +169,7 @@ export class NotificationService {
                         <div class="title">${title}</div>
                         <div class="content">${content.replace(/\n/g, '<br>')}</div>
                         <div class="button-container">
-                            <button class="ok-button" onclick="dismissModal()">Acknowledge</button>
+                            <button class="ok-button" onclick="dismissModal()">Continue blocking</button>
                             ${extensionId ? '<button class="ignore-button" onclick="ignoreExtension()">Ignore & Allow</button>' : ''}
                         </div>
                     </div>
