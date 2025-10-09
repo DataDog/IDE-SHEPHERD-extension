@@ -53,6 +53,15 @@ export function activate(context: vscode.ExtensionContext) {
       sidebarService.clearAllowList(),
     );
 
+    const addTrustedPublisherCommand = vscode.commands.registerCommand('ide-shepherd.addTrustedPublisher', () =>
+      sidebarService.addTrustedPublisher(),
+    );
+
+    const removeTrustedPublisherCommand = vscode.commands.registerCommand(
+      'ide-shepherd.removeTrustedPublisher',
+      (publisher: string) => sidebarService.removeTrustedPublisher(publisher),
+    );
+
     context.subscriptions.push(
       statusCommand,
       refreshStatusCommand,
@@ -60,6 +69,8 @@ export function activate(context: vscode.ExtensionContext) {
       removeFromAllowListCommand,
       addToAllowListCommand,
       clearAllowListCommand,
+      addTrustedPublisherCommand,
+      removeTrustedPublisherCommand,
     );
 
     setTimeout(() => {
