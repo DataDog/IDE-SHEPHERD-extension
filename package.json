@@ -102,6 +102,18 @@
         "icon": "$(trash)"
       },
       {
+        "command": "ide-shepherd.addTrustedPublisher",
+        "title": "Add Trusted Publisher",
+        "category": "IDE Shepherd",
+        "icon": "$(briefcase)"
+      },
+      {
+        "command": "ide-shepherd.removeTrustedPublisher",
+        "title": "Remove Trusted Publisher",
+        "category": "IDE Shepherd",
+        "icon": "$(remove)"
+      },
+      {
         "command": "ide-shepherd.testSidebar",
         "title": "Test Sidebar (Debug)",
         "category": "IDE Shepherd",
@@ -128,6 +140,11 @@
         },
         {
           "command": "ide-shepherd.addToAllowList",
+          "when": "view == ide-shepherd-allowlist",
+          "group": "navigation"
+        },
+        {
+          "command": "ide-shepherd.addTrustedPublisher",
           "when": "view == ide-shepherd-allowlist",
           "group": "navigation"
         }

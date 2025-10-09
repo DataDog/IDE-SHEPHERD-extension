@@ -99,6 +99,66 @@ export class AllowListViewProvider implements vscode.TreeDataProvider<SidebarTre
     }
   }
 
+  async handleAddTrustedPublisher(): Promise<void> {
+    try {
+      const allExtensions = this._extensionsRepo.getAllExtensions();
+      const publishers = new Set<string>();
+
+      allExtensions.forEach((ext) => {
+        const publisher = ext.packageJSON?.publisher;
+        if (publisher && !this._allowListService.isTrustedPublisher(publisher)) {
+          publishers.add(publisher);
+        }
+      });
+
+      if (publishers.size === 0) {
+        vscode.window.showInformationMessage('All publishers are already trusted');
+        return;
+      }
+
+      const publisherList = Array.from(publishers).sort();
+      const quickPickItems = publisherList.map((publisher) => {
+        const extensionCount = this._extensionsRepo.getExtensionsByPublisher(publisher).length;
+        return {
+          label: publisher,
+          description: `${extensionCount} extension${extensionCount !== 1 ? 's' : ''}`,
+          publisher,
+        };
+      });
+
+      const selected = await vscode.window.showQuickPick(quickPickItems, {
+        placeHolder: 'Select a publisher to trust',
+        matchOnDescription: true,
+      });
+
+      if (selected) {
+        await this._allowListService.addTrustedPublisher(selected.publisher);
+        vscode.window.showInformationMessage(`Publisher "${selected.publisher}" added to trusted list`);
+        this.refresh();
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to add trusted publisher: ${error}`);
+    }
+  }
+
+  async handleRemoveTrustedPublisher(publisher: string): Promise<void> {
+    try {
+      const result = await vscode.window.showWarningMessage(
+        `Remove "${publisher}" from trusted publishers? Extensions from this publisher will no longer be automatically trusted.`,
+        'Yes',
+        'No',
+      );
+
+      if (result === 'Yes') {
+        await this._allowListService.removeTrustedPublisher(publisher);
+        vscode.window.showInformationMessage(`Publisher "${publisher}" removed from trusted list`);
+        this.refresh();
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to remove trusted publisher: ${error}`);
+    }
+  }
+
   getTreeItem(element: SidebarTreeItem): vscode.TreeItem {
     return element;
   }
@@ -126,15 +186,21 @@ export class AllowListViewProvider implements vscode.TreeDataProvider<SidebarTre
     builtInItem.tooltip = 'VS Code built-in extensions that are automatically allowed';
     items.push(builtInItem);
 
-    // Trusted publisher extensions section
-    const trustedPublisherItem = new vscode.TreeItem(
-      `Trusted Publishers (${stats.trustedPublisherCount})`,
+    // Trusted publishers section
+    const trustedPublishers = this._allowListService.getTrustedPublishers();
+
+    const publishersWithExtensions = trustedPublishers.filter(
+      (publisher) => this._extensionsRepo.getExtensionsByPublisher(publisher).length > 0,
+    );
+
+    const trustedPublishersItem = new vscode.TreeItem(
+      `Trusted Publishers (${publishersWithExtensions.length})`,
       vscode.TreeItemCollapsibleState.Collapsed,
     );
-    trustedPublisherItem.iconPath = new vscode.ThemeIcon('verified-filled', new vscode.ThemeColor('charts.green'));
-    trustedPublisherItem.contextValue = 'trusted-publisher-allowlist';
-    trustedPublisherItem.tooltip = 'Extensions from trusted publishers that are automatically allowed';
-    items.push(trustedPublisherItem);
+    trustedPublishersItem.iconPath = new vscode.ThemeIcon('organization', new vscode.ThemeColor('charts.green'));
+    trustedPublishersItem.contextValue = 'trusted-publishers-list';
+    trustedPublishersItem.tooltip = 'Publishers whose extensions are automatically trusted';
+    items.push(trustedPublishersItem);
 
     // User allow list section
     const userItem = new vscode.TreeItem(
@@ -177,28 +243,54 @@ export class AllowListViewProvider implements vscode.TreeDataProvider<SidebarTre
         }
         break;
 
-      case 'trusted-publisher-allowlist':
-        const trustedPublisherExtensions = this._allowListService.getTrustedPublisherAllowList();
-        if (trustedPublisherExtensions.length === 0) {
-          children.push(new vscode.TreeItem('No trusted publisher extensions', vscode.TreeItemCollapsibleState.None));
-        } else {
-          trustedPublisherExtensions.slice(0, 50).forEach((extId) => {
-            const extension = this._extensionsRepo.getExtensionById(extId);
-            const displayLabel = extension?.displayName || extId;
+      case 'trusted-publishers-list':
+        const trustedPublishers = this._allowListService.getTrustedPublishers();
 
-            const item = new vscode.TreeItem(displayLabel, vscode.TreeItemCollapsibleState.None);
-            item.iconPath = new vscode.ThemeIcon('verified');
-            item.contextValue = 'trusted-publisher-extension';
-            item.tooltip = `Trusted publisher extension: ${displayLabel}`;
+        trustedPublishers.forEach((name) => {
+          const extensionCount = this._extensionsRepo.getExtensionsByPublisher(name).length;
+          if (extensionCount === 0) {
+            return;
+          }
+
+          const item = new vscode.TreeItem(name, vscode.TreeItemCollapsibleState.Collapsed);
+          item.iconPath = new vscode.ThemeIcon('organization');
+          item.contextValue = 'trusted-publisher';
+          item.description = `${extensionCount} extension${extensionCount !== 1 ? 's' : ''}`;
+          item.tooltip = `Trusted publisher\nClick to remove`;
+          item.command = {
+            command: 'ide-shepherd.removeTrustedPublisher',
+            title: 'Remove Trusted Publisher',
+            arguments: [name],
+          };
+          children.push(item);
+        });
+
+        if (children.length === 0) {
+          children.push(
+            new vscode.TreeItem(
+              'No trusted publishers with installed extensions',
+              vscode.TreeItemCollapsibleState.None,
+            ),
+          );
+        }
+        break;
+
+      case 'trusted-publisher':
+        // Show extensions from this publisher
+        const publisherName = element.label as string;
+        const publisherExtensions = this._extensionsRepo.getExtensionsByPublisher(publisherName);
+
+        if (publisherExtensions.length === 0) {
+          children.push(new vscode.TreeItem('No extensions installed', vscode.TreeItemCollapsibleState.None));
+        } else {
+          publisherExtensions.forEach((ext) => {
+            const item = new vscode.TreeItem(ext.displayName, vscode.TreeItemCollapsibleState.None);
+            item.iconPath = new vscode.ThemeIcon('extensions');
+            item.contextValue = 'publisher-extension';
+            item.description = `v${ext.packageJSON?.version || 'unknown'}`;
+            item.tooltip = `${ext.displayName}\nVersion: ${ext.packageJSON?.version || 'unknown'}`;
             children.push(item);
           });
-          if (trustedPublisherExtensions.length > 50) {
-            const moreItem = new vscode.TreeItem(
-              `... and ${trustedPublisherExtensions.length - 50} more`,
-              vscode.TreeItemCollapsibleState.None,
-            );
-            children.push(moreItem);
-          }
         }
         break;
 
@@ -215,8 +307,9 @@ export class AllowListViewProvider implements vscode.TreeDataProvider<SidebarTre
             const item = new vscode.TreeItem(displayLabel, vscode.TreeItemCollapsibleState.None);
             item.iconPath = new vscode.ThemeIcon('extensions');
             item.contextValue = 'user-allowed-extension';
+            item.description = `v${extension?.packageJSON?.version || 'unknown'}`;
             item.tooltip = extension
-              ? `${displayLabel} (v${extension.packageJSON?.version})\nClick to remove from allow list`
+              ? `${displayLabel}\nClick to remove from allow list`
               : `${extId}\nClick to remove from allow list`;
 
             item.command = {

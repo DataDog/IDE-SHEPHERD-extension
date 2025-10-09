@@ -70,4 +70,12 @@ export class SidebarService {
   async clearAllowList(): Promise<void> {
     await this._allowListProvider.handleClearAllowList();
   }
+
+  async addTrustedPublisher(): Promise<void> {
+    await this._allowListProvider.handleAddTrustedPublisher();
+  }
+
+  async removeTrustedPublisher(publisher: string): Promise<void> {
+    await this._allowListProvider.handleRemoveTrustedPublisher(publisher);
+  }
 }
