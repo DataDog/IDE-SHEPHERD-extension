@@ -80,6 +80,40 @@ export const HEURISTIC_RULES: HeuristicRule[] = [
       return hiddenCommands.length > 0;
     },
   },
+
+  // Dependency Rules
+  {
+    id: 'many_dependencies',
+    name: 'Many Dependencies',
+    description: 'Extension has an unusually high number of dependencies',
+    category: PatternCategory.Dependencies,
+    severity: SeverityLevel.LOW,
+    check: (pkg: ExtensionPackageJSON) => {
+      const deps = pkg.dependencies || {};
+      return Object.keys(deps).length > 20;
+    },
+    getDetails: (pkg: ExtensionPackageJSON) => {
+      const count = Object.keys(pkg.dependencies || {}).length;
+      return `Extension has ${count} dependencies`;
+    },
+  },
+  {
+    id: 'no_dependencies_lock',
+    name: 'Missing Dependency Lock',
+    description: 'Dependencies without lock file may be vulnerable to supply chain attacks',
+    category: PatternCategory.Dependencies,
+    severity: SeverityLevel.MEDIUM,
+    check: (pkg: ExtensionPackageJSON) => {
+      const deps = pkg.dependencies || {};
+      // Check if versions use ranges instead of exact versions
+      return Object.values(deps).some((version) => /^[~^]/.test(version));
+    },
+    getDetails: (pkg: ExtensionPackageJSON) => {
+      const deps = pkg.dependencies || {};
+      const rangedDeps = Object.entries(deps).filter(([_, version]) => /^[~^]/.test(version));
+      return `${rangedDeps.length} dependencies use version ranges: ${rangedDeps.map(([name]) => name).join(', ')}`;
+    },
+  },
 ];
 
 export function getRuleById(id: string): HeuristicRule | undefined {

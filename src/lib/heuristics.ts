@@ -7,7 +7,8 @@ import type { ExtensionPackageJSON } from './extensions';
 export enum PatternCategory {
   Metadata = 'metadata',
   Activation = 'activation',
-  Commands = 'commands', // add advisories for dependencies
+  Commands = 'commands',
+  Dependencies = 'dependencies',
 }
 
 export enum RiskLevel {
@@ -15,6 +16,14 @@ export enum RiskLevel {
   Low = 'low',
   Medium = 'medium',
   High = 'high',
+}
+
+export enum OSVSeverity {
+  UNKNOWN = 'UNKNOWN',
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+  CRITICAL = 'CRITICAL',
 }
 
 export interface SuspiciousPattern {
@@ -78,4 +87,30 @@ export class RiskScoring {
     }
     return RiskLevel.None;
   }
+}
+
+export interface OSVVulnerability {
+  id: string; // CVE-ID, GHSA-ID, or MAL-ID for malicious packages
+  summary: string;
+  details?: string;
+  severity?: { type: string; score: string }[];
+  database_specific?: { severity?: string };
+  affected?: {
+    package: { name: string; ecosystem: string };
+    ranges?: { type: string; events: { introduced?: string; fixed?: string }[] }[];
+  }[];
+}
+
+export interface OSVQueryResponse {
+  vulns?: OSVVulnerability[];
+  next_page_token?: string;
+}
+
+export interface DependencyVulnerability {
+  packageName: string;
+  version: string;
+  vulnerabilities: OSVVulnerability[];
+  maliciousAdvisories: OSVVulnerability[];
+  highestSeverity: OSVSeverity;
+  isMalicious: boolean;
 }

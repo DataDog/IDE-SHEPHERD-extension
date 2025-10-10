@@ -35,4 +35,9 @@ export const CONFIG = {
       'datadog',
     ],
   },
+  OSV: {
+    REQUEST_TIMEOUT: 10000, // 10 seconds
+    CACHE_TTL: 3600000, // 1 hour
+    BATCH_SIZE: 5, // Number of dependencies to query in parallel
+  },
 };
