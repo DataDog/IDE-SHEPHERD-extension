@@ -23,18 +23,7 @@ export const CONFIG = {
       MAX_RECENT_EVENTS: 10, // Maximum number of recent events to display
     },
   },
-  ALLOWLIST: {
-    DEFAULT_TRUSTED_PUBLISHERS: [
-      'vscode',
-      'ms-vscode',
-      'ms-python',
-      'ms-dotnettools',
-      'redhat',
-      'github',
-      'git',
-      'datadog',
-    ],
-  },
+  ALLOWLIST: { DEFAULT_TRUSTED_PUBLISHERS: ['ms-vscode', 'ms-python', 'github', 'git', 'datadog'] },
   OSV: {
     REQUEST_TIMEOUT: 10000, // 10 seconds
     CACHE_TTL: 3600000, // 1 hour
