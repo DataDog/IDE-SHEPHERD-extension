@@ -94,6 +94,23 @@ The extension automatically starts monitoring when VS Code loads:
 - **Module Patching**: Intercepts and monitors HTTP requests and child process executions
 - **Real-time Analysis**: Analyzes network traffic and process spawning for security threats
 
+### Datadog Telemetry Integration
+
+IDE Shepherd supports sending telemetry data to Datadog for centralized monitoring and analysis:
+
+- **Extension Repository Data**: Tracks installed extensions and their metadata
+- **Security Events**: Real-time reporting of detected threats and IoCs
+- **Metadata Analysis**: Risk scores and suspicious patterns from heuristic analysis
+
+#### Quick Setup
+
+1. Open Command Palette (`Ctrl+Shift+P`)
+2. Run `IDE Shepherd: Set Datadog API Key`
+3. Enter your Datadog API key
+4. Enable telemetry in settings: `ide-shepherd.datadog.enabled = true`
+
+For detailed setup and configuration, see [DATADOG_TELEMETRY.md](./DATADOG_TELEMETRY.md)
+
 ### Viewing Status & Logs
 
 #### IDE Status Command

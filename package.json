@@ -124,6 +124,18 @@
         "title": "Test Security Events (Debug)",
         "category": "IDE Shepherd",
         "icon": "$(bug)"
+      },
+      {
+        "command": "ide-shepherd.datadog.testConnection",
+        "title": "Test Datadog Agent Connection",
+        "category": "IDE Shepherd",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "ide-shepherd.datadog.sendTelemetry",
+        "title": "Send Telemetry Data to Datadog",
+        "category": "IDE Shepherd",
+        "icon": "$(cloud-upload)"
       }
     ],
     "menus": {
@@ -169,6 +181,14 @@
         {
           "command": "ide-shepherd.clearAllowList",
           "when": "true"
+        },
+        {
+          "command": "ide-shepherd.datadog.testConnection",
+          "when": "true"
+        },
+        {
+          "command": "ide-shepherd.datadog.sendTelemetry",
+          "when": "true"
         }
       ]
     },
@@ -208,6 +228,25 @@
           "type": "boolean",
           "default": true,
           "description": "Show IDE Shepherd status in status bar"
+        },
+        "ide-shepherd.datadog.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable Datadog telemetry integration (requires Datadog Agent)"
+        },
+        "ide-shepherd.datadog.agentPort": {
+          "type": "number",
+          "default": 10518,
+          "minimum": 1024,
+          "maximum": 65535,
+          "description": "Local Datadog Agent port for TCP log forwarding"
+        },
+        "ide-shepherd.datadog.telemetryInterval": {
+          "type": "number",
+          "default": 300000,
+          "minimum": 60000,
+          "maximum": 3600000,
+          "description": "Interval in milliseconds for sending telemetry data (1-60 minutes)"
         }
       }
     },
