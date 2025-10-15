@@ -9,7 +9,7 @@ import { moduleLoaderPatcher } from './monitor/index';
 import { IDEStatusService } from './lib/services/ide-status-service';
 import { SidebarService } from './lib/services/sidebar-service';
 import { AllowListService } from './lib/services/allowlist-service';
-import { DatadogTelemetryService } from './lib/services/datadog-telemetry-service';
+import { DatadogTelemetryService } from './lib/services/datadog/datadog-service';
 
 export function activate(context: vscode.ExtensionContext) {
   try {
@@ -69,49 +69,22 @@ export function activate(context: vscode.ExtensionContext) {
       (publisher: string) => sidebarService.removeTrustedPublisher(publisher),
     );
 
-    // Datadog commands
-    const testDatadogConnectionCommand = vscode.commands.registerCommand(
-      'ide-shepherd.datadog.testConnection',
-      async () => {
-        const result = await vscode.window.withProgress(
-          {
-            location: vscode.ProgressLocation.Notification,
-            title: 'Testing Datadog Agent connection...',
-            cancellable: false,
-          },
-          async () => {
-            return await datadogService.testConnection();
-          },
-        );
-
-        if (result.success) {
-          vscode.window.showInformationMessage(result.message);
-        } else {
-          vscode.window.showErrorMessage(result.message);
-        }
-      },
+    const testDatadogConnectionCommand = vscode.commands.registerCommand('ide-shepherd.datadog.testConnection', () =>
+      datadogService.handleTestConnectionCommand(),
     );
 
-    const sendDatadogTelemetryCommand = vscode.commands.registerCommand(
-      'ide-shepherd.datadog.sendTelemetry',
-      async () => {
-        const result = await vscode.window.withProgress(
-          {
-            location: vscode.ProgressLocation.Notification,
-            title: 'Sending telemetry data to Datadog...',
-            cancellable: false,
-          },
-          async () => {
-            return await datadogService.sendAllTelemetryData();
-          },
-        );
+    const sendDatadogTelemetryCommand = vscode.commands.registerCommand('ide-shepherd.datadog.sendTelemetry', () =>
+      datadogService.handleSendTelemetryCommand(),
+    );
 
-        if (result.success) {
-          vscode.window.showInformationMessage(result.message);
-        } else {
-          vscode.window.showErrorMessage(result.message);
-        }
-      },
+    // Settings commands
+    const refreshSettingsCommand = vscode.commands.registerCommand('ide-shepherd.settings.refresh', () =>
+      sidebarService.refreshSettingsView(),
+    );
+
+    const toggleDatadogTelemetryCommand = vscode.commands.registerCommand(
+      'ide-shepherd.settings.toggleDatadogTelemetry',
+      () => sidebarService.toggleDatadogTelemetry(),
     );
 
     context.subscriptions.push(
@@ -125,6 +98,8 @@ export function activate(context: vscode.ExtensionContext) {
       removeTrustedPublisherCommand,
       testDatadogConnectionCommand,
       sendDatadogTelemetryCommand,
+      refreshSettingsCommand,
+      toggleDatadogTelemetryCommand,
     );
 
     setTimeout(() => {

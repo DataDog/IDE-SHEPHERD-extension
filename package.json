@@ -55,6 +55,12 @@
           "name": "Security Events",
           "when": "true",
           "contextualTitle": "Recent Security Events"
+        },
+        {
+          "id": "ide-shepherd-settings",
+          "name": "Settings",
+          "when": "true",
+          "contextualTitle": "IDE Shepherd Settings"
         }
       ]
     },
@@ -114,18 +120,6 @@
         "icon": "$(remove)"
       },
       {
-        "command": "ide-shepherd.testSidebar",
-        "title": "Test Sidebar (Debug)",
-        "category": "IDE Shepherd",
-        "icon": "$(beaker)"
-      },
-      {
-        "command": "ide-shepherd.testEvents",
-        "title": "Test Security Events (Debug)",
-        "category": "IDE Shepherd",
-        "icon": "$(bug)"
-      },
-      {
         "command": "ide-shepherd.datadog.testConnection",
         "title": "Test Datadog Agent Connection",
         "category": "IDE Shepherd",
@@ -136,6 +130,18 @@
         "title": "Send Telemetry Data to Datadog",
         "category": "IDE Shepherd",
         "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "ide-shepherd.settings.refresh",
+        "title": "Refresh Settings",
+        "category": "IDE Shepherd",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "ide-shepherd.settings.toggleDatadogTelemetry",
+        "title": "Toggle Datadog Telemetry",
+        "category": "IDE Shepherd",
+        "icon": "$(debug-disconnect)"
       }
     ],
     "menus": {
@@ -158,6 +164,11 @@
         {
           "command": "ide-shepherd.addTrustedPublisher",
           "when": "view == ide-shepherd-allowlist",
+          "group": "navigation"
+        },
+        {
+          "command": "ide-shepherd.settings.refresh",
+          "when": "view == ide-shepherd-settings",
           "group": "navigation"
         }
       ],
@@ -188,6 +199,14 @@
         },
         {
           "command": "ide-shepherd.datadog.sendTelemetry",
+          "when": "true"
+        },
+        {
+          "command": "ide-shepherd.settings.refresh",
+          "when": "true"
+        },
+        {
+          "command": "ide-shepherd.settings.toggleDatadogTelemetry",
           "when": "true"
         }
       ]

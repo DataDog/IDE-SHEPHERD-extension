@@ -96,20 +96,53 @@ The extension automatically starts monitoring when VS Code loads:
 
 ### Datadog Telemetry Integration
 
-IDE Shepherd supports sending telemetry data to Datadog for centralized monitoring and analysis:
+IDE Shepherd supports sending telemetry data to Datadog via the Datadog Agent for centralized monitoring and analysis:
 
-- **Extension Repository Data**: Tracks installed extensions and their metadata
+- **Extension Repository Data**: User-installed extensions with metadata.
 - **Security Events**: Real-time reporting of detected threats and IoCs
 - **Metadata Analysis**: Risk scores and suspicious patterns from heuristic analysis
 
 #### Quick Setup
 
-1. Open Command Palette (`Ctrl+Shift+P`)
-2. Run `IDE Shepherd: Set Datadog API Key`
-3. Enter your Datadog API key
-4. Enable telemetry in settings: `ide-shepherd.datadog.enabled = true`
+**1. Configure Datadog Agent TCP Listener**
 
-For detailed setup and configuration, see [DATADOG_TELEMETRY.md](./DATADOG_TELEMETRY.md)
+Create `/opt/datadog-agent/etc/conf.d/ide-shepherd.d/conf.yaml`:
+
+```yaml
+logs:
+  - type: tcp
+    port: 10518
+    service: ide-shepherd
+    source: ide-shepherd
+    tags:
+      - env:dev
+      - project:ide-shepherd
+```
+
+**2. Restart Datadog Agent**
+
+```bash
+# macOS
+launchctl stop com.datadoghq.agent
+launchctl start com.datadoghq.agent
+```
+
+**3. Enable Telemetry in the side bar**
+
+- Settings -> Search "Datadog telemetry"
+- Enable by selecting Telemetry: Disabled
+
+**4. Test & Send**
+
+You can test the connection's status and send telemetry data either from the sidebar or the command palette.
+
+- Command Palette -> `IDE Shepherd: Test Datadog Agent Connection`
+- Command Palette -> `IDE Shepherd: Send Telemetry Data to Datadog`
+
+**5. View in Datadog Security**
+
+- Go to [Logs Explorer](https://app.datadoghq.com/logs)
+- Filter: `source:ide-shepherd`
 
 ### Viewing Status & Logs
 
