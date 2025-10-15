@@ -16,7 +16,7 @@ import { TelemetryBuilder } from './telemetry-builder';
 import { TelemetryMetadata, TelemetryLogItem } from './types';
 
 interface DatadogConfig {
-  enabled: boolean;
+  isEnabled: boolean;
   agentPort: number;
 }
 
@@ -29,8 +29,6 @@ export class DatadogTelemetryService {
   private _context?: vscode.ExtensionContext;
   private _transport?: DatadogTransport;
   private _builder?: TelemetryBuilder;
-
-  private constructor() {}
 
   static getInstance(): DatadogTelemetryService {
     if (!DatadogTelemetryService._instance) {
@@ -46,9 +44,9 @@ export class DatadogTelemetryService {
       Logger.info('DatadogTelemetryService: Initializing');
 
       const config = this.getConfig();
-      if (config.enabled) {
+      if (config.isEnabled) {
         this._transport = new DatadogTransport({ agentPort: config.agentPort });
-        this._builder = new TelemetryBuilder(this.getMetadata(), os.hostname(), vscode.env.machineId);
+        this._builder = new TelemetryBuilder(this.getMetadata(), os.hostname());
         Logger.info(`DatadogTelemetryService: Configured on port ${config.agentPort}`);
       } else {
         Logger.info('DatadogTelemetryService: Disabled in settings');
@@ -63,7 +61,7 @@ export class DatadogTelemetryService {
   private getConfig(): DatadogConfig {
     const config = vscode.workspace.getConfiguration('ide-shepherd.datadog');
     return {
-      enabled: config.get<boolean>('enabled', CONFIG.DATADOG.DEFAULTS.ENABLED),
+      isEnabled: config.get<boolean>('isEnabled', CONFIG.DATADOG.DEFAULTS.IS_ENABLED),
       agentPort: config.get<number>('agentPort', CONFIG.DATADOG.DEFAULTS.AGENT_PORT),
     };
   }
@@ -73,14 +71,14 @@ export class DatadogTelemetryService {
   }
 
   isEnabled(): boolean {
-    return this.getConfig().enabled;
+    return this.getConfig().isEnabled;
   }
 
   private ensureInitialized(): { transport: DatadogTransport; builder: TelemetryBuilder } {
     if (!this._transport || !this._builder) {
       const config = this.getConfig();
       this._transport = new DatadogTransport({ agentPort: config.agentPort });
-      this._builder = new TelemetryBuilder(this.getMetadata(), os.hostname(), vscode.env.machineId);
+      this._builder = new TelemetryBuilder(this.getMetadata(), os.hostname());
     }
     return { transport: this._transport, builder: this._builder };
   }
@@ -146,14 +144,14 @@ export class DatadogTelemetryService {
    * Send all available telemetry data
    */
   async sendAllTelemetryData(): Promise<{
-    success: boolean;
+    isSuccessful: boolean;
     message: string;
     details: { extensions: number; analysis: number; events: number };
   }> {
     // In case the user calls the command from the command palette instead of the UI
     if (!this.isEnabled()) {
       return {
-        success: false,
+        isSuccessful: false,
         message: 'Telemetry is disabled. Enable it in settings first.',
         details: { extensions: 0, analysis: 0, events: 0 },
       };
@@ -183,13 +181,13 @@ export class DatadogTelemetryService {
       }
 
       return {
-        success: true,
+        isSuccessful: true,
         message: `Telemetry data sent successfully! Extensions: ${userExtensions.length}, Analysis: ${analysisCount}, Security Events: ${securityEvents.length}`,
         details: { extensions: userExtensions.length, analysis: analysisCount, events: securityEvents.length },
       };
     } catch (error) {
       return {
-        success: false,
+        isSuccessful: false,
         message: `Failed to send telemetry data: ${error instanceof Error ? error.message : 'Unknown error'}`,
         details: { extensions: 0, analysis: 0, events: 0 },
       };
@@ -199,10 +197,10 @@ export class DatadogTelemetryService {
   /**
    * Test connection to Datadog Agent
    */
-  async testConnection(): Promise<{ success: boolean; message: string; payload?: TelemetryLogItem }> {
+  async testConnection(): Promise<{ isSuccessful: boolean; message: string; payload?: TelemetryLogItem }> {
     const config = this.getConfig();
-    if (!config.enabled) {
-      return { success: false, message: 'Telemetry is disabled. Enable it in settings first.' };
+    if (!config.isEnabled) {
+      return { isSuccessful: false, message: 'Telemetry is disabled. Enable it in settings first.' };
     }
 
     try {
@@ -210,13 +208,13 @@ export class DatadogTelemetryService {
       const testPayload = builder.buildConnectionTest();
       await transport.testConnection(testPayload);
       return {
-        success: true,
+        isSuccessful: true,
         message: `Connection successful! Test event sent to Datadog Agent on port ${config.agentPort}.`,
         payload: testPayload,
       };
     } catch (error) {
       return {
-        success: false,
+        isSuccessful: false,
         message: `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}. Ensure Datadog Agent is running and configured on port ${config.agentPort}.`,
       };
     }
@@ -234,7 +232,7 @@ export class DatadogTelemetryService {
       },
     );
 
-    if (result.success) {
+    if (result.isSuccessful) {
       vscode.window.showInformationMessage(result.message);
     } else {
       vscode.window.showErrorMessage(result.message);
@@ -253,7 +251,7 @@ export class DatadogTelemetryService {
       },
     );
 
-    if (result.success) {
+    if (result.isSuccessful) {
       vscode.window.showInformationMessage(result.message);
     } else {
       vscode.window.showErrorMessage(result.message);

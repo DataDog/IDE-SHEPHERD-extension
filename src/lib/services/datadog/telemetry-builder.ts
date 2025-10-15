@@ -29,7 +29,6 @@ function createBaseTelemetryItem(
   tags: DatadogTags,
   message: string,
   hostname: string,
-  machineId: string,
 ): TelemetryLogItem {
   return {
     source: metadata.source,
@@ -39,7 +38,6 @@ function createBaseTelemetryItem(
     service: metadata.service,
     event_type: tags.type,
     timestamp: Date.now(),
-    machine_id: machineId,
   };
 }
 
@@ -49,18 +47,16 @@ function createBaseTelemetryItem(
 export class TelemetryBuilder {
   private metadata: TelemetryMetadata;
   private hostname: string;
-  private machineId: string;
 
-  constructor(metadata: TelemetryMetadata, hostname: string, machineId: string) {
+  constructor(metadata: TelemetryMetadata, hostname: string) {
     this.metadata = metadata;
     this.hostname = hostname;
-    this.machineId = machineId;
   }
 
   buildConnectionTest(): TelemetryLogItem {
     const tags: DatadogTags = { env: DatadogEnvironment.TEST, type: TelemetryEventType.CONNECTION_TEST };
 
-    return createBaseTelemetryItem(this.metadata, tags, 'Datadog Agent Connection Test', this.hostname, this.machineId);
+    return createBaseTelemetryItem(this.metadata, tags, 'Datadog Agent Connection Test', this.hostname);
   }
 
   /**
@@ -70,7 +66,7 @@ export class TelemetryBuilder {
     const tags: DatadogTags = { env: DatadogEnvironment.PRODUCTION, type: TelemetryEventType.EXTENSION_REPOSITORY };
 
     return {
-      ...createBaseTelemetryItem(this.metadata, tags, 'Extension Repository Data', this.hostname, this.machineId),
+      ...createBaseTelemetryItem(this.metadata, tags, 'Extension Repository Data', this.hostname),
       extensions_count: extensions.length,
       extensions: extensions.map((ext) => ({
         id: ext.id,
@@ -102,7 +98,6 @@ export class TelemetryBuilder {
         tags,
         `Security Event: ${securityEvent.getPrimaryIoC().rule}`,
         this.hostname,
-        this.machineId,
       ),
       timestamp: securityEvent.timestamp,
       security_event_id: securityEvent.secEventId,
@@ -121,7 +116,7 @@ export class TelemetryBuilder {
     const tags: DatadogTags = { env: DatadogEnvironment.PRODUCTION, type: TelemetryEventType.METADATA_ANALYSIS };
 
     return {
-      ...createBaseTelemetryItem(this.metadata, tags, 'Extension Metadata Analysis', this.hostname, this.machineId),
+      ...createBaseTelemetryItem(this.metadata, tags, 'Extension Metadata Analysis', this.hostname),
       total_analyzed: results.length,
       results: results.map((result) => ({
         extension_id: result.extensionId,

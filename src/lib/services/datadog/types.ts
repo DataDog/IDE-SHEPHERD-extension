@@ -31,7 +31,6 @@ export interface TelemetryLogItem {
   service: string;
   event_type: TelemetryEventType;
   timestamp: number;
-  machine_id: string;
   [key: string]: any;
 }
 
