@@ -58,7 +58,7 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
     const items: SidebarTreeItem[] = [];
 
     // Enabled status
-    const enabled = config.get<boolean>('enabled', false);
+    const enabled = config.get<boolean>('isEnabled', false);
     const enabledItem = new vscode.TreeItem(
       `Telemetry: ${enabled ? 'Enabled' : 'Disabled'}`,
       vscode.TreeItemCollapsibleState.None,
@@ -74,25 +74,20 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
     items.push(enabledItem);
 
     // Agent port
-    const port = config.get<number>('agentPort', 10518);
-    const portItem = new vscode.TreeItem(`Agent Port: ${port}`, vscode.TreeItemCollapsibleState.None);
+    const port = config.get<number>('agentPort');
+    const portItem = new vscode.TreeItem(
+      `Agent Port: ${port !== undefined ? port : 'Not configured'}`,
+      vscode.TreeItemCollapsibleState.None,
+    );
     portItem.id = 'datadog.agentPort';
     portItem.iconPath = new vscode.ThemeIcon('plug');
-    portItem.tooltip = 'Datadog Agent TCP port';
+    portItem.tooltip = 'Click to configure Datadog Agent TCP port';
+    portItem.command = { command: 'ide-shepherd.settings.updateAgentPort', title: 'Update Agent Port' };
     portItem.contextValue = 'setting';
     items.push(portItem);
 
     // Connection status (if enabled)
     if (enabled) {
-      const statusItem = new vscode.TreeItem('Connection Status', vscode.TreeItemCollapsibleState.None);
-      statusItem.id = 'datadog.status';
-      statusItem.iconPath = new vscode.ThemeIcon('pulse');
-      statusItem.command = { command: 'ide-shepherd.datadog.testConnection', title: 'Test Connection' };
-      statusItem.tooltip = 'Click to test Datadog Agent connection';
-      statusItem.contextValue = 'action';
-      items.push(statusItem);
-
-      // Send telemetry action
       const sendItem = new vscode.TreeItem('Send Telemetry Data', vscode.TreeItemCollapsibleState.None);
       sendItem.id = 'datadog.send';
       sendItem.iconPath = new vscode.ThemeIcon('cloud-upload');
@@ -111,9 +106,30 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
   async toggleDatadogTelemetry(): Promise<void> {
     try {
       const config = vscode.workspace.getConfiguration('ide-shepherd.datadog');
-      const currentValue = config.get<boolean>('enabled', false);
+      const currentValue = config.get<boolean>('isEnabled', false);
 
-      await config.update('enabled', !currentValue, vscode.ConfigurationTarget.Global);
+      if (!currentValue) {
+        const currentPort = config.get<number>('agentPort');
+        if (currentPort === undefined) {
+          const port = await vscode.window.showInputBox({
+            prompt: 'Enter Datadog Agent TCP port for ide-shepherd telemetry',
+            validateInput: (value) => {
+              const portNum = parseInt(value, 10);
+              if (isNaN(portNum) || portNum < 1024 || portNum > 65535) {
+                return 'Port must be between 1024 and 65535';
+              }
+              return null;
+            },
+          });
+          if (!port) {
+            vscode.window.showWarningMessage('Agent port is required to enable Datadog telemetry');
+            return;
+          }
+          await config.update('agentPort', parseInt(port, 10), vscode.ConfigurationTarget.Global);
+        }
+      }
+
+      await config.update('isEnabled', !currentValue, vscode.ConfigurationTarget.Global);
 
       const newState = !currentValue ? 'enabled' : 'disabled';
       vscode.window.showInformationMessage(`Datadog telemetry ${newState}`);
@@ -134,11 +150,12 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
   async updateAgentPort(): Promise<void> {
     try {
       const config = vscode.workspace.getConfiguration('ide-shepherd.datadog');
-      const currentPort = config.get<number>('agentPort', 10518);
+      const currentPort = config.get<number>('agentPort');
 
       const newPort = await vscode.window.showInputBox({
         prompt: 'Enter Datadog Agent TCP port',
-        value: currentPort.toString(),
+        value: currentPort?.toString(),
+        placeHolder: 'e.g., 10518',
         validateInput: (value) => {
           const port = parseInt(value, 10);
           if (isNaN(port) || port < 1024 || port > 65535) {

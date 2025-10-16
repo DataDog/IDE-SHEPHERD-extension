@@ -86,4 +86,8 @@ export class SidebarService {
   async toggleDatadogTelemetry(): Promise<void> {
     await this._settingsProvider.toggleDatadogTelemetry();
   }
+
+  async updateAgentPort(): Promise<void> {
+    await this._settingsProvider.updateAgentPort();
+  }
 }

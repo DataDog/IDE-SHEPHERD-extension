@@ -3,31 +3,43 @@
  */
 
 import * as net from 'net';
+import * as vscode from 'vscode';
 import { Logger } from '../../logger';
 import { TelemetryLogItem } from './types';
 
-export interface TransportConfig {
-  agentPort: number;
+export interface DatadogConfig {
+  isEnabled: boolean;
+  agentPort?: number;
 }
 
 /**
  * Handles TCP socket communication with Datadog Agent
  */
 export class DatadogTransport {
-  private config: TransportConfig;
+  getConfig(): DatadogConfig {
+    const config = vscode.workspace.getConfiguration('ide-shepherd.datadog');
+    return { isEnabled: config.get<boolean>('isEnabled') || false, agentPort: config.get<number>('agentPort') };
+  }
 
-  constructor(config: TransportConfig) {
-    this.config = config;
+  isEnabled(): boolean {
+    return this.getConfig().isEnabled;
   }
 
   /**
    * Send log items to Datadog Agent via TCP socket
    */
   async send(logItems: TelemetryLogItem[]): Promise<void> {
+    const config = this.getConfig();
+    if (!config.isEnabled || !config.agentPort) {
+      throw new Error('Datadog Agent is not configured');
+    }
+
+    const agentPort = config.agentPort;
+
     return new Promise((resolve, reject) => {
       try {
-        const socket = net.createConnection({ host: 'localhost', port: this.config.agentPort }, () => {
-          Logger.debug(`DatadogTransport: Connected to Agent on port ${this.config.agentPort}`);
+        const socket = net.createConnection({ host: 'localhost', port: agentPort }, () => {
+          Logger.debug(`DatadogTransport: Connected to Agent on port ${agentPort}`);
 
           for (const item of logItems) {
             const logMessage = JSON.stringify(item) + '\n';
@@ -41,7 +53,6 @@ export class DatadogTransport {
         });
 
         socket.on('close', () => {
-          Logger.debug('DatadogTransport: Successfully sent data to Agent');
           resolve();
         });
 

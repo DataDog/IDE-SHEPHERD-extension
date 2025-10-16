@@ -142,6 +142,12 @@
         "title": "Toggle Datadog Telemetry",
         "category": "IDE Shepherd",
         "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "ide-shepherd.settings.updateAgentPort",
+        "title": "Update Datadog Agent Port",
+        "category": "IDE Shepherd",
+        "icon": "$(edit)"
       }
     ],
     "menus": {
@@ -208,6 +214,10 @@
         {
           "command": "ide-shepherd.settings.toggleDatadogTelemetry",
           "when": "true"
+        },
+        {
+          "command": "ide-shepherd.settings.updateAgentPort",
+          "when": "true"
         }
       ]
     },
@@ -215,7 +225,7 @@
       "type": "object",
       "title": "IDE Shepherd",
       "properties": {
-        "ide-shepherd.enabled": {
+        "ide-shepherd.isEnabled": {
           "type": "boolean",
           "default": true,
           "description": "Enable IDE Shepherd security monitoring"
@@ -248,24 +258,16 @@
           "default": true,
           "description": "Show IDE Shepherd status in status bar"
         },
-        "ide-shepherd.datadog.enabled": {
+        "ide-shepherd.datadog.isEnabled": {
           "type": "boolean",
           "default": false,
           "description": "Enable Datadog telemetry integration (requires Datadog Agent)"
         },
         "ide-shepherd.datadog.agentPort": {
           "type": "number",
-          "default": 10518,
           "minimum": 1024,
           "maximum": 65535,
           "description": "Local Datadog Agent port for TCP log forwarding"
-        },
-        "ide-shepherd.datadog.telemetryInterval": {
-          "type": "number",
-          "default": 300000,
-          "minimum": 60000,
-          "maximum": 3600000,
-          "description": "Interval in milliseconds for sending telemetry data (1-60 minutes)"
         }
       }
     },
