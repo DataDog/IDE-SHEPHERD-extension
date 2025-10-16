@@ -69,10 +69,6 @@ export function activate(context: vscode.ExtensionContext) {
       (publisher: string) => sidebarService.removeTrustedPublisher(publisher),
     );
 
-    const testDatadogConnectionCommand = vscode.commands.registerCommand('ide-shepherd.datadog.testConnection', () =>
-      datadogService.handleTestConnectionCommand(),
-    );
-
     const sendDatadogTelemetryCommand = vscode.commands.registerCommand('ide-shepherd.datadog.sendTelemetry', () =>
       datadogService.handleSendTelemetryCommand(),
     );
@@ -100,7 +96,6 @@ export function activate(context: vscode.ExtensionContext) {
       clearAllowListCommand,
       addTrustedPublisherCommand,
       removeTrustedPublisherCommand,
-      testDatadogConnectionCommand,
       sendDatadogTelemetryCommand,
       refreshSettingsCommand,
       toggleDatadogTelemetryCommand,
