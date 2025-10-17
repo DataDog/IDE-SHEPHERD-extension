@@ -55,6 +55,12 @@
           "name": "Security Events",
           "when": "true",
           "contextualTitle": "Recent Security Events"
+        },
+        {
+          "id": "ide-shepherd-settings",
+          "name": "Settings",
+          "when": "true",
+          "contextualTitle": "IDE Shepherd Settings"
         }
       ]
     },
@@ -114,16 +120,34 @@
         "icon": "$(remove)"
       },
       {
-        "command": "ide-shepherd.testSidebar",
-        "title": "Test Sidebar (Debug)",
+        "command": "ide-shepherd.datadog.testConnection",
+        "title": "Test Datadog Agent Connection",
         "category": "IDE Shepherd",
-        "icon": "$(beaker)"
+        "icon": "$(debug-disconnect)"
       },
       {
-        "command": "ide-shepherd.testEvents",
-        "title": "Test Security Events (Debug)",
+        "command": "ide-shepherd.datadog.sendTelemetry",
+        "title": "Send Telemetry Data to Datadog",
         "category": "IDE Shepherd",
-        "icon": "$(bug)"
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "ide-shepherd.settings.refresh",
+        "title": "Refresh Settings",
+        "category": "IDE Shepherd",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "ide-shepherd.settings.toggleDatadogTelemetry",
+        "title": "Toggle Datadog Telemetry",
+        "category": "IDE Shepherd",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "ide-shepherd.settings.updateAgentPort",
+        "title": "Update Datadog Agent Port",
+        "category": "IDE Shepherd",
+        "icon": "$(edit)"
       }
     ],
     "menus": {
@@ -147,6 +171,11 @@
           "command": "ide-shepherd.addTrustedPublisher",
           "when": "view == ide-shepherd-allowlist",
           "group": "navigation"
+        },
+        {
+          "command": "ide-shepherd.settings.refresh",
+          "when": "view == ide-shepherd-settings",
+          "group": "navigation"
         }
       ],
       "commandPalette": [
@@ -169,6 +198,26 @@
         {
           "command": "ide-shepherd.clearAllowList",
           "when": "true"
+        },
+        {
+          "command": "ide-shepherd.datadog.testConnection",
+          "when": "true"
+        },
+        {
+          "command": "ide-shepherd.datadog.sendTelemetry",
+          "when": "true"
+        },
+        {
+          "command": "ide-shepherd.settings.refresh",
+          "when": "true"
+        },
+        {
+          "command": "ide-shepherd.settings.toggleDatadogTelemetry",
+          "when": "true"
+        },
+        {
+          "command": "ide-shepherd.settings.updateAgentPort",
+          "when": "true"
         }
       ]
     },
@@ -176,7 +225,7 @@
       "type": "object",
       "title": "IDE Shepherd",
       "properties": {
-        "ide-shepherd.enabled": {
+        "ide-shepherd.isEnabled": {
           "type": "boolean",
           "default": true,
           "description": "Enable IDE Shepherd security monitoring"
@@ -208,6 +257,17 @@
           "type": "boolean",
           "default": true,
           "description": "Show IDE Shepherd status in status bar"
+        },
+        "ide-shepherd.datadog.isEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable Datadog telemetry integration (requires Datadog Agent)"
+        },
+        "ide-shepherd.datadog.agentPort": {
+          "type": "number",
+          "minimum": 1024,
+          "maximum": 65535,
+          "description": "Local Datadog Agent port for TCP log forwarding"
         }
       }
     },

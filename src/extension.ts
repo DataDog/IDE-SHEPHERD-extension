@@ -9,6 +9,7 @@ import { moduleLoaderPatcher } from './monitor/index';
 import { IDEStatusService } from './lib/services/ide-status-service';
 import { SidebarService } from './lib/services/sidebar-service';
 import { AllowListService } from './lib/services/allowlist-service';
+import { DatadogTelemetryService } from './lib/services/datadog/datadog-service';
 
 export function activate(context: vscode.ExtensionContext) {
   try {
@@ -19,6 +20,12 @@ export function activate(context: vscode.ExtensionContext) {
     const allowListService = AllowListService.getInstance();
     allowListService.initialize(context).then(() => {
       Logger.info('IDE Shepherd Extension: Allow List Service initialized');
+    });
+
+    // Initialize Datadog Telemetry Service
+    const datadogService = DatadogTelemetryService.getInstance();
+    datadogService.initialize(context).then(() => {
+      Logger.info('IDE Shepherd Extension: Datadog Telemetry Service initialized');
     });
 
     const sidebarService = SidebarService.getInstance();
@@ -62,6 +69,24 @@ export function activate(context: vscode.ExtensionContext) {
       (publisher: string) => sidebarService.removeTrustedPublisher(publisher),
     );
 
+    const sendDatadogTelemetryCommand = vscode.commands.registerCommand('ide-shepherd.datadog.sendTelemetry', () =>
+      datadogService.handleSendTelemetryCommand(),
+    );
+
+    // Settings commands
+    const refreshSettingsCommand = vscode.commands.registerCommand('ide-shepherd.settings.refresh', () =>
+      sidebarService.refreshSettingsView(),
+    );
+
+    const toggleDatadogTelemetryCommand = vscode.commands.registerCommand(
+      'ide-shepherd.settings.toggleDatadogTelemetry',
+      () => sidebarService.toggleDatadogTelemetry(),
+    );
+
+    const updateAgentPortCommand = vscode.commands.registerCommand('ide-shepherd.settings.updateAgentPort', () =>
+      sidebarService.updateAgentPort(),
+    );
+
     context.subscriptions.push(
       statusCommand,
       refreshStatusCommand,
@@ -71,6 +96,10 @@ export function activate(context: vscode.ExtensionContext) {
       clearAllowListCommand,
       addTrustedPublisherCommand,
       removeTrustedPublisherCommand,
+      sendDatadogTelemetryCommand,
+      refreshSettingsCommand,
+      toggleDatadogTelemetryCommand,
+      updateAgentPortCommand,
     );
 
     setTimeout(() => {

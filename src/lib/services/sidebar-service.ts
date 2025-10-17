@@ -4,13 +4,12 @@
 
 import * as vscode from 'vscode';
 import { IDEStatusData } from '../ide-status';
-import { SecurityEvent } from '../events/sec-events';
 import { BatchAnalysisResult } from '../heuristics';
-import { AllowListService } from './allowlist-service';
 import { SecurityStatusViewProvider } from './providers/security-status-provider';
 import { SecurityEventsViewProvider } from './providers/security-events-provider';
 import { ExtensionsAnalysisViewProvider } from './providers/extensions-analysis-provider';
 import { AllowListViewProvider } from './providers/allowlist-view-provider';
+import { SettingsViewProvider } from './providers/settings-provider';
 
 export class SidebarService {
   private static _instance: SidebarService;
@@ -18,13 +17,14 @@ export class SidebarService {
   private _eventsProvider: SecurityEventsViewProvider;
   private _extensionsProvider: ExtensionsAnalysisViewProvider;
   private _allowListProvider: AllowListViewProvider;
-  private _currentStatusData: IDEStatusData | null = null;
+  private _settingsProvider: SettingsViewProvider;
 
   private constructor() {
     this._statusProvider = new SecurityStatusViewProvider();
     this._eventsProvider = new SecurityEventsViewProvider();
     this._extensionsProvider = new ExtensionsAnalysisViewProvider();
     this._allowListProvider = new AllowListViewProvider();
+    this._settingsProvider = new SettingsViewProvider();
   }
 
   static getInstance(): SidebarService {
@@ -39,10 +39,10 @@ export class SidebarService {
     vscode.window.registerTreeDataProvider('ide-shepherd-events', this._eventsProvider);
     vscode.window.registerTreeDataProvider('ide-shepherd-extensions', this._extensionsProvider);
     vscode.window.registerTreeDataProvider('ide-shepherd-allowlist', this._allowListProvider);
+    vscode.window.registerTreeDataProvider('ide-shepherd-settings', this._settingsProvider);
   }
 
   updateStatusView(data: IDEStatusData): void {
-    this._currentStatusData = data;
     this._statusProvider.updateData(data);
     this._eventsProvider.updateData(data.securityEvents.recentEvents);
   }
@@ -77,5 +77,17 @@ export class SidebarService {
 
   async removeTrustedPublisher(publisher: string): Promise<void> {
     await this._allowListProvider.handleRemoveTrustedPublisher(publisher);
+  }
+
+  refreshSettingsView(): void {
+    this._settingsProvider.refresh();
+  }
+
+  async toggleDatadogTelemetry(): Promise<void> {
+    await this._settingsProvider.toggleDatadogTelemetry();
+  }
+
+  async updateAgentPort(): Promise<void> {
+    await this._settingsProvider.updateAgentPort();
   }
 }

@@ -61,10 +61,6 @@ export class ExtensionsRepository {
         const version = ext.packageJSON?.version || '0.0.0';
         const versionedId = `${ext.id}-${version}`;
 
-        Logger.debug(
-          `ExtensionsRepository: Building extension - Original ID: ${ext.id}, Version: ${version}, Versioned ID: ${versionedId}`,
-        );
-
         const extensionInfo: Extension = {
           id: versionedId, // Store versioned ID
           displayName: ext.id, // Store original ID for display
@@ -174,10 +170,5 @@ export class ExtensionsRepository {
   isExtensionActive(extensionId: string): boolean {
     const extension = this.getExtensionById(extensionId);
     return extension?.isActive ?? false;
-  }
-
-  rebuild(): void {
-    Logger.info('ExtensionsRepository: Manually rebuilding repository...');
-    this.buildRepository();
   }
 }
