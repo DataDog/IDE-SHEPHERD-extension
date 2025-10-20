@@ -73,11 +73,4 @@ export class DatadogTransport {
       }
     });
   }
-
-  /**
-   * Test connection to Datadog Agent
-   */
-  async testConnection(testPayload: TelemetryLogItem): Promise<void> {
-    return this.send([testPayload]);
-  }
 }
