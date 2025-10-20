@@ -62,7 +62,7 @@ export class NetworkAnalyzer {
       const matchedValue = match[0];
       return new AnalysisResult(
         { allowed: false },
-        new SecurityEvent(ev, ev.extension, rule.severity, [
+        new SecurityEvent(ev, ev.extension, rule.severity, rule.type, [
           {
             finding: matchedValue,
             rule: rule.name,
@@ -86,7 +86,7 @@ export class NetworkAnalyzer {
       const matchedIp = ipMatch[0];
       return new AnalysisResult(
         { allowed: false },
-        new SecurityEvent(ev, ev.extension, rule.severity, [
+        new SecurityEvent(ev, ev.extension, rule.severity, rule.type, [
           {
             finding: matchedIp,
             rule: rule.name,
