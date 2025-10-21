@@ -38,7 +38,7 @@ export class SecurityEventsViewProvider implements vscode.TreeDataProvider<Sideb
         const timestamp = new Date(event.timestamp).toLocaleTimeString();
 
         const item = new vscode.TreeItem(
-          `[${timestamp}] ${event.eventTarget.eventType} - ${event.extension.id}`,
+          `[${timestamp}] ${event.originalEvent.eventType} - ${event.extension.id}`,
           vscode.TreeItemCollapsibleState.Collapsed,
         );
 

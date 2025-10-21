@@ -130,7 +130,7 @@ export class IDEStatusService {
       this._status.totalSecurityEvents++;
 
       // Update per-target counters
-      const target = event.eventTarget.eventType;
+      const target = event.originalEvent.eventType;
       this._status.securityEventsByTarget[target]++;
 
       // Add to recent events queue

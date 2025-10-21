@@ -1,23 +1,20 @@
-import { IoC, SeverityLevel, SecurityEvent } from '../../lib/events/sec-events';
+import { SecurityEvent } from '../../lib/events/sec-events';
 import { Logger } from '../../lib/logger';
 import { IDEStatusService } from '../../lib/services/ide-status-service';
 import { AnalysisResult } from './analyzer';
 import { ExecEvent } from '../../lib/events/process-events';
+import { PROCESS_RULES } from '../../detection/process-rules';
 
 export class ProcessAnalyzer {
-  private readonly checkers: ((ev: ExecEvent) => AnalysisResult)[] = [
-    this.checkPowershellScripts.bind(this),
-    this.checkCommandExec.bind(this),
-  ];
-
   analyze(ev: ExecEvent): AnalysisResult | undefined {
     const startTime = Date.now();
 
     try {
       let result = new AnalysisResult();
 
-      for (const checker of this.checkers) {
-        const checkResult = checker(ev);
+      // Check all process rules
+      for (const rule of PROCESS_RULES) {
+        const checkResult = this.checkRule(ev, rule);
         if (checkResult.securityEvent) {
           result = checkResult;
           break; // stop on first security event found
@@ -39,52 +36,33 @@ export class ProcessAnalyzer {
     }
   }
 
-  private checkPowershellScripts(ev: ExecEvent): AnalysisResult {
-    const powershellPattern = /\b(powershell|pwsh)(\.exe)?\b/i;
+  private checkRule(ev: ExecEvent, rule: (typeof PROCESS_RULES)[0]): AnalysisResult {
     const fullCommand = `${ev.cmd} ${ev.args.join(' ')}`;
 
-    if (powershellPattern.test(ev.cmd) || powershellPattern.test(fullCommand)) {
-      const suspiciousFlags =
-        /-(?:enc|encodedcommand|exec|executionpolicy\s+bypass|noprofile|windowstyle\s+hidden|noninteractive)/i;
+    // Check if command matches the rule's command pattern
+    const commandMatches = rule.commandPattern.test(ev.cmd) || rule.commandPattern.test(fullCommand);
 
-      if (suspiciousFlags.test(fullCommand)) {
-        return new AnalysisResult(
-          { allowed: false },
-          new SecurityEvent(ev, ev.extension, SeverityLevel.HIGH, [
-            {
-              finding: fullCommand,
-              rule: 'PowerShell Execution',
-              description: `Detected PowerShell execution: ${fullCommand}`,
-              confidence: 0.8,
-              severity: SeverityLevel.HIGH,
-            },
-          ]),
-        );
+    if (!commandMatches) {
+      return new AnalysisResult();
+    }
+
+    if (rule.flagPattern) {
+      if (!rule.flagPattern.test(fullCommand)) {
+        return new AnalysisResult();
       }
     }
 
-    return new AnalysisResult();
-  }
-
-  private checkCommandExec(ev: ExecEvent): AnalysisResult {
-    const fullCommand = `${ev.cmd} ${ev.args.join(' ')}`;
-    const commandExecPattern = /\b(sh|bash|zsh|curl|wget)\b/i;
-
-    if (commandExecPattern.test(fullCommand)) {
-      return new AnalysisResult(
-        { allowed: false },
-        new SecurityEvent(ev, ev.extension, SeverityLevel.HIGH, [
-          {
-            finding: fullCommand,
-            rule: 'Command Injection',
-            description: `Detected command injection attempt: ${fullCommand}`,
-            confidence: 1,
-            severity: SeverityLevel.HIGH,
-          },
-        ]),
-      );
-    }
-
-    return new AnalysisResult();
+    return new AnalysisResult(
+      { allowed: false },
+      new SecurityEvent(ev, ev.extension, rule.severity, rule.type, [
+        {
+          finding: fullCommand,
+          rule: rule.name,
+          description: `${rule.description}: ${fullCommand}`,
+          confidence: rule.confidence,
+          severity: rule.severity,
+        },
+      ]),
+    );
   }
 }
