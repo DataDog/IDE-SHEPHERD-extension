@@ -5,12 +5,29 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import * as net from 'net';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { Logger } from '../../logger';
 import { CONFIG } from '../../config';
 
 const execAsync = promisify(exec);
+
+/**
+ * Validate that a file path is within the expected Datadog Agent configuration directory.
+ */
+function validateConfigPath(filePath: string, baseDir: string): void {
+  const normalizedPath = path.normalize(filePath);
+  const normalizedBase = path.normalize(baseDir);
+
+  if (!normalizedPath.startsWith(normalizedBase)) {
+    throw new Error('Invalid configuration path: path traversal attempt detected');
+  }
+  // ensure no parent directory traversal attempts
+  if (normalizedPath.includes('..')) {
+    throw new Error('Invalid configuration path: parent directory traversal not allowed');
+  }
+}
 
 /**
  * Configure a local dd agent for accepting logs from IDE Shepherd.
@@ -28,8 +45,13 @@ export async function configureAgentLogging(port: number): Promise<void> {
       service: "${CONFIG.DATADOG.SERVICE}"\n    
       source: "${CONFIG.DATADOG.SOURCE}"\n`;
 
-  const shepherdConfigDir = await getAgentShepherdConfigDir();
+  const agentConfigBaseDir = await getAgentConfigBaseDir();
+  const shepherdConfigDir = path.join(agentConfigBaseDir, 'ide-shepherd.d');
   const shepherdConfigFile = path.join(shepherdConfigDir, 'conf.yaml');
+
+  // Prevent path traversal attacks
+  validateConfigPath(shepherdConfigDir, agentConfigBaseDir);
+  validateConfigPath(shepherdConfigFile, shepherdConfigDir);
 
   try {
     try {
@@ -55,7 +77,11 @@ export async function configureAgentLogging(port: number): Promise<void> {
 
 export async function removeAgentLogging(): Promise<void> {
   try {
-    const shepherdConfigDir = await getAgentShepherdConfigDir();
+    const agentConfigBaseDir = await getAgentConfigBaseDir();
+    const shepherdConfigDir = path.join(agentConfigBaseDir, 'ide-shepherd.d');
+
+    // Prevent path traversal attacks
+    validateConfigPath(shepherdConfigDir, agentConfigBaseDir);
 
     try {
       await fs.access(shepherdConfigDir);
@@ -76,8 +102,13 @@ export async function removeAgentLogging(): Promise<void> {
 
 export async function hasAgentConfiguration(): Promise<boolean> {
   try {
-    const shepherdConfigDir = await getAgentShepherdConfigDir();
+    const agentConfigBaseDir = await getAgentConfigBaseDir();
+    const shepherdConfigDir = path.join(agentConfigBaseDir, 'ide-shepherd.d');
     const shepherdConfigFile = path.join(shepherdConfigDir, 'conf.yaml');
+
+    // Prevent path traversal attacks
+    validateConfigPath(shepherdConfigDir, agentConfigBaseDir);
+    validateConfigPath(shepherdConfigFile, shepherdConfigDir);
 
     await fs.access(shepherdConfigFile);
     return true;
@@ -87,27 +118,26 @@ export async function hasAgentConfiguration(): Promise<boolean> {
 }
 
 /**
- * Get the filesystem path to IDE Shepherd's configuration directory for
- * Datadog Agent log forwarding.
+ * Get the filesystem path to the Datadog Agent's base configuration directory.
+ * Returns the confd_path from the agent, which is the base directory for all integrations.
  */
-async function getAgentShepherdConfigDir(): Promise<string> {
+async function getAgentConfigBaseDir(): Promise<string> {
   try {
     // Query Datadog Agent status to get configuration directory
     const { stdout } = await execAsync('datadog-agent status --json');
 
-    let agentStatus: any;
+    let confdPath: string | undefined;
     try {
-      agentStatus = JSON.parse(stdout);
+      confdPath = (JSON.parse(stdout) as { config?: { confd_path: string } })?.config?.confd_path;
     } catch (parseError) {
       throw new Error('Failed to parse Datadog Agent status report as JSON');
     }
 
-    const confdPath = agentStatus?.config?.confd_path;
     if (!confdPath) {
       throw new Error('Datadog Agent configuration directory (confd_path) is not set');
     }
 
-    return path.join(confdPath, 'ide-shepherd.d');
+    return confdPath;
   } catch (error) {
     if (error instanceof Error) {
       if (error.message.includes('command not found') || error.message.includes('ENOENT')) {
@@ -129,6 +159,30 @@ export async function isAgentRunning(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Check if a port is available
+ */
+export async function isPortAvailable(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+
+    server.once('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        resolve(false);
+      } else {
+        resolve(false); // some other error, treat as unavailable
+      }
+    });
+
+    server.once('listening', () => {
+      server.close();
+      resolve(true);
+    });
+
+    server.listen(port, '127.0.0.1');
+  });
 }
 
 /**

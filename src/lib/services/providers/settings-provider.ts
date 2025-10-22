@@ -10,6 +10,7 @@ import {
   hasAgentConfiguration,
   isAgentRunning,
   restartAgent,
+  isPortAvailable,
 } from '../datadog/agent-config';
 
 type SidebarTreeItem = vscode.TreeItem;
@@ -256,6 +257,22 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
     }
 
     const portToUse = parseInt(port, 10);
+
+    const portAvailable = await isPortAvailable(portToUse);
+    if (!portAvailable) {
+      const retry = await vscode.window.showWarningMessage(
+        `Port ${portToUse} is already in use. Please choose a different port.`,
+        'Choose Different Port',
+        'Cancel',
+      );
+
+      if (retry === 'Choose Different Port') {
+        // keep retrying until the user chooses an available port
+        return this.enableDatadogTelemetry();
+      } else {
+        return;
+      }
+    }
 
     try {
       await vscode.window.withProgress(
