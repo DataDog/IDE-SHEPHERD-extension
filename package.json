@@ -120,12 +120,6 @@
         "icon": "$(remove)"
       },
       {
-        "command": "ide-shepherd.datadog.testConnection",
-        "title": "Test Datadog Agent Connection",
-        "category": "IDE Shepherd",
-        "icon": "$(debug-disconnect)"
-      },
-      {
         "command": "ide-shepherd.datadog.sendTelemetry",
         "title": "Send Telemetry Data to Datadog",
         "category": "IDE Shepherd",
@@ -142,12 +136,6 @@
         "title": "Toggle Datadog Telemetry",
         "category": "IDE Shepherd",
         "icon": "$(debug-disconnect)"
-      },
-      {
-        "command": "ide-shepherd.settings.updateAgentPort",
-        "title": "Update Datadog Agent Port",
-        "category": "IDE Shepherd",
-        "icon": "$(edit)"
       }
     ],
     "menus": {
@@ -200,10 +188,6 @@
           "when": "true"
         },
         {
-          "command": "ide-shepherd.datadog.testConnection",
-          "when": "true"
-        },
-        {
           "command": "ide-shepherd.datadog.sendTelemetry",
           "when": "true"
         },
@@ -213,10 +197,6 @@
         },
         {
           "command": "ide-shepherd.settings.toggleDatadogTelemetry",
-          "when": "true"
-        },
-        {
-          "command": "ide-shepherd.settings.updateAgentPort",
           "when": "true"
         }
       ]
@@ -302,14 +282,14 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
-    "@types/vscode": "^1.105.0",
-    "@typescript-eslint/eslint-plugin": "^8.46.2",
+    "@types/vscode": "~1.99.0",
+    "@typescript-eslint/eslint-plugin": "^8.46.0",
     "@typescript-eslint/parser": "^8.31.1",
-    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2",
-    "eslint": "^9.38.0",
+    "eslint": "^9.36.0",
     "husky": "^9.1.7",
-    "lint-staged": "^16.2.5",
+    "lint-staged": "^16.2.0",
     "prettier": "^3.4.2",
     "typescript": "^5.9.3"
   },

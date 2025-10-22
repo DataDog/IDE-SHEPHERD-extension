@@ -83,10 +83,6 @@ export function activate(context: vscode.ExtensionContext) {
       () => sidebarService.toggleDatadogTelemetry(),
     );
 
-    const updateAgentPortCommand = vscode.commands.registerCommand('ide-shepherd.settings.updateAgentPort', () =>
-      sidebarService.updateAgentPort(),
-    );
-
     context.subscriptions.push(
       statusCommand,
       refreshStatusCommand,
@@ -99,7 +95,6 @@ export function activate(context: vscode.ExtensionContext) {
       sendDatadogTelemetryCommand,
       refreshSettingsCommand,
       toggleDatadogTelemetryCommand,
-      updateAgentPortCommand,
     );
 
     setTimeout(() => {
