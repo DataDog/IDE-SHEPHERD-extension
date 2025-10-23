@@ -104,22 +104,25 @@ IDE Shepherd supports sending telemetry data to Datadog via the Datadog Agent fo
 
 #### Quick Setup
 
-**1. Configure Datadog Agent TCP Listener**
+**1. Install and Start Datadog Agent**
 
-Create `/opt/datadog-agent/etc/conf.d/ide-shepherd.d/conf.yaml`:
+First, ensure the Datadog Agent is installed and running on your system. See [Datadog Agent Installation Guide](https://docs.datadoghq.com/agent/).
 
-```yaml
-logs:
-  - type: tcp
-    port: 10518
-    service: ide-shepherd
-    source: ide-shepherd
-    tags:
-      - env:dev
-      - project:ide-shepherd
-```
+**2. Enable Telemetry in IDE Shepherd**
 
-**2. Restart Datadog Agent**
+IDE Shepherd now **automatically configures the Datadog Agent** when you enable telemetry for the first time:
+
+1. Open the IDE Shepherd sidebar in VS Code
+2. Navigate to **Settings → Datadog Telemetry**
+3. Click on **Telemetry: Disabled** to enable it
+4. IDE Shepherd will automatically:
+   - Create the configuration directory: `/opt/datadog-agent/etc/conf.d/ide-shepherd.d/`
+   - Write the configuration file: `conf.yaml` with the appropriate settings
+   - Configure the agent to listen on the specified port
+
+**3. Restart Datadog Agent**
+
+After the automatic configuration, restart the Datadog Agent for changes to take effect:
 
 ```bash
 # macOS
@@ -127,22 +130,46 @@ launchctl stop com.datadoghq.agent
 launchctl start com.datadoghq.agent
 ```
 
-**3. Enable Telemetry in the side bar**
+See [Datadog Agent Commands](https://docs.datadoghq.com/agent/guide/agent-commands/) for more details.
 
-- Settings -> Search "Datadog telemetry"
-- Enable by selecting Telemetry: Disabled
+**4. Test & Send Telemetry**
 
-**4. Test & Send**
+You can test the connection and send telemetry data from the sidebar:
 
-You can test the connection's status and send telemetry data either from the sidebar or the command palette.
+- **Agent Status**: Shows if the Datadog Agent is running
+- **Agent Config**: Shows if IDE Shepherd configuration exists
+- **Send Telemetry Data**: Sends all collected telemetry to Datadog
 
-- Command Palette -> `IDE Shepherd: Test Datadog Agent Connection`
-- Command Palette -> `IDE Shepherd: Send Telemetry Data to Datadog`
+Or use the command palette:
 
-**5. View in Datadog Security**
+- `IDE Shepherd: Test Datadog Agent Connection`
+- `IDE Shepherd: Send Telemetry Data to Datadog`
 
-- Go to [Logs Explorer](https://app.datadoghq.com/logs)
-- Filter: `source:ide-shepherd`
+**5. View in Datadog**
+
+- Go to [Datadog Logs Explorer](https://app.datadoghq.com/logs)
+- Filter: `source:ide-shepherd service:ide-shepherd-telemetry`
+
+#### Manual Configuration (Optional)
+
+If you prefer to manually configure the Datadog Agent, create `/opt/datadog-agent/etc/conf.d/ide-shepherd.d/conf.yaml`:
+
+```yaml
+logs:
+  - type: tcp
+    port: 10518
+    service: 'ide-shepherd-telemetry'
+    source: 'ide-shepherd'
+```
+
+Then restart the agent and configure the same port in IDE Shepherd settings.
+
+#### Disabling Telemetry
+
+When you disable telemetry in IDE Shepherd, you'll be asked whether to:
+
+- **Remove the agent configuration**: Automatically deletes the IDE Shepherd configuration from Datadog Agent
+- **Keep the configuration**: Leaves the agent configuration in place for future use
 
 ### Viewing Status & Logs
 

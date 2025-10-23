@@ -4,6 +4,14 @@
 
 import * as vscode from 'vscode';
 import { Logger } from '../../logger';
+import {
+  configureAgentLogging,
+  removeAgentLogging,
+  isAgentRunning,
+  restartAgent,
+  findAvailablePort,
+  isShepherdConfigLoaded,
+} from '../datadog/agent-config';
 
 type SidebarTreeItem = vscode.TreeItem;
 
@@ -73,28 +81,67 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
     enabledItem.contextValue = 'toggleable';
     items.push(enabledItem);
 
-    // Agent port
-    const port = config.get<number>('agentPort');
-    const portItem = new vscode.TreeItem(
-      `Agent Port: ${port !== undefined ? port : 'Not configured'}`,
-      vscode.TreeItemCollapsibleState.None,
-    );
-    portItem.id = 'datadog.agentPort';
-    portItem.iconPath = new vscode.ThemeIcon('plug');
-    portItem.tooltip = 'Click to configure Datadog Agent TCP port';
-    portItem.command = { command: 'ide-shepherd.settings.updateAgentPort', title: 'Update Agent Port' };
-    portItem.contextValue = 'setting';
-    items.push(portItem);
+    // Check if config is loaded in agent status
+    const configLoaded = await isShepherdConfigLoaded();
 
-    // Connection status (if enabled)
+    // Determine if restart is pending
+    // 1. If enabled but config not loaded -> pending restart
+    // 2. If disabled but config still loaded -> pending restart
+    const isPendingRestart = (enabled && !configLoaded) || (!enabled && configLoaded);
+
+    if (enabled || isPendingRestart) {
+      // Agent status
+      const agentRunning = await isAgentRunning();
+
+      let statusLabel: string;
+      let statusIcon: string;
+      let statusTooltip: string;
+
+      if (isPendingRestart) {
+        statusLabel = 'Agent Status: Pending Restart';
+        statusIcon = 'warning';
+        statusTooltip = 'Agent needs restart to apply configuration. Click "Refresh Settings" after restarting.';
+      } else if (agentRunning) {
+        statusLabel = 'Agent Status: Running';
+        statusIcon = 'pass';
+        statusTooltip = 'Datadog Agent is running';
+      } else {
+        statusLabel = 'Agent Status: Not Running';
+        statusIcon = 'error';
+        statusTooltip = 'Datadog Agent is not running or not installed';
+      }
+
+      const agentStatusItem = new vscode.TreeItem(statusLabel, vscode.TreeItemCollapsibleState.None);
+      agentStatusItem.id = 'datadog.agentStatus';
+      agentStatusItem.iconPath = new vscode.ThemeIcon(statusIcon);
+      agentStatusItem.tooltip = statusTooltip;
+      agentStatusItem.contextValue = 'status';
+      items.push(agentStatusItem);
+    }
+
     if (enabled) {
-      const sendItem = new vscode.TreeItem('Send Telemetry Data', vscode.TreeItemCollapsibleState.None);
-      sendItem.id = 'datadog.send';
-      sendItem.iconPath = new vscode.ThemeIcon('cloud-upload');
-      sendItem.command = { command: 'ide-shepherd.datadog.sendTelemetry', title: 'Send Telemetry' };
-      sendItem.tooltip = 'Send all telemetry data to Datadog';
-      sendItem.contextValue = 'action';
-      items.push(sendItem);
+      // Agent port
+      const port = config.get<number>('agentPort');
+      const portItem = new vscode.TreeItem(
+        `Agent Port: ${port !== undefined ? port : 'Not configured'}`,
+        vscode.TreeItemCollapsibleState.None,
+      );
+      portItem.id = 'datadog.agentPort';
+      portItem.iconPath = new vscode.ThemeIcon('plug');
+      portItem.tooltip = `Datadog Agent listening on port ${port}`;
+      portItem.contextValue = 'info';
+      items.push(portItem);
+
+      // Send telemetry - only show if not pending restart
+      if (!isPendingRestart) {
+        const sendItem = new vscode.TreeItem('Send Telemetry Data', vscode.TreeItemCollapsibleState.None);
+        sendItem.id = 'datadog.send';
+        sendItem.iconPath = new vscode.ThemeIcon('cloud-upload');
+        sendItem.command = { command: 'ide-shepherd.datadog.sendTelemetry', title: 'Send Telemetry' };
+        sendItem.tooltip = 'Send all telemetry data to Datadog';
+        sendItem.contextValue = 'action';
+        items.push(sendItem);
+      }
     }
 
     return items;
@@ -109,34 +156,12 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
       const currentValue = config.get<boolean>('isEnabled', false);
 
       if (!currentValue) {
-        const currentPort = config.get<number>('agentPort');
-        if (currentPort === undefined) {
-          const port = await vscode.window.showInputBox({
-            prompt: 'Enter Datadog Agent TCP port for ide-shepherd telemetry',
-            validateInput: (value) => {
-              const portNum = parseInt(value, 10);
-              if (isNaN(portNum) || portNum < 1024 || portNum > 65535) {
-                return 'Port must be between 1024 and 65535';
-              }
-              return null;
-            },
-          });
-          if (!port) {
-            vscode.window.showWarningMessage('Agent port is required to enable Datadog telemetry');
-            return;
-          }
-          await config.update('agentPort', parseInt(port, 10), vscode.ConfigurationTarget.Global);
-        }
+        await this.enableDatadogTelemetry();
+      } else {
+        await this.disableDatadogTelemetry();
       }
 
-      await config.update('isEnabled', !currentValue, vscode.ConfigurationTarget.Global);
-
-      const newState = !currentValue ? 'enabled' : 'disabled';
-      vscode.window.showInformationMessage(`Datadog telemetry ${newState}`);
-
-      Logger.info(`SettingsViewProvider: Datadog telemetry ${newState}`);
-
-      // Refresh the view
+      // Refresh the view - useful when manually restarting the agent
       this._onDidChangeTreeData.fire();
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to toggle Datadog telemetry: ${error}`);
@@ -145,34 +170,128 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
   }
 
   /**
-   * Update agent port
+   * Restart the agent UI
    */
-  async updateAgentPort(): Promise<void> {
-    try {
-      const config = vscode.workspace.getConfiguration('ide-shepherd.datadog');
-      const currentPort = config.get<number>('agentPort');
+  private async restartAgentWithConfirmation(message: string): Promise<void> {
+    const restartAction = await vscode.window.showInformationMessage(message, 'Restart Now', 'Skip');
 
-      const newPort = await vscode.window.showInputBox({
-        prompt: 'Enter Datadog Agent TCP port',
-        value: currentPort?.toString(),
-        placeHolder: 'e.g., 10518',
-        validateInput: (value) => {
-          const port = parseInt(value, 10);
-          if (isNaN(port) || port < 1024 || port > 65535) {
-            return 'Port must be between 1024 and 65535';
-          }
-          return null;
-        },
-      });
+    if (restartAction === 'Restart Now') {
+      try {
+        await vscode.window.withProgress(
+          { location: vscode.ProgressLocation.Notification, title: 'Restarting Datadog Agent...', cancellable: false },
+          async () => {
+            await restartAgent();
+          },
+        );
 
-      if (newPort) {
-        await config.update('agentPort', parseInt(newPort, 10), vscode.ConfigurationTarget.Global);
-        vscode.window.showInformationMessage(`Agent port updated to ${newPort}`);
-        this._onDidChangeTreeData.fire();
+        const agentRunning = await isAgentRunning();
+        if (agentRunning) {
+          vscode.window.showInformationMessage('✓ Datadog Agent restarted successfully! Configuration applied.');
+        } else {
+          vscode.window.showWarningMessage(
+            'Agent restart completed but not responding yet. Please wait a moment and refresh the sidebar.',
+          );
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(`Failed to restart agent: ${error instanceof Error ? error.message : error}`);
       }
-    } catch (error) {
-      vscode.window.showErrorMessage(`Failed to update agent port: ${error}`);
-      Logger.error('SettingsViewProvider: Failed to update agent port', error as Error);
+    } else if (restartAction === 'Skip') {
+      vscode.window.showInformationMessage(
+        'Agent restart skipped. Configuration will not be applied until you restart manually. Click "Refresh Settings" after restarting.',
+      );
     }
+
+    this._onDidChangeTreeData.fire();
+  }
+
+  /**
+   * Enable Datadog telemetry with automatic agent configuration
+   */
+  private async enableDatadogTelemetry(): Promise<void> {
+    const config = vscode.workspace.getConfiguration('ide-shepherd.datadog');
+
+    const agentRunning = await isAgentRunning();
+    if (!agentRunning) {
+      // baby steps :)
+      const installAgent = await vscode.window.showWarningMessage(
+        'Datadog Agent is not running or not installed. Please install and start the Datadog Agent first.',
+        'Learn More',
+        'Cancel',
+      );
+
+      if (installAgent === 'Learn More') {
+        vscode.env.openExternal(vscode.Uri.parse('https://docs.datadoghq.com/agent/'));
+      }
+      return;
+    }
+
+    let portToUse: number;
+    try {
+      portToUse = await findAvailablePort();
+      Logger.info(`Automatically selected port ${portToUse} for Datadog Agent`);
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to find an available port: ${error instanceof Error ? error.message : error}`,
+      );
+      return;
+    }
+
+    try {
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: 'Configuring Datadog Agent...', cancellable: false },
+        async () => {
+          await configureAgentLogging(portToUse);
+        },
+      );
+
+      await config.update('agentPort', portToUse, vscode.ConfigurationTarget.Global);
+
+      // config file has been updated, agent needs to restart to apply changes
+      this._onDidChangeTreeData.fire();
+
+      await this.restartAgentWithConfirmation(`Datadog Agent configured on port ${portToUse}. Restart the agent now?`);
+    } catch (error) {
+      throw new Error(`Failed to configure Datadog Agent: ${error instanceof Error ? error.message : error}`);
+    }
+
+    // Enable telemetry in settings
+    await config.update('isEnabled', true, vscode.ConfigurationTarget.Global);
+    vscode.window.showInformationMessage(`Datadog telemetry enabled on port ${portToUse}`);
+    Logger.info(`SettingsViewProvider: Datadog telemetry enabled on port ${portToUse}`);
+  }
+
+  /**
+   * Disable Datadog telemetry and remove agent configuration
+   */
+  private async disableDatadogTelemetry(): Promise<void> {
+    const config = vscode.workspace.getConfiguration('ide-shepherd.datadog');
+
+    try {
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: 'Removing Datadog Agent configuration...',
+          cancellable: false,
+        },
+        async () => {
+          await removeAgentLogging();
+        },
+      );
+
+      // config file has been removed, restart agent
+      this._onDidChangeTreeData.fire();
+
+      await this.restartAgentWithConfirmation('Datadog Agent configuration removed. Restart the agent now?');
+    } catch (error) {
+      Logger.warn(`Failed to remove Datadog Agent configuration: ${error instanceof Error ? error.message : error}`);
+      vscode.window.showWarningMessage(
+        `Failed to remove agent configuration: ${error instanceof Error ? error.message : error}`,
+      );
+    }
+
+    // Disable telemetry in settings
+    await config.update('isEnabled', false, vscode.ConfigurationTarget.Global);
+    vscode.window.showInformationMessage('Datadog telemetry disabled');
+    Logger.info('SettingsViewProvider: Datadog telemetry disabled');
   }
 }
