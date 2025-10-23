@@ -5,7 +5,7 @@
 
 import { SeverityLevel } from '../../events/sec-events';
 import { RiskLevel } from '../../heuristics';
-const { CONFIG } = require('../../config');
+import { CONFIG } from '../../config';
 
 // OCSF Category UIDs
 export enum OCSFCategoryUID {
@@ -83,8 +83,6 @@ export interface OCSFFindingInfo {
  */
 export interface OCSFResource {
   uid: string;
-  version?: string;
-  data?: Record<string, any>;
   role_id?: OCSFResourceRoleID;
 }
 
@@ -121,7 +119,7 @@ export interface OCSFBaseFinding {
   metadata: OCSFMetadata;
   finding_info: OCSFFindingInfo;
   status_id: OCSFStatusID;
-  is_alert: boolean;
+  isAlert: boolean;
 }
 
 /**
@@ -144,42 +142,40 @@ export interface OCSFAppSecurityPostureFinding extends OCSFBaseFinding {
   observables?: OCSFObservable[];
 }
 
-export class OCSFHelpers {
-  static severityToOCSF(severity: SeverityLevel): OCSFSeverityID {
-    switch (severity) {
-      case SeverityLevel.LOW:
-        return OCSFSeverityID.LOW;
-      case SeverityLevel.MEDIUM:
-        return OCSFSeverityID.MEDIUM;
-      case SeverityLevel.HIGH:
-        return OCSFSeverityID.HIGH;
-      default:
-        return OCSFSeverityID.INFO;
-    }
+export function severityToOCSF(severity: SeverityLevel): OCSFSeverityID {
+  switch (severity) {
+    case SeverityLevel.LOW:
+      return OCSFSeverityID.LOW;
+    case SeverityLevel.MEDIUM:
+      return OCSFSeverityID.MEDIUM;
+    case SeverityLevel.HIGH:
+      return OCSFSeverityID.HIGH;
+    default:
+      return OCSFSeverityID.INFO;
   }
+}
 
-  static riskLevelToOCSF(risk: RiskLevel): OCSFSeverityID {
-    switch (risk) {
-      case RiskLevel.Low:
-        return OCSFSeverityID.LOW;
-      case RiskLevel.Medium:
-        return OCSFSeverityID.MEDIUM;
-      case RiskLevel.High:
-        return OCSFSeverityID.HIGH;
-      case RiskLevel.None:
-      default:
-        return OCSFSeverityID.INFO;
-    }
+export function riskLevelToOCSF(risk: RiskLevel): OCSFSeverityID {
+  switch (risk) {
+    case RiskLevel.Low:
+      return OCSFSeverityID.LOW;
+    case RiskLevel.Medium:
+      return OCSFSeverityID.MEDIUM;
+    case RiskLevel.High:
+      return OCSFSeverityID.HIGH;
+    case RiskLevel.None:
+    default:
+      return OCSFSeverityID.INFO;
   }
+}
 
-  static createTypeUID(classUID: OCSFClassUID, activityID: OCSFActivityID): number {
-    return classUID * 100 + activityID;
-  }
+export function createTypeUID(classUID: OCSFClassUID, activityID: OCSFActivityID): number {
+  return classUID * 100 + activityID;
+}
 
-  static createMetadata(): OCSFMetadata {
-    return {
-      version: CONFIG.DATADOG.OCSF.SCHEMA_VERSION,
-      product: { name: CONFIG.DATADOG.OCSF.PRODUCT_NAME, vendor_name: CONFIG.DATADOG.OCSF.VENDOR_NAME },
-    };
-  }
+export function createOCSFMetadata(): OCSFMetadata {
+  return {
+    version: CONFIG.DATADOG.OCSF.SCHEMA_VERSION,
+    product: { name: CONFIG.DATADOG.OCSF.PRODUCT_NAME, vendor_name: CONFIG.DATADOG.OCSF.VENDOR_NAME },
+  };
 }
