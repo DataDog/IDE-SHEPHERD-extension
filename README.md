@@ -115,8 +115,7 @@ IDE Shepherd now **automatically configures the Datadog Agent** when you enable 
 1. Open the IDE Shepherd sidebar in VS Code
 2. Navigate to **Settings → Datadog Telemetry**
 3. Click on **Telemetry: Disabled** to enable it
-4. When prompted, enter a TCP port number (e.g., `10518`)
-5. IDE Shepherd will automatically:
+4. IDE Shepherd will automatically:
    - Create the configuration directory: `/opt/datadog-agent/etc/conf.d/ide-shepherd.d/`
    - Write the configuration file: `conf.yaml` with the appropriate settings
    - Configure the agent to listen on the specified port
@@ -129,12 +128,6 @@ After the automatic configuration, restart the Datadog Agent for changes to take
 # macOS
 launchctl stop com.datadoghq.agent
 launchctl start com.datadoghq.agent
-
-# Linux (systemd)
-sudo systemctl restart datadog-agent
-
-# Windows
-restart-service -Name datadogagent
 ```
 
 See [Datadog Agent Commands](https://docs.datadoghq.com/agent/guide/agent-commands/) for more details.

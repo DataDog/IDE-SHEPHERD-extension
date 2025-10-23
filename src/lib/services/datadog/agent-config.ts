@@ -5,29 +5,13 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import * as net from 'net';
+import * as http from 'http';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { Logger } from '../../logger';
 import { CONFIG } from '../../config';
 
 const execAsync = promisify(exec);
-
-/**
- * Validate that a file path is within the expected Datadog Agent configuration directory.
- */
-function validateConfigPath(filePath: string, baseDir: string): void {
-  const normalizedPath = path.normalize(filePath);
-  const normalizedBase = path.normalize(baseDir);
-
-  if (!normalizedPath.startsWith(normalizedBase)) {
-    throw new Error('Invalid configuration path: path traversal attempt detected');
-  }
-  // ensure no parent directory traversal attempts
-  if (normalizedPath.includes('..')) {
-    throw new Error('Invalid configuration path: parent directory traversal not allowed');
-  }
-}
 
 /**
  * Configure a local dd agent for accepting logs from IDE Shepherd.
@@ -45,13 +29,9 @@ export async function configureAgentLogging(port: number): Promise<void> {
       service: "${CONFIG.DATADOG.SERVICE}"\n    
       source: "${CONFIG.DATADOG.SOURCE}"\n`;
 
-  const agentConfigBaseDir = await getAgentConfigBaseDir();
+  const agentConfigBaseDir = await getAgentConfigDir();
   const shepherdConfigDir = path.join(agentConfigBaseDir, 'ide-shepherd.d');
   const shepherdConfigFile = path.join(shepherdConfigDir, 'conf.yaml');
-
-  // Prevent path traversal attacks
-  validateConfigPath(shepherdConfigDir, agentConfigBaseDir);
-  validateConfigPath(shepherdConfigFile, shepherdConfigDir);
 
   try {
     try {
@@ -64,11 +44,6 @@ export async function configureAgentLogging(port: number): Promise<void> {
 
     await fs.writeFile(shepherdConfigFile, configFile, 'utf-8');
     Logger.info(`Wrote file ${shepherdConfigFile} with Datadog Agent configuration`);
-
-    const writtenContent = await fs.readFile(shepherdConfigFile, 'utf-8');
-    if (writtenContent !== configFile) {
-      throw new Error('Configuration file content verification failed');
-    }
   } catch (error) {
     Logger.error('Failed to configure Datadog Agent', error as Error);
     throw new Error(`Failed to configure Datadog Agent: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -77,11 +52,8 @@ export async function configureAgentLogging(port: number): Promise<void> {
 
 export async function removeAgentLogging(): Promise<void> {
   try {
-    const agentConfigBaseDir = await getAgentConfigBaseDir();
+    const agentConfigBaseDir = await getAgentConfigDir();
     const shepherdConfigDir = path.join(agentConfigBaseDir, 'ide-shepherd.d');
-
-    // Prevent path traversal attacks
-    validateConfigPath(shepherdConfigDir, agentConfigBaseDir);
 
     try {
       await fs.access(shepherdConfigDir);
@@ -100,28 +72,11 @@ export async function removeAgentLogging(): Promise<void> {
   }
 }
 
-export async function hasAgentConfiguration(): Promise<boolean> {
-  try {
-    const agentConfigBaseDir = await getAgentConfigBaseDir();
-    const shepherdConfigDir = path.join(agentConfigBaseDir, 'ide-shepherd.d');
-    const shepherdConfigFile = path.join(shepherdConfigDir, 'conf.yaml');
-
-    // Prevent path traversal attacks
-    validateConfigPath(shepherdConfigDir, agentConfigBaseDir);
-    validateConfigPath(shepherdConfigFile, shepherdConfigDir);
-
-    await fs.access(shepherdConfigFile);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Get the filesystem path to the Datadog Agent's base configuration directory.
  * Returns the confd_path from the agent, which is the base directory for all integrations.
  */
-async function getAgentConfigBaseDir(): Promise<string> {
+async function getAgentConfigDir(): Promise<string> {
   try {
     // Query Datadog Agent status to get configuration directory
     const { stdout } = await execAsync('datadog-agent status --json');
@@ -141,10 +96,7 @@ async function getAgentConfigBaseDir(): Promise<string> {
   } catch (error) {
     if (error instanceof Error) {
       if (error.message.includes('command not found') || error.message.includes('ENOENT')) {
-        throw new Error(
-          'Unable to query Datadog Agent status: please ensure the Agent is installed and running. ' +
-            'Linux/macOS users may need sudo to run this command.',
-        );
+        throw new Error('Unable to query Datadog Agent status: please ensure the Agent is installed and running. ');
       }
       throw error;
     }
@@ -162,27 +114,61 @@ export async function isAgentRunning(): Promise<boolean> {
 }
 
 /**
+ * Check if IDE Shepherd configuration is loaded in the Datadog Agent
+ * Returns true if "ide-shepherd" is found in the agent status output
+ */
+export async function isShepherdConfigLoaded(): Promise<boolean> {
+  try {
+    const { stdout } = await execAsync('datadog-agent status');
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return stdout.includes('ide-shepherd');
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Check if a port is available
  */
 export async function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
-    const server = net.createServer();
+    const req = http.request({ hostname: '127.0.0.1', port: port, method: 'HEAD', timeout: 1000 }, () => {
+      resolve(false);
+    });
 
-    server.once('error', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'EADDRINUSE') {
-        resolve(false);
+    req.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'ECONNREFUSED') {
+        resolve(true);
       } else {
-        resolve(false); // some other error, treat as unavailable
+        resolve(false); // we'll treat any other error as unavailable
       }
     });
 
-    server.once('listening', () => {
-      server.close();
-      resolve(true);
-    });
-
-    server.listen(port, '127.0.0.1');
+    req.end();
   });
+}
+
+/**
+ * Tries default port 10518 first, then random ports if needed.
+ */
+export async function findAvailablePort(): Promise<number> {
+  const defaultPort = 10518;
+
+  if (await isPortAvailable(defaultPort)) {
+    Logger.info(`Using default port ${defaultPort} for Datadog Agent`);
+    return defaultPort;
+  }
+
+  for (let i = 0; i < 5; i++) {
+    // 5 tries should be enough
+    const randomPort = Math.floor(Math.random() * (65535 - 10000) + 10000);
+    if (await isPortAvailable(randomPort)) {
+      Logger.info(`Default port ${defaultPort} was taken, using random port ${randomPort}`);
+      return randomPort;
+    }
+  }
+
+  throw new Error('Unable to find an available port for Datadog Agent. Please try again later.');
 }
 
 /**
