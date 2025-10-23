@@ -12,6 +12,7 @@ import { Logger } from '../../logger';
 import { CONFIG } from '../../config';
 
 const execAsync = promisify(exec);
+const DEFAULT_AGENT_PORT = 10518;
 
 /**
  * Configure a local dd agent for accepting logs from IDE Shepherd.
@@ -152,18 +153,16 @@ export async function isPortAvailable(port: number): Promise<boolean> {
  * Tries default port 10518 first, then random ports if needed.
  */
 export async function findAvailablePort(): Promise<number> {
-  const defaultPort = 10518;
-
-  if (await isPortAvailable(defaultPort)) {
-    Logger.info(`Using default port ${defaultPort} for Datadog Agent`);
-    return defaultPort;
+  if (await isPortAvailable(DEFAULT_AGENT_PORT)) {
+    Logger.info(`Using default port ${DEFAULT_AGENT_PORT} for Datadog Agent`);
+    return DEFAULT_AGENT_PORT;
   }
 
   for (let i = 0; i < 5; i++) {
     // 5 tries should be enough
     const randomPort = Math.floor(Math.random() * (65535 - 10000) + 10000);
     if (await isPortAvailable(randomPort)) {
-      Logger.info(`Default port ${defaultPort} was taken, using random port ${randomPort}`);
+      Logger.info(`Default port ${DEFAULT_AGENT_PORT} was taken, using random port ${randomPort}`);
       return randomPort;
     }
   }
