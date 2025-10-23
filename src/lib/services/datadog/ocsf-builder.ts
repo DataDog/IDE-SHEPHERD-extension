@@ -46,7 +46,7 @@ export function buildDetectionFinding(
     resources: [{ uid: securityEvent.extension.id, role_id: OCSFResourceRoleID.ACTOR }],
     observables: securityEvent.iocs.map((ioc) => ({
       name: ioc.rule,
-      type_id: getObservableTypeFromTarget(securityEvent.originalEvent.eventType),
+      type_id: getObservableType(securityEvent.originalEvent.eventType),
       value: ioc.finding,
     })),
     status_id: activity === OCSFActivityID.CLOSE ? OCSFStatusID.RESOLVED : OCSFStatusID.NEW,
@@ -84,7 +84,7 @@ export function buildAppSecurityPostureFinding(
     },
     observables: result.suspiciousPatterns.map((pattern) => ({
       name: pattern.pattern,
-      type_id: getObservableTypeFromCategory(pattern.category),
+      type_id: getObservableType(pattern.category),
       value: pattern.description,
     })),
     status_id: activity === OCSFActivityID.CLOSE ? OCSFStatusID.RESOLVED : OCSFStatusID.NEW,
@@ -92,10 +92,9 @@ export function buildAppSecurityPostureFinding(
   };
 }
 
-function getObservableTypeFromTarget(eventTarget: Target): OCSFObservableTypeID {
-  return eventTarget === Target.PROCESS ? OCSFObservableTypeID.COMMAND_LINE : OCSFObservableTypeID.URL_STRING;
-}
-
-function getObservableTypeFromCategory(category: string): OCSFObservableTypeID {
-  return category.toLowerCase() === 'commands' ? OCSFObservableTypeID.COMMAND_LINE : OCSFObservableTypeID.OTHER;
+function getObservableType(source: Target | string): OCSFObservableTypeID {
+  if (typeof source === 'string') {
+    return source.toLowerCase() === 'commands' ? OCSFObservableTypeID.COMMAND_LINE : OCSFObservableTypeID.OTHER;
+  }
+  return source === Target.PROCESS ? OCSFObservableTypeID.COMMAND_LINE : OCSFObservableTypeID.URL_STRING;
 }
