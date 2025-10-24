@@ -89,7 +89,7 @@ export class OCSFTracker implements ExtensionChangeListener {
   async sendOCSFEvent(result: HeuristicResult, extension: Extension): Promise<void> {
     try {
       const { event, activity } = this.stateTracker.buildOCSFEvent(extension, result);
-      await this.transport.send([event as any]);
+      await this.transport.send([event]);
       await this.stateTracker.updateState(extension, result, activity);
 
       Logger.info(

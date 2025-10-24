@@ -6,6 +6,7 @@ import * as net from 'net';
 import * as vscode from 'vscode';
 import { Logger } from '../../logger';
 import { TelemetryLogItem } from './types';
+import type { OCSFDetectionFinding, OCSFAppSecurityPostureFinding } from './ocsf-types';
 
 export interface DatadogConfig {
   isEnabled: boolean;
@@ -28,7 +29,7 @@ export class DatadogTransport {
   /**
    * Send log items to Datadog Agent via TCP socket
    */
-  async send(logItems: TelemetryLogItem[]): Promise<void> {
+  async send(logItems: (TelemetryLogItem | OCSFDetectionFinding | OCSFAppSecurityPostureFinding)[]): Promise<void> {
     const config = this.getConfig();
     if (!config.isEnabled || !config.agentPort) {
       throw new Error('Datadog Agent is not configured');
