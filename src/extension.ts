@@ -10,11 +10,16 @@ import { IDEStatusService } from './lib/services/ide-status-service';
 import { SidebarService } from './lib/services/sidebar-service';
 import { AllowListService } from './lib/services/allowlist-service';
 import { DatadogTelemetryService } from './lib/services/datadog/datadog-service';
+import { ExtensionChangeService } from './lib/services/extension-lifecycle-service';
 
 export function activate(context: vscode.ExtensionContext) {
   try {
     Logger.init(context);
     Logger.info('IDE Shepherd Extension: Logger initialized');
+
+    // Initialize centralized Extension Change Service
+    ExtensionChangeService.getInstance();
+    Logger.info('IDE Shepherd Extension: Extension Change Service initialized');
 
     // Initialize Allow List Service
     const allowListService = AllowListService.getInstance();
