@@ -24,5 +24,10 @@ export const CONFIG = {
     },
   },
   ALLOWLIST: { DEFAULT_TRUSTED_PUBLISHERS: ['ms-vscode', 'ms-python', 'github', 'git', 'datadog'] },
-  DATADOG: { SOURCE: 'ide-shepherd', SERVICE: 'ide-shepherd-telemetry' },
+  DATADOG: {
+    SOURCE: 'ide-shepherd',
+    SERVICE: 'ide-shepherd-telemetry',
+    DEFAULT_AGENT_PORT: 10518,
+    OCSF: { SCHEMA_VERSION: '1.6.0', PRODUCT_NAME: 'IDE Shepherd', VENDOR_NAME: 'Datadog' },
+  },
 };
