@@ -49,6 +49,7 @@ export class ExtensionChangeService {
     }
 
     this.isProcessing = true;
+    Logger.info('ExtensionChangeService: Processing change...');
 
     try {
       // Update repository with current extension state

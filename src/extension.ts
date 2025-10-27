@@ -17,10 +17,6 @@ export function activate(context: vscode.ExtensionContext) {
     Logger.init(context);
     Logger.info('IDE Shepherd Extension: Logger initialized');
 
-    // Initialize centralized Extension Change Service
-    ExtensionChangeService.getInstance();
-    Logger.info('IDE Shepherd Extension: Extension Change Service initialized');
-
     // Initialize Allow List Service
     const allowListService = AllowListService.getInstance();
     allowListService.initialize(context).then(() => {
@@ -31,6 +27,14 @@ export function activate(context: vscode.ExtensionContext) {
     const datadogService = DatadogTelemetryService.getInstance();
     datadogService.initialize(context).then(() => {
       Logger.info('IDE Shepherd Extension: Datadog Telemetry Service initialized');
+      const extensionChangeService = ExtensionChangeService.getInstance();
+      const ocsfTracker = datadogService.getOCSFTracker();
+
+      if (ocsfTracker) {
+        extensionChangeService.registerListener(ocsfTracker);
+      } else {
+        Logger.error('OCSF tracker is undefined! Cannot register.');
+      }
     });
 
     const sidebarService = SidebarService.getInstance();

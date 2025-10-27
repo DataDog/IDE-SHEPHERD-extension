@@ -41,9 +41,13 @@ export class ExtensionStateTracker {
     this.loadStates();
   }
 
-  private loadStates(): void {
+  public loadStates(): void {
     try {
-      const stored = this.context.workspaceState.get<Record<string, ExtensionState>>(
+      Logger.info(`📖 ExtensionStateTracker.loadStates(): Starting load...`);
+      Logger.info(`   Storage type: globalState`);
+      Logger.info(`   Storage key: "${ExtensionStateTracker.STORAGE_KEY}"`);
+
+      const stored = this.context.globalState.get<Record<string, ExtensionState>>(
         ExtensionStateTracker.STORAGE_KEY,
         {},
       );
@@ -57,7 +61,8 @@ export class ExtensionStateTracker {
   private async saveStates(): Promise<void> {
     try {
       const statesObj = Object.fromEntries(this.states);
-      await this.context.workspaceState.update(ExtensionStateTracker.STORAGE_KEY, statesObj);
+
+      await this.context.globalState.update(ExtensionStateTracker.STORAGE_KEY, statesObj);
     } catch (error) {
       Logger.error('ExtensionStateTracker: Failed to save states', error as Error);
     }

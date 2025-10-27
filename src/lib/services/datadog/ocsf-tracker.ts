@@ -8,7 +8,7 @@
 import * as vscode from 'vscode';
 import { Logger } from '../../logger';
 import { Extension, ExtensionsRepository } from '../../extensions';
-import { HeuristicResult } from '../../heuristics';
+import { HeuristicResult, RiskLevel } from '../../heuristics';
 import { ExtensionChangeListener } from '../extension-lifecycle-service';
 import { ExtensionStateTracker, ExtensionChange } from './ocsf-tracker-helper';
 import { OCSFActivityID } from './ocsf-types';
@@ -26,6 +26,25 @@ export class OCSFTracker implements ExtensionChangeListener {
     this.context = context;
     this.transport = transport;
     this.stateTracker = new ExtensionStateTracker(context);
+
+    // Perform initial comparison to detect changes that happened while offline (mainly uninstallation)
+    this.performInitialComparison();
+  }
+
+  /**
+   * Compare persisted state with current extensions on startup
+   * This detects uninstalls/installs that happened during extension host restart
+   */
+  private async performInitialComparison(): Promise<void> {
+    try {
+      const currentExtensions = ExtensionsRepository.getInstance().getUserExtensions();
+      const changes = this.stateTracker.detectChanges(currentExtensions);
+      if (changes.length > 0) {
+        await this.processChanges(changes);
+      }
+    } catch (error) {
+      Logger.error('OCSFTracker: Failed to perform initial comparison', error as Error);
+    }
   }
 
   // First case: update OCSF logs on extensions' changes
@@ -35,16 +54,16 @@ export class OCSFTracker implements ExtensionChangeListener {
       const changes = this.stateTracker.detectChanges(currentExtensions);
 
       if (changes.length > 0) {
-        Logger.info(`OCSFTracker: Detected ${changes.length} extension change(s):`);
+        Logger.info(`OCSFTracker: Processing ${changes.length} change(s):`);
         for (const change of changes) {
           Logger.info(
-            `  - ${OCSFActivityID[change.changeType]}: ${change.displayName}${change.oldVersion ? ` (${change.oldVersion} -> ${change.newVersion})` : ''}`,
+            `\t\t${OCSFActivityID[change.changeType]}: ${change.displayName}${change.oldVersion ? ` (${change.oldVersion} → ${change.newVersion})` : ` v${change.newVersion}`}`,
           );
         }
 
         await this.processChanges(changes);
       } else {
-        Logger.debug('OCSFTracker: No significant changes detected');
+        Logger.info('OCSFTracker: No changes detected');
       }
     } catch (error) {
       Logger.error('OCSFTracker: Failed to process extension changes', error as Error);
