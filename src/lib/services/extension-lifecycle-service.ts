@@ -36,7 +36,7 @@ export class ExtensionChangeService {
   private setupChangeListener(): void {
     this.disposables.push(
       vscode.extensions.onDidChange(() => {
-        Logger.debug(`ExtensionChangeService: vscode.extensions.onDidChange fired\n (${vscode.extensions.all} )`);
+        Logger.debug(`ExtensionChangeService: vscode.extensions.onDidChange fired.)`);
         this.handleExtensionChange();
       }),
     );

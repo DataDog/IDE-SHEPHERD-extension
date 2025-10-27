@@ -8,9 +8,10 @@
 import * as vscode from 'vscode';
 import { Logger } from '../../logger';
 import { Extension, ExtensionsRepository } from '../../extensions';
-import { HeuristicResult } from '../../heuristics';
+import { HeuristicResult, RiskLevel } from '../../heuristics';
 import { ExtensionChangeListener } from '../extension-lifecycle-service';
 import { ExtensionStateTracker, ExtensionChange, ExtensionActivityID } from '../extension-state-tracker';
+import { ExtensionChangeProcessorService, ProcessedChange } from '../extension-change-processor';
 import { buildAppSecurityPostureFinding } from './ocsf-builder';
 import { DatadogTransport } from './datadog-transport';
 
@@ -21,11 +22,13 @@ export class OCSFTracker implements ExtensionChangeListener {
   private stateTracker: ExtensionStateTracker;
   private transport: DatadogTransport;
   private context: vscode.ExtensionContext;
+  private processor: ExtensionChangeProcessorService;
 
   constructor(context: vscode.ExtensionContext, transport: DatadogTransport) {
     this.context = context;
     this.transport = transport;
     this.stateTracker = new ExtensionStateTracker(context);
+    this.processor = ExtensionChangeProcessorService.getInstance();
 
     // Perform initial comparison to detect changes that happened while offline (mainly uninstallation)
     this.performInitialComparison();
@@ -54,7 +57,6 @@ export class OCSFTracker implements ExtensionChangeListener {
       const changes = this.stateTracker.detectChanges(currentExtensions);
 
       if (changes.length > 0) {
-        Logger.info(`OCSFTracker: Processing ${changes.length} change(s):`);
         for (const change of changes) {
           Logger.info(
             `\t\t${ExtensionActivityID[change.changeType]}: ${change.displayName}${change.oldVersion ? ` (${change.oldVersion} → ${change.newVersion})` : ` v${change.newVersion}`}`,
@@ -74,44 +76,68 @@ export class OCSFTracker implements ExtensionChangeListener {
    * Process detected changes and send OCSF events
    */
   private async processChanges(changes: ExtensionChange[]): Promise<void> {
-    for (const change of changes) {
+    const processedChanges = await this.processor.processChanges(changes, this.stateTracker);
+    for (const processed of processedChanges) {
       try {
-        if (change.changeType === ExtensionActivityID.CLOSE) {
-          await this.handleClose(change);
-        } else if (
-          change.extension &&
-          (change.changeType === ExtensionActivityID.CREATE || change.changeType === ExtensionActivityID.UPDATE)
-        ) {
-          // TODO: For CREATE and UPDATE, we need to re-analyze the extension first
-          // then send the OCSF event and sync with sidebar display
-        }
+        await this.sendOCSFEvent(processed);
       } catch (error) {
-        Logger.error(`OCSFTracker: Failed to process change for ${change.displayName}`, error as Error);
+        Logger.error(`OCSFTracker: Failed to send OCSF event for ${processed.change.displayName}`, error as Error);
       }
     }
   }
 
   /**
-   * Update the extension state to CLOSED
+   * Send OCSF event to Datadog agent
    */
-  private async handleClose(change: ExtensionChange): Promise<void> {
-    const state = this.stateTracker.getState(change.displayName);
-    if (state) {
-      Logger.info(`OCSFTracker: Extension ${change.displayName} uninstalled, sending CLOSE event`);
-
-      // TODO: Build and send OCSF CLOSE event with proper resource data
-      // For now, just mark as closed in state
-      await this.stateTracker.markAsClosed(change.displayName);
+  private async sendOCSFEvent(processed: ProcessedChange): Promise<void> {
+    if (!this.transport.isEnabled()) {
+      Logger.debug(
+        `OCSFTracker: Telemetry disabled, skipping OCSF event for ${processed.change.displayName} (${ExtensionActivityID[processed.activity]})`,
+      );
+      return;
     }
-  }
 
-  getStateTracker(): ExtensionStateTracker {
-    return this.stateTracker;
+    const change = processed.change;
+    const activity = processed.activity;
+
+    if (activity === ExtensionActivityID.CLOSE) {
+      await this.sendCloseEvent(change);
+      return;
+    }
+    if (!processed.result || !change.extension) {
+      Logger.warn(`OCSFTracker: Cannot send OCSF event for ${change.displayName} - missing data`);
+      return;
+    }
+    const ocsfEvent = this.buildOCSFEvent(change.extension, processed.result, activity);
+
+    Logger.info(
+      `OCSFTracker: Sending ${ExtensionActivityID[activity]} OCSF event for ${change.displayName} (Risk: ${processed.result.overallRisk})`,
+    );
+    await this.transport.send([ocsfEvent]);
   }
 
   /**
-   * Build and return an OCSF event for an extension with appropriate activity
+   * Send CLOSE event for uninstalled extension
+   * Uses the extension data and heuristic result from the saved state
    */
+  private async sendCloseEvent(change: ExtensionChange): Promise<void> {
+    const extension = change.extension;
+    const heuristicResult = change.heuristicResult;
+
+    if (!extension || !heuristicResult) {
+      Logger.warn(
+        `OCSFTracker: Cannot send CLOSE event for ${change.displayName} - missing extension or heuristic data`,
+      );
+      return;
+    }
+    Logger.info(
+      `OCSFTracker: Sending CLOSE event for ${change.displayName} (Risk: ${heuristicResult.overallRisk}, Patterns: ${heuristicResult.suspiciousPatterns.length})`,
+    );
+
+    const ocsfEvent = this.buildOCSFEvent(extension, heuristicResult, ExtensionActivityID.CLOSE);
+    await this.transport.send([ocsfEvent]);
+  }
+
   buildOCSFEvent(extension: Extension, result: HeuristicResult, activity: ExtensionActivityID) {
     return buildAppSecurityPostureFinding(result, extension, activity);
   }

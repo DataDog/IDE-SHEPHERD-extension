@@ -21,6 +21,8 @@ interface ExtensionState {
   riskScore: number;
   patternsCount: number;
   lastAnalyzed: number; // unix timestamp
+  extension: Extension; // store the full extension for CLOSE event reconstruction
+  heuristicResult: HeuristicResult;
 }
 
 export interface ExtensionChange {
@@ -29,6 +31,7 @@ export interface ExtensionChange {
   oldVersion?: string;
   newVersion?: string;
   extension?: Extension;
+  heuristicResult?: HeuristicResult;
 }
 
 /**
@@ -76,6 +79,8 @@ export class ExtensionStateTracker {
       riskScore: result.riskScore,
       patternsCount: result.suspiciousPatterns.length,
       lastAnalyzed: Date.now(),
+      extension,
+      heuristicResult: result,
     };
 
     this.states.set(extension.displayName, state);
@@ -131,7 +136,13 @@ export class ExtensionStateTracker {
     // Check for CLOSE (uninstalled)
     for (const [displayName, state] of this.states.entries()) {
       if (!currentDisplayNames.has(displayName)) {
-        changes.push({ displayName, changeType: ExtensionActivityID.CLOSE, oldVersion: state.version });
+        changes.push({
+          displayName,
+          changeType: ExtensionActivityID.CLOSE,
+          oldVersion: state.version,
+          extension: state.extension,
+          heuristicResult: state.heuristicResult,
+        });
       }
     }
 
