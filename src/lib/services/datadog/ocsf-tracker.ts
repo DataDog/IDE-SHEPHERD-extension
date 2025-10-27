@@ -8,12 +8,11 @@
 import * as vscode from 'vscode';
 import { Logger } from '../../logger';
 import { Extension, ExtensionsRepository } from '../../extensions';
-import { HeuristicResult, RiskLevel } from '../../heuristics';
+import { HeuristicResult } from '../../heuristics';
 import { ExtensionChangeListener } from '../extension-lifecycle-service';
-import { ExtensionStateTracker, ExtensionChange } from '../extension-state-tracker';
+import { ExtensionStateTracker, ExtensionChange, ExtensionActivityID } from '../extension-state-tracker';
 import { buildAppSecurityPostureFinding } from './ocsf-builder';
 import { DatadogTransport } from './datadog-transport';
-import { ExtensionActivityID } from '../extension-state-tracker';
 
 /**
  * Tracks extension changes and sends OCSF events to datadog agent
