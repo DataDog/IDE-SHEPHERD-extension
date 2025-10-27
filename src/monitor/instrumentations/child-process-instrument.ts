@@ -52,11 +52,8 @@ export function patchChildProcess(
   processAnalyzer = new ProcessAnalyzer(),
 ) {
   if (childProcess.__patched__) {
-    Logger.debug(`Child-Process Plugin: already patched, skipping`);
     return;
   }
-  Logger.debug(`Child-Process Plugin: patching child_process`);
-
   // Patch exec function
   const origExec = childProcess.exec.bind(childProcess);
   const patchedExec = function patchedExec(

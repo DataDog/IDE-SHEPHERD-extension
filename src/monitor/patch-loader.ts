@@ -21,15 +21,11 @@ export class ModuleLoaderPatcher {
 
   patch(): void {
     if (this.patched) {
-      Logger.debug('ModuleLoaderPatcher: Already patched, skipping');
       return;
     }
 
-    Logger.info('ModuleLoaderPatcher: Starting patch process...');
-
     try {
       // patch Module._load for future requires
-      Logger.info('ModuleLoaderPatcher: Installing Module._load hook for future requires');
       const self = this;
       this.originalLoad = (Module as any)._load;
 
@@ -56,7 +52,6 @@ export class ModuleLoaderPatcher {
 
   private patchExports(exp: any, spec: string): void {
     if (!exp || exp.__patched__) {
-      Logger.debug(`ModuleLoaderPatcher: Module ${spec} already patched or invalid, skipping`);
       return;
     }
 

@@ -53,7 +53,6 @@ export class ExtensionsRepository {
       Logger.debug('ExtensionsRepository: Building extensions repository...');
 
       const vsCodeExtensions = vscode.extensions.all;
-      Logger.debug(`ExtensionsRepository: Found ${vsCodeExtensions.length} total extensions`);
 
       this._extensions.clear();
 
@@ -73,8 +72,6 @@ export class ExtensionsRepository {
 
         this._extensions.set(versionedId, extensionInfo);
       }
-
-      Logger.debug(`ExtensionsRepository: Successfully loaded ${this._extensions.size} extensions`);
     } catch (error) {
       Logger.error('ExtensionsRepository: Failed to build repository', error as Error);
     }
