@@ -10,9 +10,10 @@ import { Logger } from '../../logger';
 import { Extension, ExtensionsRepository } from '../../extensions';
 import { HeuristicResult, RiskLevel } from '../../heuristics';
 import { ExtensionChangeListener } from '../extension-lifecycle-service';
-import { ExtensionStateTracker, ExtensionChange } from './ocsf-tracker-helper';
-import { OCSFActivityID } from './ocsf-types';
+import { ExtensionStateTracker, ExtensionChange } from '../extension-state-tracker';
+import { buildAppSecurityPostureFinding } from './ocsf-builder';
 import { DatadogTransport } from './datadog-transport';
+import { ExtensionActivityID } from '../extension-state-tracker';
 
 /**
  * Tracks extension changes and sends OCSF events to datadog agent
@@ -57,7 +58,7 @@ export class OCSFTracker implements ExtensionChangeListener {
         Logger.info(`OCSFTracker: Processing ${changes.length} change(s):`);
         for (const change of changes) {
           Logger.info(
-            `\t\t${OCSFActivityID[change.changeType]}: ${change.displayName}${change.oldVersion ? ` (${change.oldVersion} → ${change.newVersion})` : ` v${change.newVersion}`}`,
+            `\t\t${ExtensionActivityID[change.changeType]}: ${change.displayName}${change.oldVersion ? ` (${change.oldVersion} → ${change.newVersion})` : ` v${change.newVersion}`}`,
           );
         }
 
@@ -76,15 +77,15 @@ export class OCSFTracker implements ExtensionChangeListener {
   private async processChanges(changes: ExtensionChange[]): Promise<void> {
     for (const change of changes) {
       try {
-        if (change.changeType === OCSFActivityID.CLOSE) {
+        if (change.changeType === ExtensionActivityID.CLOSE) {
           await this.handleClose(change);
-        } else if (change.changeType === OCSFActivityID.CREATE || change.changeType === OCSFActivityID.UPDATE) {
+        } else if (
+          change.extension &&
+          (change.changeType === ExtensionActivityID.CREATE || change.changeType === ExtensionActivityID.UPDATE)
+        ) {
           // TODO: For CREATE and UPDATE, we need to re-analyze the extension first
-          Logger.debug(
-            `OCSFTracker: ${OCSFActivityID[change.changeType]} event for ${change.displayName} will be sent during next analysis`,
-          );
+          // then send the OCSF event and sync with sidebar display
         }
-        // TODO: send OCSF event
       } catch (error) {
         Logger.error(`OCSFTracker: Failed to process change for ${change.displayName}`, error as Error);
       }
@@ -97,29 +98,22 @@ export class OCSFTracker implements ExtensionChangeListener {
   private async handleClose(change: ExtensionChange): Promise<void> {
     const state = this.stateTracker.getState(change.displayName);
     if (state) {
-      Logger.info(`OCSFTracker: Extension ${change.displayName} uninstalled, marking as closed`);
+      Logger.info(`OCSFTracker: Extension ${change.displayName} uninstalled, sending CLOSE event`);
+
+      // TODO: Build and send OCSF CLOSE event with proper resource data
+      // For now, just mark as closed in state
       await this.stateTracker.markAsClosed(change.displayName);
-    }
-  }
-
-  /**
-   * Can also be called externally (e.g., during mass metadata analysis after a rule set update)
-   */
-  async sendOCSFEvent(result: HeuristicResult, extension: Extension): Promise<void> {
-    try {
-      const { event, activity } = this.stateTracker.buildOCSFEvent(extension, result);
-      await this.transport.send([event]);
-      await this.stateTracker.updateState(extension, result, activity);
-
-      Logger.info(
-        `OCSFTracker: OCSF App Security Posture Finding sent for ${extension.displayName} (${OCSFActivityID[activity]})`,
-      );
-    } catch (error) {
-      Logger.error(`OCSFTracker: Failed to send OCSF event for ${extension.displayName}`, error as Error);
     }
   }
 
   getStateTracker(): ExtensionStateTracker {
     return this.stateTracker;
+  }
+
+  /**
+   * Build and return an OCSF event for an extension with appropriate activity
+   */
+  buildOCSFEvent(extension: Extension, result: HeuristicResult, activity: ExtensionActivityID) {
+    return buildAppSecurityPostureFinding(result, extension, activity);
   }
 }

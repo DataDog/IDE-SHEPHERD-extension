@@ -4,11 +4,15 @@
  */
 
 import * as vscode from 'vscode';
-import { Logger } from '../../logger';
-import { Extension } from '../../extensions';
-import { HeuristicResult, RiskLevel } from '../../heuristics';
-import { buildAppSecurityPostureFinding } from './ocsf-builder';
-import { OCSFActivityID } from './ocsf-types';
+import { Logger } from '../logger';
+import { Extension } from '../extensions';
+import { HeuristicResult, RiskLevel } from '../heuristics';
+
+export enum ExtensionActivityID {
+  CREATE = 1,
+  UPDATE = 2,
+  CLOSE = 3,
+}
 
 interface ExtensionState {
   displayName: string; // extension.id is versioned hence we use the display names
@@ -21,7 +25,7 @@ interface ExtensionState {
 
 export interface ExtensionChange {
   displayName: string;
-  changeType: OCSFActivityID;
+  changeType: ExtensionActivityID;
   oldVersion?: string;
   newVersion?: string;
   extension?: Extension;
@@ -43,10 +47,6 @@ export class ExtensionStateTracker {
 
   public loadStates(): void {
     try {
-      Logger.info(`📖 ExtensionStateTracker.loadStates(): Starting load...`);
-      Logger.info(`   Storage type: globalState`);
-      Logger.info(`   Storage key: "${ExtensionStateTracker.STORAGE_KEY}"`);
-
       const stored = this.context.globalState.get<Record<string, ExtensionState>>(
         ExtensionStateTracker.STORAGE_KEY,
         {},
@@ -68,32 +68,7 @@ export class ExtensionStateTracker {
     }
   }
 
-  /**
-   * Determine the OCSF activity for an extension based on state changes
-   */
-  determineActivity(extension: Extension, result: HeuristicResult): OCSFActivityID {
-    const previousState = this.states.get(extension.displayName);
-
-    if (!previousState) {
-      return OCSFActivityID.CREATE;
-    }
-    // We track updates based on versions and risk assessment
-    const currentVersion = extension.packageJSON?.version || 'unknown';
-    if (previousState.version !== currentVersion) {
-      return OCSFActivityID.UPDATE;
-    }
-    if (
-      // For now, we'll ignore changes in the patterns themselves
-      previousState.riskLevel !== result.overallRisk ||
-      previousState.patternsCount !== result.suspiciousPatterns.length
-    ) {
-      return OCSFActivityID.UPDATE;
-    }
-
-    return OCSFActivityID.CREATE;
-  }
-
-  async updateState(extension: Extension, result: HeuristicResult, activity: OCSFActivityID): Promise<void> {
+  async updateState(extension: Extension, result: HeuristicResult, activity: ExtensionActivityID): Promise<void> {
     const state: ExtensionState = {
       displayName: extension.displayName,
       version: extension.packageJSON?.version || 'unknown',
@@ -107,7 +82,7 @@ export class ExtensionStateTracker {
     await this.saveStates();
 
     Logger.debug(
-      `ExtensionStateTracker: Updated state for ${extension.displayName} v${state.version} (activity: ${OCSFActivityID[activity]})`,
+      `ExtensionStateTracker: Updated state for ${extension.displayName} v${state.version} (activity: ${ExtensionActivityID[activity]})`,
     );
   }
 
@@ -137,7 +112,7 @@ export class ExtensionStateTracker {
         // NEW extension
         changes.push({
           displayName: ext.displayName,
-          changeType: OCSFActivityID.CREATE,
+          changeType: ExtensionActivityID.CREATE,
           newVersion: currentVersion,
           extension: ext,
         });
@@ -145,7 +120,7 @@ export class ExtensionStateTracker {
         // VERSION CHANGE
         changes.push({
           displayName: ext.displayName,
-          changeType: OCSFActivityID.UPDATE,
+          changeType: ExtensionActivityID.UPDATE,
           oldVersion: previousState.version,
           newVersion: currentVersion,
           extension: ext,
@@ -156,7 +131,7 @@ export class ExtensionStateTracker {
     // Check for CLOSE (uninstalled)
     for (const [displayName, state] of this.states.entries()) {
       if (!currentDisplayNames.has(displayName)) {
-        changes.push({ displayName, changeType: OCSFActivityID.CLOSE, oldVersion: state.version });
+        changes.push({ displayName, changeType: ExtensionActivityID.CLOSE, oldVersion: state.version });
       }
     }
 
@@ -167,19 +142,9 @@ export class ExtensionStateTracker {
     return this.states.get(displayName);
   }
 
-  /**
-   * Build and return an OCSF event for an extension with appropriate activity
-   */
-  buildOCSFEvent(extension: Extension, result: HeuristicResult) {
-    const activity = this.determineActivity(extension, result);
-    return { event: buildAppSecurityPostureFinding(result, extension, activity), activity };
-  }
-
   async clearStates(): Promise<void> {
     this.states.clear();
     await this.saveStates();
     Logger.info('ExtensionStateTracker: All states cleared');
   }
-
-  // TODO: handle metadata analysis changes
 }

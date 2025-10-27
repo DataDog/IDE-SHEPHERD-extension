@@ -6,6 +6,7 @@
 import { SeverityLevel } from '../../events/sec-events';
 import { RiskLevel } from '../../heuristics';
 import { CONFIG } from '../../config';
+import { ExtensionActivityID } from '../extension-state-tracker';
 
 // OCSF Category UIDs
 export enum OCSFCategoryUID {
@@ -17,14 +18,6 @@ export enum OCSFClassUID {
   DETECTION_FINDING = 2004,
   APP_SECURITY_POSTURE_FINDING = 2007,
 }
-
-// OCSF Activity IDs
-export enum OCSFActivityID {
-  CREATE = 1,
-  UPDATE = 2,
-  CLOSE = 3,
-}
-
 // OCSF Severity IDs
 export enum OCSFSeverityID {
   INFO = 1,
@@ -110,7 +103,7 @@ export interface OCSFApplication {
  * Base OCSF Finding Event
  */
 export interface OCSFBaseFinding {
-  activity_id: OCSFActivityID;
+  activity_id: ExtensionActivityID;
   category_uid: OCSFCategoryUID;
   class_uid: OCSFClassUID;
   severity_id: OCSFSeverityID;
@@ -169,7 +162,7 @@ export function riskLevelToOCSF(risk: RiskLevel): OCSFSeverityID {
   }
 }
 
-export function createTypeUID(classUID: OCSFClassUID, activityID: OCSFActivityID): number {
+export function createTypeUID(classUID: OCSFClassUID, activityID: ExtensionActivityID): number {
   return classUID * 100 + activityID;
 }
 
