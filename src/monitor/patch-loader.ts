@@ -4,7 +4,6 @@
  * will receive config params and pass them to the hooks
  */
 
-import { ExtensionInfo } from '../lib/events/ext-events';
 import { Logger } from '../lib/logger';
 import { CONFIG } from '../lib/config';
 import { patchHttpExports } from './instrumentations/http-client-instrument';
@@ -54,8 +53,6 @@ export class ModuleLoaderPatcher {
     if (!exp || exp.__patched__) {
       return;
     }
-
-    Logger.debug(`ModuleLoaderPatcher: Patching exports for module: ${spec}`);
 
     try {
       if (CONFIG.MODULES.HTTP_MODULES.includes(spec)) {

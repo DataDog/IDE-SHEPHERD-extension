@@ -131,17 +131,6 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
       portItem.tooltip = `Datadog Agent listening on port ${port}`;
       portItem.contextValue = 'info';
       items.push(portItem);
-
-      // Send telemetry - only show if not pending restart
-      if (!isPendingRestart) {
-        const sendItem = new vscode.TreeItem('Send Telemetry Data', vscode.TreeItemCollapsibleState.None);
-        sendItem.id = 'datadog.send';
-        sendItem.iconPath = new vscode.ThemeIcon('cloud-upload');
-        sendItem.command = { command: 'ide-shepherd.datadog.sendTelemetry', title: 'Send Telemetry' };
-        sendItem.tooltip = 'Send all telemetry data to Datadog';
-        sendItem.contextValue = 'action';
-        items.push(sendItem);
-      }
     }
 
     return items;
