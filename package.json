@@ -120,12 +120,6 @@
         "icon": "$(remove)"
       },
       {
-        "command": "ide-shepherd.datadog.sendTelemetry",
-        "title": "Send Telemetry Data to Datadog",
-        "category": "IDE Shepherd",
-        "icon": "$(cloud-upload)"
-      },
-      {
         "command": "ide-shepherd.settings.refresh",
         "title": "Refresh Settings",
         "category": "IDE Shepherd",
@@ -185,10 +179,6 @@
         },
         {
           "command": "ide-shepherd.clearAllowList",
-          "when": "true"
-        },
-        {
-          "command": "ide-shepherd.datadog.sendTelemetry",
           "when": "true"
         },
         {
