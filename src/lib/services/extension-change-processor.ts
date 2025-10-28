@@ -23,8 +23,6 @@ export interface ProcessedChange {
 export class ExtensionChangeProcessorService {
   private static _instance: ExtensionChangeProcessorService;
 
-  private constructor() {}
-
   static getInstance(): ExtensionChangeProcessorService {
     if (!ExtensionChangeProcessorService._instance) {
       ExtensionChangeProcessorService._instance = new ExtensionChangeProcessorService();
