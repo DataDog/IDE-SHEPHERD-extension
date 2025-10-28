@@ -10,6 +10,7 @@ import { IDEStatus, IDEStatusData, PlatformType } from '../ide-status';
 import { SidebarService } from './sidebar-service';
 import { CONFIG } from '../config';
 import { Logger } from '../logger';
+import { DatadogTelemetryService } from './datadog/datadog-service';
 
 const AUTO_REFRESH_CONFIG = CONFIG.UI.AUTO_REFRESH;
 
@@ -146,6 +147,11 @@ export class IDEStatusService {
     } finally {
       this.releaseLock();
     }
+
+    // Send OCSF Detection Finding to Datadog
+    this.sendSecurityEventToDatadog(event).catch((error) => {
+      Logger.error(`Failed to send security event to Datadog: ${error}`);
+    });
 
     this.autoRefreshStatusDisplay().catch((error) => {
       Logger.error(`Failed to refresh after security event: ${error}`);
@@ -305,5 +311,21 @@ export class IDEStatusService {
       return `${minutes}m ${seconds % 60}s`;
     }
     return `${seconds}s`;
+  }
+
+  /**
+   * Send security event to Datadog via OCSFTracker
+   */
+  private static async sendSecurityEventToDatadog(event: SecurityEvent): Promise<void> {
+    try {
+      const datadogService = DatadogTelemetryService.getInstance();
+      const ocsfTracker = datadogService.getOCSFTracker();
+
+      if (ocsfTracker) {
+        await ocsfTracker.onSecurityEvent(event);
+      }
+    } catch (error) {
+      Logger.error('Failed to send security event to Datadog', error as Error);
+    }
   }
 }

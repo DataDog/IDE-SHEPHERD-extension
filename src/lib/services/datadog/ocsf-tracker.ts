@@ -12,8 +12,9 @@ import { HeuristicResult, RiskLevel } from '../../heuristics';
 import { ExtensionChangeListener } from '../extension-lifecycle-service';
 import { ExtensionStateTracker, ExtensionChange, ExtensionActivityID } from '../extension-state-tracker';
 import { ExtensionChangeProcessorService, ProcessedChange } from '../extension-change-processor';
-import { buildAppSecurityPostureFinding } from './ocsf-builder';
+import { buildAppSecurityPostureFinding, buildDetectionFinding } from './ocsf-builder';
 import { DatadogTransport } from './datadog-transport';
+import { SecurityEvent } from '../../events/sec-events';
 
 /**
  * Tracks extension changes and sends OCSF events to datadog agent
@@ -79,7 +80,7 @@ export class OCSFTracker implements ExtensionChangeListener {
     const processedChanges = await this.processor.processChanges(changes, this.stateTracker);
     for (const processed of processedChanges) {
       try {
-        await this.sendOCSFEvent(processed);
+        await this.sendAppSecurityPostureEvent(processed);
       } catch (error) {
         Logger.error(`OCSFTracker: Failed to send OCSF event for ${processed.change.displayName}`, error as Error);
       }
@@ -89,7 +90,7 @@ export class OCSFTracker implements ExtensionChangeListener {
   /**
    * Send OCSF event to Datadog agent
    */
-  private async sendOCSFEvent(processed: ProcessedChange): Promise<void> {
+  private async sendAppSecurityPostureEvent(processed: ProcessedChange): Promise<void> {
     if (!this.transport.isEnabled()) {
       Logger.debug(
         `OCSFTracker: Telemetry disabled, skipping OCSF event for ${processed.change.displayName} (${ExtensionActivityID[processed.activity]})`,
@@ -140,5 +141,28 @@ export class OCSFTracker implements ExtensionChangeListener {
 
   buildOCSFEvent(extension: Extension, result: HeuristicResult, activity: ExtensionActivityID) {
     return buildAppSecurityPostureFinding(result, extension, activity);
+  }
+
+  /**
+   * Handle security event and send OCSF Detection Finding to Datadog
+   */
+  async onSecurityEvent(securityEvent: SecurityEvent): Promise<void> {
+    if (!this.transport.isEnabled()) {
+      return;
+    }
+
+    try {
+      Logger.info(
+        `OCSFTracker: Sending Detection Finding for security event ${securityEvent.secEventId} (Extension: ${securityEvent.extension.id}, Severity: ${securityEvent.severity})`,
+      );
+
+      const ocsfEvent = buildDetectionFinding(securityEvent, ExtensionActivityID.CREATE);
+      await this.transport.send([ocsfEvent]);
+    } catch (error) {
+      Logger.error(
+        `OCSFTracker: Failed to send OCSF Detection Finding for security event ${securityEvent.secEventId}`,
+        error as Error,
+      );
+    }
   }
 }
