@@ -1,43 +1,35 @@
-import { IoC, SeverityLevel, SecurityEvent } from '../../lib/events/sec-events';
+import { BaseAnalyzer, AnalysisResult } from './analyzer';
 import { NetworkEvent } from '../../lib/events/network-events';
-import { Logger } from '../../lib/logger';
-import { IDEStatusService } from '../../lib/services/ide-status-service';
-import { AnalysisResult } from './analyzer';
-import { NETWORK_RULES, NetworkRuleType, LOCAL_IP_PATTERN, WILDCARD_IP_PATTERN } from '../../detection/network-rules';
+import {
+  NETWORK_RULES,
+  NetworkRule,
+  NetworkRuleType,
+  LOCAL_IP_PATTERN,
+  WILDCARD_IP_PATTERN,
+} from '../../detection/network-rules';
 
-export class NetworkAnalyzer {
-  analyze(ev: NetworkEvent): AnalysisResult | undefined {
-    const startTime = Date.now();
+export class NetworkAnalyzer extends BaseAnalyzer<NetworkEvent, NetworkRule> {
+  protected readonly analyzerName = 'NetworkAnalyzer';
 
-    try {
-      let result = new AnalysisResult();
-
-      if (ev.phase === 'request:pre') {
-        result = this.analyzeUrl(ev);
-      }
-
-      result = result.checkAgainstAllowList(ev.extension.id, ev.url, 'NetworkAnalyzer');
-
-      const endTime = Date.now();
-      const processingTime = endTime - startTime; // in ms
-      IDEStatusService.updatePerformanceMetrics(processingTime).catch((error) => {
-        Logger.error(`NetworkAnalyzer: Failed to record processing time: ${error.message}`);
-      });
-
-      return result;
-    } catch (error) {
-      Logger.error('NetworkAnalyzer: Error during analysis', error as Error);
-      return new AnalysisResult();
-    }
+  protected getContext(event: NetworkEvent): string {
+    return event.url; // TODO: extend this to include payload content
   }
 
-  private analyzeUrl(ev: NetworkEvent): AnalysisResult {
-    const url = ev.url;
+  protected executeRuleChecks(event: NetworkEvent): AnalysisResult {
+    if (event.phase === 'request:pre') {
+      return this.analyzeUrl(event);
+    }
+
+    return new AnalysisResult();
+  }
+
+  private analyzeUrl(event: NetworkEvent): AnalysisResult {
+    const url = event.url;
 
     // Check all URL-based rules
     for (const rule of NETWORK_RULES) {
       if (rule.type === NetworkRuleType.URL) {
-        const result = this.checkRule(url, ev, rule);
+        const result = this.checkUrlRule(url, event, rule);
         if (result) {
           return result;
         }
@@ -47,7 +39,7 @@ export class NetworkAnalyzer {
     // Check IP-based rules (with special filtering)
     const ipRule = NETWORK_RULES.find((r) => r.id === 'external_ip');
     if (ipRule) {
-      const result = this.checkExternalIp(url, ev, ipRule);
+      const result = this.checkExternalIpRule(url, event, ipRule);
       if (result) {
         return result;
       }
@@ -56,48 +48,28 @@ export class NetworkAnalyzer {
     return new AnalysisResult();
   }
 
-  private checkRule(url: string, ev: NetworkEvent, rule: (typeof NETWORK_RULES)[0]): AnalysisResult | null {
+  private checkUrlRule(url: string, event: NetworkEvent, rule: NetworkRule): AnalysisResult | null {
     const match = url.match(rule.pattern);
-    if (match) {
-      const matchedValue = match[0];
-      return new AnalysisResult(
-        { allowed: false },
-        new SecurityEvent(ev, ev.extension, rule.severity, rule.type, [
-          {
-            finding: matchedValue,
-            rule: rule.name,
-            description: `${rule.description}: ${matchedValue}`,
-            confidence: rule.confidence,
-            severity: rule.severity,
-          },
-        ]),
-      );
+    if (!match) {
+      return null;
     }
 
-    return null;
+    const matchedValue = match[0];
+    const description = `${rule.description}: ${matchedValue}`;
+    return this.createViolation(event, event.extension, rule, matchedValue, description);
   }
 
-  private checkExternalIp(url: string, ev: NetworkEvent, rule: (typeof NETWORK_RULES)[0]): AnalysisResult | null {
+  private checkExternalIpRule(url: string, event: NetworkEvent, rule: NetworkRule): AnalysisResult | null {
     const ipMatch = url.match(rule.pattern);
     const localMatch = url.match(LOCAL_IP_PATTERN);
     const wildMatch = url.match(WILDCARD_IP_PATTERN);
 
-    if (ipMatch && !localMatch && !wildMatch) {
-      const matchedIp = ipMatch[0];
-      return new AnalysisResult(
-        { allowed: false },
-        new SecurityEvent(ev, ev.extension, rule.severity, rule.type, [
-          {
-            finding: matchedIp,
-            rule: rule.name,
-            description: `${rule.description}: ${matchedIp}`,
-            confidence: rule.confidence,
-            severity: rule.severity,
-          },
-        ]),
-      );
+    if (!ipMatch || localMatch || wildMatch) {
+      return null;
     }
 
-    return null;
+    const matchedIp = ipMatch[0];
+    const description = `${rule.description}: ${matchedIp}`;
+    return this.createViolation(event, event.extension, rule, matchedIp, description);
   }
 }

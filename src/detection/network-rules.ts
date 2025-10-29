@@ -2,23 +2,17 @@
  * Network Rules - Rule definitions for network traffic analysis
  */
 
-import { SeverityLevel } from '../lib/events/sec-events';
+import { BaseRule, createRuleHelpers } from './rules';
 import { Target } from '../lib/events/ext-events';
+import { SeverityLevel } from '../lib/events/sec-events';
 
 export enum NetworkRuleType {
   URL = 'URL',
   IP = 'IP',
 }
 
-export interface NetworkRule {
-  id: string;
-  name: string;
-  description: string;
-  type: NetworkRuleType;
-  target: Target;
-  severity: SeverityLevel;
+export interface NetworkRule extends BaseRule<NetworkRuleType> {
   pattern: RegExp;
-  confidence: number;
 }
 
 /**
@@ -93,18 +87,9 @@ export const LOCAL_IP_PATTERN =
   /(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|169\.254\.)\d{1,3}\.\d{1,3}\.\d{1,3}/;
 export const WILDCARD_IP_PATTERN = /[0\.0\.0\.0]/;
 
-export function getRuleById(id: string): NetworkRule | undefined {
-  return NETWORK_RULES.find((rule) => rule.id === id);
-}
+const helpers = createRuleHelpers(NETWORK_RULES);
 
-export function getRulesByType(type: NetworkRuleType): NetworkRule[] {
-  return NETWORK_RULES.filter((rule) => rule.type === type);
-}
-
-export function getRulesBySeverity(severity: SeverityLevel): NetworkRule[] {
-  return NETWORK_RULES.filter((rule) => rule.severity === severity);
-}
-
-export function getAllRules(): NetworkRule[] {
-  return [...NETWORK_RULES];
-}
+export const getRuleById = helpers.getRuleById;
+export const getRulesByType = helpers.getRulesByType;
+export const getRulesBySeverity = helpers.getRulesBySeverity;
+export const getAllRules = helpers.getAllRules;

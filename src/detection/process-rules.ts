@@ -2,24 +2,18 @@
  * Process Rules - Rule definitions for process execution analysis
  */
 
-import { SeverityLevel } from '../lib/events/sec-events';
+import { BaseRule, createRuleHelpers } from './rules';
 import { Target } from '../lib/events/ext-events';
+import { SeverityLevel } from '../lib/events/sec-events';
 
 export enum ProcessRuleType {
   COMMAND = 'COMMAND',
   SCRIPT = 'SCRIPT',
 }
 
-export interface ProcessRule {
-  id: string;
-  name: string;
-  description: string;
-  type: ProcessRuleType;
-  target: Target;
-  severity: SeverityLevel;
+export interface ProcessRule extends BaseRule<ProcessRuleType> {
   commandPattern: RegExp;
   flagPattern?: RegExp; // secondary pattern for command flags
-  confidence: number;
 }
 
 /**
@@ -52,18 +46,9 @@ export const PROCESS_RULES: ProcessRule[] = [
   },
 ];
 
-export function getRuleById(id: string): ProcessRule | undefined {
-  return PROCESS_RULES.find((rule) => rule.id === id);
-}
+const helpers = createRuleHelpers(PROCESS_RULES);
 
-export function getRulesByType(type: ProcessRuleType): ProcessRule[] {
-  return PROCESS_RULES.filter((rule) => rule.type === type);
-}
-
-export function getRulesBySeverity(severity: SeverityLevel): ProcessRule[] {
-  return PROCESS_RULES.filter((rule) => rule.severity === severity);
-}
-
-export function getAllRules(): ProcessRule[] {
-  return [...PROCESS_RULES];
-}
+export const getRuleById = helpers.getRuleById;
+export const getRulesByType = helpers.getRulesByType;
+export const getRulesBySeverity = helpers.getRulesBySeverity;
+export const getAllRules = helpers.getAllRules;
