@@ -8,6 +8,7 @@ import { Logger } from '../lib/logger';
 import { CONFIG } from '../lib/config';
 import { patchHttpExports } from './instrumentations/http-client-instrument';
 import { patchChildProcess } from './instrumentations/child-process-instrument';
+import { patchGlobalEval } from './instrumentations/eval-instrument';
 import { Protocol } from '../lib/events/network-events';
 
 const { Module } = require('module');
@@ -24,7 +25,10 @@ export class ModuleLoaderPatcher {
     }
 
     try {
+      patchGlobalEval();
+
       // patch Module._load for future requires
+      Logger.info('ModuleLoaderPatcher: Installing Module._load hook for future requires');
       const self = this;
       this.originalLoad = (Module as any)._load;
 

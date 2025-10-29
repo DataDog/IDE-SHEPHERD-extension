@@ -19,8 +19,14 @@ export function patchGlobalEval(): void {
     return;
   }
 
-  const originalEval = globalThis.eval;
+  // Store reference to original eval
+  const indirectEval = globalThis.eval;
   const evalAnalyzer = new EvalAnalyzer();
+
+  // indirect eval runs in global scope whereas require might not be defined :')
+  if (typeof global.require === 'undefined' && typeof require !== 'undefined') {
+    global.require = require;
+  }
 
   globalThis.eval = function patchedEval(code: string): unknown {
     const callContext = ExtensionServices.getCallContext();
@@ -41,7 +47,7 @@ export function patchGlobalEval(): void {
       throw new Error('eval() blocked by security policy');
     }
 
-    return originalEval.call(this, code);
+    return indirectEval(code);
   };
 
   global.__evalPatched__ = true;

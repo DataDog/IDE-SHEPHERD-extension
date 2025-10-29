@@ -27,8 +27,8 @@ export const EVAL_RULES: EvalRule[] = [
     type: EvalRuleType.CODE_LENGTH,
     target: Target.EVAL,
     severity: SeverityLevel.MEDIUM,
-    maxLength: 100,
-    confidence: 1,
+    maxLength: 300,
+    confidence: 0.8,
   },
 ];
 

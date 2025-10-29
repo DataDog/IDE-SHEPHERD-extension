@@ -69,7 +69,7 @@ export function patchChildProcess(
     IDEStatusService.updatePatchedExtension(extensionInfo).catch((error) => {
       Logger.warn(`ModuleLoaderPatcher: Failed to update extension status for ${extensionInfo.id}: ${error.message}`);
     });
-
+    Logger.debug(`Child-Process Plugin: analyzing exec(): ${command}`);
     const analysis = processAnalyzer.analyze(new ExecEvent(command, [], options, __filename, extensionInfo));
 
     if (analysis && !analysis.verdict.allowed && analysis.securityEvent) {
