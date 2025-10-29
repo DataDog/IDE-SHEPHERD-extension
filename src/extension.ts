@@ -10,6 +10,7 @@ import { IDEStatusService } from './lib/services/ide-status-service';
 import { SidebarService } from './lib/services/sidebar-service';
 import { AllowListService } from './lib/services/allowlist-service';
 import { DatadogTelemetryService } from './lib/services/datadog/datadog-service';
+import { ExtensionChangeService } from './lib/services/extension-lifecycle-service';
 
 export function activate(context: vscode.ExtensionContext) {
   try {
@@ -26,6 +27,14 @@ export function activate(context: vscode.ExtensionContext) {
     const datadogService = DatadogTelemetryService.getInstance();
     datadogService.initialize(context).then(() => {
       Logger.info('IDE Shepherd Extension: Datadog Telemetry Service initialized');
+      const extensionChangeService = ExtensionChangeService.getInstance();
+      const ocsfTracker = datadogService.getOCSFTracker();
+
+      if (ocsfTracker) {
+        extensionChangeService.registerListener(ocsfTracker);
+      } else {
+        Logger.error('OCSF tracker is undefined! Cannot register.');
+      }
     });
 
     const sidebarService = SidebarService.getInstance();

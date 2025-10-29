@@ -9,7 +9,6 @@ import { Target } from '../../events/ext-events';
 import {
   OCSFDetectionFinding,
   OCSFAppSecurityPostureFinding,
-  OCSFActivityID,
   OCSFCategoryUID,
   OCSFClassUID,
   OCSFStatusID,
@@ -20,13 +19,14 @@ import {
   createTypeUID,
   createOCSFMetadata,
 } from './ocsf-types';
+import { ExtensionActivityID } from '../extension-state-tracker';
 
 /**
  * Build OCSF Detection Finding from SecurityEvent
  */
 export function buildDetectionFinding(
   securityEvent: SecurityEvent,
-  activity: OCSFActivityID = OCSFActivityID.CREATE,
+  activity: ExtensionActivityID = ExtensionActivityID.CREATE,
 ): OCSFDetectionFinding {
   const primaryIoC = securityEvent.getPrimaryIoC();
 
@@ -49,7 +49,7 @@ export function buildDetectionFinding(
       type_id: getObservableType(securityEvent.originalEvent.eventType),
       value: ioc.finding,
     })),
-    status_id: activity === OCSFActivityID.CLOSE ? OCSFStatusID.RESOLVED : OCSFStatusID.NEW,
+    status_id: activity === ExtensionActivityID.CLOSE ? OCSFStatusID.RESOLVED : OCSFStatusID.NEW,
     isAlert: true,
   };
 }
@@ -60,7 +60,7 @@ export function buildDetectionFinding(
 export function buildAppSecurityPostureFinding(
   result: HeuristicResult,
   extension: Extension,
-  activity: OCSFActivityID = OCSFActivityID.CREATE,
+  activity: ExtensionActivityID = ExtensionActivityID.CREATE,
 ): OCSFAppSecurityPostureFinding {
   return {
     activity_id: activity,
@@ -87,7 +87,7 @@ export function buildAppSecurityPostureFinding(
       type_id: getObservableType(pattern.category),
       value: pattern.description,
     })),
-    status_id: activity === OCSFActivityID.CLOSE ? OCSFStatusID.RESOLVED : OCSFStatusID.NEW,
+    status_id: activity === ExtensionActivityID.CLOSE ? OCSFStatusID.RESOLVED : OCSFStatusID.NEW,
     isAlert: result.overallRisk === RiskLevel.High || result.overallRisk === RiskLevel.Medium,
   };
 }

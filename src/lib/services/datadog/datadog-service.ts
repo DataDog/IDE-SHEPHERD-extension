@@ -14,6 +14,7 @@ import { IDEStatusService } from '../ide-status-service';
 import { DatadogTransport } from './datadog-transport';
 import { TelemetryBuilder } from './telemetry-builder';
 import { TelemetryMetadata, TelemetryLogItem } from './types';
+import { OCSFTracker } from './ocsf-tracker';
 
 /**
  * Main Datadog Telemetry Service
@@ -24,6 +25,7 @@ export class DatadogTelemetryService {
   private _context?: vscode.ExtensionContext;
   private _transport: DatadogTransport;
   private _builder: TelemetryBuilder;
+  private _ocsfTracker?: OCSFTracker;
 
   private constructor() {
     this._transport = new DatadogTransport();
@@ -43,12 +45,20 @@ export class DatadogTelemetryService {
       this._context = context;
       const config = this._transport.getConfig();
 
+      this._ocsfTracker = new OCSFTracker(context, this._transport);
+
       if (config.isEnabled && config.agentPort) {
-        Logger.info(`DatadogTelemetryService: Initialized - enabled on port ${config.agentPort}`);
+        Logger.info(`DatadogTelemetryService: Initialized with OCSF tracking - enabled on port ${config.agentPort}`);
+      } else {
+        Logger.info('DatadogTelemetryService: Initialized (telemetry disabled, state tracking active)');
       }
     } catch (error) {
       Logger.error('DatadogTelemetryService: Failed to initialize', error as Error);
     }
+  }
+
+  getOCSFTracker(): OCSFTracker | undefined {
+    return this._ocsfTracker;
   }
 
   isEnabled(): boolean {
