@@ -25,6 +25,7 @@ export class ExtensionInfo {
 export enum Target {
   NETWORK = 'Network',
   PROCESS = 'Process',
+  EVAL = 'Eval',
 }
 
 export namespace Target {

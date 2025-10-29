@@ -14,6 +14,7 @@ export enum BlockedOperationType {
   EXEC = 'exec',
   SPAWN = 'spawn',
   EXEC_SYNC = 'execSync',
+  EVAL = 'eval',
 }
 
 export class NotificationService {

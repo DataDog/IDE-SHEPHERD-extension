@@ -33,7 +33,7 @@ export class IDEStatusService {
     return {
       patchedExtensions: [],
       totalSecurityEvents: 0,
-      securityEventsByTarget: { [Target.NETWORK]: 0, [Target.PROCESS]: 0 },
+      securityEventsByTarget: { [Target.NETWORK]: 0, [Target.PROCESS]: 0, [Target.EVAL]: 0 },
       lastSecurityEvents: [],
       monitoringStartTime: Date.now(),
       lastUpdateTime: Date.now(),
