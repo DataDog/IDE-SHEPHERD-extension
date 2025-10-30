@@ -26,7 +26,7 @@ const QUEUE_STORAGE_KEY = 'ide-shepherd.ocsfEventQueue';
  */
 export class OCSFTracker implements ExtensionChangeListener {
   private stateTracker: ExtensionStateTracker;
-  private transport: DatadogTransport;
+  public transport: DatadogTransport;
   private context: vscode.ExtensionContext;
   private processor: ExtensionChangeProcessorService;
   private eventQueue: (OCSFDetectionFinding | OCSFAppSecurityPostureFinding)[] = [];
