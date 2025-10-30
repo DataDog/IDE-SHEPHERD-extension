@@ -12,6 +12,7 @@ import {
   findAvailablePort,
   isShepherdConfigLoaded,
 } from '../datadog/agent-config';
+import { DatadogTelemetryService } from '../datadog/datadog-service';
 
 type SidebarTreeItem = vscode.TreeItem;
 
@@ -65,7 +66,18 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
     const config = vscode.workspace.getConfiguration('ide-shepherd.datadog');
     const items: SidebarTreeItem[] = [];
 
-    // Enabled status
+    const agentRunning = await isAgentRunning();
+
+    if (!agentRunning) {
+      const messageItem = new vscode.TreeItem('Datadog Agent Not Running', vscode.TreeItemCollapsibleState.None);
+      messageItem.iconPath = new vscode.ThemeIcon('error');
+      messageItem.tooltip = 'Please start the Datadog Agent to enable telemetry';
+      messageItem.contextValue = 'info';
+      items.push(messageItem);
+      return items;
+    }
+
+    // Agent is running -> show telemetry controls
     const enabled = config.get<boolean>('isEnabled', false);
     const enabledItem = new vscode.TreeItem(
       `Telemetry: ${enabled ? 'Enabled' : 'Disabled'}`,
@@ -91,7 +103,6 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
 
     if (enabled || isPendingRestart) {
       // Agent status
-      const agentRunning = await isAgentRunning();
 
       let statusLabel: string;
       let statusIcon: string;
@@ -141,6 +152,22 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
    */
   async toggleDatadogTelemetry(): Promise<void> {
     try {
+      // Check if agent is running before allowing toggle
+      const agentRunning = await isAgentRunning();
+      if (!agentRunning) {
+        vscode.window
+          .showWarningMessage(
+            'Datadog Agent is not running. Please start the agent before enabling telemetry.',
+            'Learn More',
+          )
+          .then((selection) => {
+            if (selection === 'Learn More') {
+              vscode.env.openExternal(vscode.Uri.parse('https://docs.datadoghq.com/agent/'));
+            }
+          });
+        return;
+      }
+
       const config = vscode.workspace.getConfiguration('ide-shepherd.datadog');
       const currentValue = config.get<boolean>('isEnabled', false);
 
@@ -195,24 +222,10 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
 
   /**
    * Enable Datadog telemetry with automatic agent configuration
+   * Assumes agent is already running (checked by caller)
    */
   private async enableDatadogTelemetry(): Promise<void> {
     const config = vscode.workspace.getConfiguration('ide-shepherd.datadog');
-
-    const agentRunning = await isAgentRunning();
-    if (!agentRunning) {
-      // baby steps :)
-      const installAgent = await vscode.window.showWarningMessage(
-        'Datadog Agent is not running or not installed. Please install and start the Datadog Agent first.',
-        'Learn More',
-        'Cancel',
-      );
-
-      if (installAgent === 'Learn More') {
-        vscode.env.openExternal(vscode.Uri.parse('https://docs.datadoghq.com/agent/'));
-      }
-      return;
-    }
 
     let portToUse: number;
     try {
@@ -245,6 +258,14 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
 
     // Enable telemetry in settings
     await config.update('isEnabled', true, vscode.ConfigurationTarget.Global);
+
+    // Flush any queued events
+    const telemetryService = DatadogTelemetryService.getInstance();
+    const tracker = telemetryService.getOCSFTracker();
+    if (tracker) {
+      await tracker.flushQueuedEvents();
+    }
+
     vscode.window.showInformationMessage(`Datadog telemetry enabled on port ${portToUse}`);
     Logger.info(`SettingsViewProvider: Datadog telemetry enabled on port ${portToUse}`);
   }

@@ -15,8 +15,11 @@ import { ExtensionChangeProcessorService, ProcessedChange } from '../extension-c
 import { buildAppSecurityPostureFinding, buildDetectionFinding } from './ocsf-builder';
 import { DatadogTransport } from './datadog-transport';
 import { SecurityEvent } from '../../events/sec-events';
-import { RequiresTelemetry } from './telemetry-decorators';
 import { CatchErrors } from '../../decorators';
+import type { OCSFDetectionFinding, OCSFAppSecurityPostureFinding } from './ocsf-types';
+
+const MAX_QUEUE_SIZE = 100;
+const QUEUE_STORAGE_KEY = 'ide-shepherd.ocsfEventQueue';
 
 /**
  * Tracks extension changes and sends OCSF events to datadog agent
@@ -26,6 +29,7 @@ export class OCSFTracker implements ExtensionChangeListener {
   private transport: DatadogTransport;
   private context: vscode.ExtensionContext;
   private processor: ExtensionChangeProcessorService;
+  private eventQueue: Array<OCSFDetectionFinding | OCSFAppSecurityPostureFinding> = [];
 
   constructor(context: vscode.ExtensionContext, transport: DatadogTransport) {
     this.context = context;
@@ -33,8 +37,88 @@ export class OCSFTracker implements ExtensionChangeListener {
     this.stateTracker = new ExtensionStateTracker(context);
     this.processor = ExtensionChangeProcessorService.getInstance();
 
+    this.loadQueue();
+
     // Perform initial comparison to detect changes that happened while offline (mainly uninstallation)
     this.performInitialComparison();
+  }
+
+  private loadQueue(): void {
+    try {
+      const stored = this.context.globalState.get<Array<OCSFDetectionFinding | OCSFAppSecurityPostureFinding>>(
+        QUEUE_STORAGE_KEY,
+        [],
+      );
+
+      if (stored.length > 0) {
+        this.eventQueue = stored;
+        Logger.info(`OCSFTracker: Loaded ${stored.length} queued events from previous session`);
+      }
+    } catch (error) {
+      Logger.error('OCSFTracker: Failed to load queued events from storage', error as Error);
+      this.eventQueue = [];
+    }
+  }
+
+  /**
+   * Save queued events to persistent storage
+   */
+  private async saveQueue(): Promise<void> {
+    try {
+      await this.context.globalState.update(QUEUE_STORAGE_KEY, this.eventQueue);
+      Logger.debug(`OCSFTracker: Saved ${this.eventQueue.length} events to persistent storage`);
+    } catch (error) {
+      Logger.error('OCSFTracker: Failed to save queued events to storage', error as Error);
+    }
+  }
+
+  /**
+   * Flush all queued events to Datadog agent
+   */
+  async flushQueuedEvents(): Promise<void> {
+    this.loadQueue();
+
+    if (this.eventQueue.length === 0) {
+      return;
+    }
+
+    Logger.info(`OCSFTracker: Flushing ${this.eventQueue.length} queued events`);
+
+    try {
+      await this.transport.send(this.eventQueue);
+      Logger.info(`OCSFTracker: Successfully sent ${this.eventQueue.length} queued events`);
+      this.eventQueue = [];
+
+      await this.saveQueue();
+    } catch (error) {
+      Logger.error('OCSFTracker: Failed to flush queued events', error as Error);
+    }
+  }
+
+  /**
+   * Add event to queue (FIFO) if telemetry is disabled
+   * Returns true if event was queued, false if sent immediately
+   */
+  private async sendOrQueueOCSFEvent(event: OCSFDetectionFinding | OCSFAppSecurityPostureFinding): Promise<boolean> {
+    if (!this.transport.isEnabled()) {
+      this.loadQueue();
+
+      // Telemetry disabled -> queue the event
+      if (this.eventQueue.length >= MAX_QUEUE_SIZE) {
+        this.eventQueue.shift();
+        Logger.warn(`OCSFTracker: Queue full, dropping oldest event (queue size: ${MAX_QUEUE_SIZE})`);
+      }
+
+      this.eventQueue.push(event);
+      Logger.debug(`OCSFTracker: Event queued (queue size: ${this.eventQueue.length}/${MAX_QUEUE_SIZE})`);
+
+      await this.saveQueue();
+      return true;
+    }
+
+    // Telemetry enabled -> send immediately
+    await this.transport.send([event]);
+    return false;
   }
 
   /**
@@ -84,9 +168,8 @@ export class OCSFTracker implements ExtensionChangeListener {
   }
 
   /**
-   * Send OCSF event to Datadog agent
+   * Send or queue OCSF event for Datadog agent
    */
-  @RequiresTelemetry()
   private async sendAppSecurityPostureEvent(processed: ProcessedChange): Promise<void> {
     const change = processed.change;
     const activity = processed.activity;
@@ -101,14 +184,20 @@ export class OCSFTracker implements ExtensionChangeListener {
     }
     const ocsfEvent = this.buildOCSFEvent(change.extension, processed.result, activity);
 
-    Logger.info(
-      `OCSFTracker: Sending ${ExtensionActivityID[activity]} OCSF event for ${change.displayName} (Risk: ${processed.result.overallRisk})`,
-    );
-    await this.transport.send([ocsfEvent]);
+    const queued = await this.sendOrQueueOCSFEvent(ocsfEvent);
+    if (!queued) {
+      Logger.info(
+        `OCSFTracker: Sent ${ExtensionActivityID[activity]} OCSF event for ${change.displayName} (Risk: ${processed.result.overallRisk})`,
+      );
+    } else {
+      Logger.info(
+        `OCSFTracker: Queued ${ExtensionActivityID[activity]} OCSF event for ${change.displayName} (Risk: ${processed.result.overallRisk})`,
+      );
+    }
   }
 
   /**
-   * Send CLOSE event for uninstalled extension
+   * Send or queue CLOSE event for uninstalled extension
    * Uses the extension data and heuristic result from the saved state
    */
   private async sendCloseEvent(change: ExtensionChange): Promise<void> {
@@ -121,12 +210,19 @@ export class OCSFTracker implements ExtensionChangeListener {
       );
       return;
     }
-    Logger.info(
-      `OCSFTracker: Sending CLOSE event for ${change.displayName} (Risk: ${heuristicResult.overallRisk}, Patterns: ${heuristicResult.suspiciousPatterns.length})`,
-    );
 
     const ocsfEvent = this.buildOCSFEvent(extension, heuristicResult, ExtensionActivityID.CLOSE);
-    await this.transport.send([ocsfEvent]);
+    const queued = await this.sendOrQueueOCSFEvent(ocsfEvent);
+
+    if (!queued) {
+      Logger.info(
+        `OCSFTracker: Sent CLOSE event for ${change.displayName} (Risk: ${heuristicResult.overallRisk}, Patterns: ${heuristicResult.suspiciousPatterns.length})`,
+      );
+    } else {
+      Logger.info(
+        `OCSFTracker: Queued CLOSE event for ${change.displayName} (Risk: ${heuristicResult.overallRisk}, Patterns: ${heuristicResult.suspiciousPatterns.length})`,
+      );
+    }
   }
 
   buildOCSFEvent(extension: Extension, result: HeuristicResult, activity: ExtensionActivityID) {
@@ -134,16 +230,21 @@ export class OCSFTracker implements ExtensionChangeListener {
   }
 
   /**
-   * Handle security event and send OCSF Detection Finding to Datadog
+   * Handle security event and send or queue OCSF Detection Finding to Datadog
    */
-  @RequiresTelemetry()
   @CatchErrors('OCSFTracker')
   async onSecurityEvent(securityEvent: SecurityEvent): Promise<void> {
-    Logger.info(
-      `OCSFTracker: Sending Detection Finding for security event ${securityEvent.secEventId} (Extension: ${securityEvent.extension.id}, Severity: ${securityEvent.severity})`,
-    );
-
     const ocsfEvent = buildDetectionFinding(securityEvent, ExtensionActivityID.CREATE);
-    await this.transport.send([ocsfEvent]);
+    const queued = await this.sendOrQueueOCSFEvent(ocsfEvent);
+
+    if (!queued) {
+      Logger.info(
+        `OCSFTracker: Sent Detection Finding for security event ${securityEvent.secEventId} (Extension: ${securityEvent.extension.id}, Severity: ${securityEvent.severity})`,
+      );
+    } else {
+      Logger.info(
+        `OCSFTracker: Queued Detection Finding for security event ${securityEvent.secEventId} (Extension: ${securityEvent.extension.id}, Severity: ${securityEvent.severity})`,
+      );
+    }
   }
 }

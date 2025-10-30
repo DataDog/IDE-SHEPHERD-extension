@@ -132,7 +132,7 @@ launchctl start com.datadoghq.agent
 
 See [Datadog Agent Commands](https://docs.datadoghq.com/agent/guide/agent-commands/) for more details.
 
-**4. Verify Automatic Telemetry**
+**4. Verify Telemetry Status**
 
 Telemetry is now **sent automatically** in real-time:
 
