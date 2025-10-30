@@ -29,7 +29,7 @@ export class OCSFTracker implements ExtensionChangeListener {
   private transport: DatadogTransport;
   private context: vscode.ExtensionContext;
   private processor: ExtensionChangeProcessorService;
-  private eventQueue: Array<OCSFDetectionFinding | OCSFAppSecurityPostureFinding> = [];
+  private eventQueue: (OCSFDetectionFinding | OCSFAppSecurityPostureFinding)[] = [];
 
   constructor(context: vscode.ExtensionContext, transport: DatadogTransport) {
     this.context = context;
@@ -45,7 +45,7 @@ export class OCSFTracker implements ExtensionChangeListener {
 
   private loadQueue(): void {
     try {
-      const stored = this.context.globalState.get<Array<OCSFDetectionFinding | OCSFAppSecurityPostureFinding>>(
+      const stored = this.context.globalState.get<(OCSFDetectionFinding | OCSFAppSecurityPostureFinding)[]>(
         QUEUE_STORAGE_KEY,
         [],
       );

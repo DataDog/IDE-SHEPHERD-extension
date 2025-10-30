@@ -11,14 +11,21 @@ interface HasTransport {
  * Expects the class to have a transport.isEnabled() method
  */
 export function RequiresTelemetry() {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor): PropertyDescriptor {
+  return function <T extends HasTransport>(
+    target: T,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ): PropertyDescriptor {
     const originalMethod = descriptor.value;
 
     if (!originalMethod) {
       return descriptor;
     }
 
-    descriptor.value = async function (this: HasTransport, ...args: any[]): Promise<any> {
+    descriptor.value = async function wrappedRequiresTelemetryMethod(
+      this: HasTransport,
+      ...args: unknown[]
+    ): Promise<unknown> {
       if (!this.transport?.isEnabled()) {
         return;
       }

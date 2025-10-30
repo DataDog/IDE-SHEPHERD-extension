@@ -9,14 +9,14 @@ import { Logger } from './logger';
  * @param context - Context string to include in error message (e.g., class name)
  */
 export function CatchErrors(context: string) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor): PropertyDescriptor {
+  return function (target: unknown, propertyKey: string, descriptor: PropertyDescriptor): PropertyDescriptor {
     const originalMethod = descriptor.value;
 
     if (!originalMethod) {
       return descriptor;
     }
 
-    descriptor.value = async function (this: any, ...args: any[]): Promise<any> {
+    descriptor.value = async function wrappedCatchErrorsMethod(this: unknown, ...args: unknown[]): Promise<unknown> {
       try {
         return await originalMethod.apply(this, args);
       } catch (error) {
