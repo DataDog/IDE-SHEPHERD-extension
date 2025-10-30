@@ -15,6 +15,8 @@ import { ExtensionChangeProcessorService, ProcessedChange } from '../extension-c
 import { buildAppSecurityPostureFinding, buildDetectionFinding } from './ocsf-builder';
 import { DatadogTransport } from './datadog-transport';
 import { SecurityEvent } from '../../events/sec-events';
+import { RequiresTelemetry } from './telemetry-decorators';
+import { CatchErrors } from '../../decorators';
 
 /**
  * Tracks extension changes and sends OCSF events to datadog agent
@@ -39,37 +41,31 @@ export class OCSFTracker implements ExtensionChangeListener {
    * Compare persisted state with current extensions on startup
    * This detects uninstalls/installs that happened during extension host restart
    */
+  @CatchErrors('OCSFTracker')
   private async performInitialComparison(): Promise<void> {
-    try {
-      const currentExtensions = ExtensionsRepository.getInstance().getUserExtensions();
-      const changes = this.stateTracker.detectChanges(currentExtensions);
-      if (changes.length > 0) {
-        await this.processChanges(changes);
-      }
-    } catch (error) {
-      Logger.error('OCSFTracker: Failed to perform initial comparison', error as Error);
+    const currentExtensions = ExtensionsRepository.getInstance().getUserExtensions();
+    const changes = this.stateTracker.detectChanges(currentExtensions);
+    if (changes.length > 0) {
+      await this.processChanges(changes);
     }
   }
 
   // First case: update OCSF logs on extensions' changes
+  @CatchErrors('OCSFTracker')
   async onExtensionChange(): Promise<void> {
-    try {
-      const currentExtensions = ExtensionsRepository.getInstance().getUserExtensions();
-      const changes = this.stateTracker.detectChanges(currentExtensions);
+    const currentExtensions = ExtensionsRepository.getInstance().getUserExtensions();
+    const changes = this.stateTracker.detectChanges(currentExtensions);
 
-      if (changes.length > 0) {
-        for (const change of changes) {
-          Logger.info(
-            `\t\t${ExtensionActivityID[change.changeType]}: ${change.displayName}${change.oldVersion ? ` (${change.oldVersion} → ${change.newVersion})` : ` v${change.newVersion}`}`,
-          );
-        }
-
-        await this.processChanges(changes);
-      } else {
-        Logger.info('OCSFTracker: No changes detected');
+    if (changes.length > 0) {
+      for (const change of changes) {
+        Logger.info(
+          `\t\t${ExtensionActivityID[change.changeType]}: ${change.displayName}${change.oldVersion ? ` (${change.oldVersion} → ${change.newVersion})` : ` v${change.newVersion}`}`,
+        );
       }
-    } catch (error) {
-      Logger.error('OCSFTracker: Failed to process extension changes', error as Error);
+
+      await this.processChanges(changes);
+    } else {
+      Logger.info('OCSFTracker: No changes detected');
     }
   }
 
@@ -90,14 +86,8 @@ export class OCSFTracker implements ExtensionChangeListener {
   /**
    * Send OCSF event to Datadog agent
    */
+  @RequiresTelemetry()
   private async sendAppSecurityPostureEvent(processed: ProcessedChange): Promise<void> {
-    if (!this.transport.isEnabled()) {
-      Logger.debug(
-        `OCSFTracker: Telemetry disabled, skipping OCSF event for ${processed.change.displayName} (${ExtensionActivityID[processed.activity]})`,
-      );
-      return;
-    }
-
     const change = processed.change;
     const activity = processed.activity;
 
@@ -146,23 +136,14 @@ export class OCSFTracker implements ExtensionChangeListener {
   /**
    * Handle security event and send OCSF Detection Finding to Datadog
    */
+  @RequiresTelemetry()
+  @CatchErrors('OCSFTracker')
   async onSecurityEvent(securityEvent: SecurityEvent): Promise<void> {
-    if (!this.transport.isEnabled()) {
-      return;
-    }
+    Logger.info(
+      `OCSFTracker: Sending Detection Finding for security event ${securityEvent.secEventId} (Extension: ${securityEvent.extension.id}, Severity: ${securityEvent.severity})`,
+    );
 
-    try {
-      Logger.info(
-        `OCSFTracker: Sending Detection Finding for security event ${securityEvent.secEventId} (Extension: ${securityEvent.extension.id}, Severity: ${securityEvent.severity})`,
-      );
-
-      const ocsfEvent = buildDetectionFinding(securityEvent, ExtensionActivityID.CREATE);
-      await this.transport.send([ocsfEvent]);
-    } catch (error) {
-      Logger.error(
-        `OCSFTracker: Failed to send OCSF Detection Finding for security event ${securityEvent.secEventId}`,
-        error as Error,
-      );
-    }
+    const ocsfEvent = buildDetectionFinding(securityEvent, ExtensionActivityID.CREATE);
+    await this.transport.send([ocsfEvent]);
   }
 }
