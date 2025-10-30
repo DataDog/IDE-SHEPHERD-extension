@@ -34,6 +34,10 @@ export class DatadogTransport {
     if (!config.isEnabled || !config.agentPort) {
       throw new Error('Datadog Agent is not configured');
     }
+    // avoid sending empty messages
+    if (!logItems || logItems.length === 0) {
+      return;
+    }
 
     const agentPort = config.agentPort;
 
