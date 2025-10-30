@@ -16,7 +16,7 @@ export function CatchErrors(context: string) {
       return descriptor;
     }
 
-    descriptor.value = async function wrappedCatchErrorsMethod(this: unknown, ...args: unknown[]): Promise<unknown> {
+    descriptor.value = async function value(this: unknown, ...args: unknown[]): Promise<unknown> {
       try {
         return await originalMethod.apply(this, args);
       } catch (error) {
