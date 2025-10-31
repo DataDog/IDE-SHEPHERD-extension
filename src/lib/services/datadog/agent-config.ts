@@ -14,6 +14,9 @@ import { CONFIG } from '../../config';
 const execAsync = promisify(exec);
 const DEFAULT_AGENT_PORT = 10518;
 
+// Cache for config directory path to allow config file deletion even when agent is down
+let cachedConfigPath: string | undefined;
+
 /**
  * Configure a local dd agent for accepting logs from IDE Shepherd.
  */
@@ -44,6 +47,8 @@ export async function configureAgentLogging(port: number): Promise<void> {
     }
 
     await fs.writeFile(shepherdConfigFile, configFile, 'utf-8');
+    cachedConfigPath = shepherdConfigDir;
+
     Logger.info(`Wrote file ${shepherdConfigFile} with Datadog Agent configuration`);
   } catch (error) {
     Logger.error('Failed to configure Datadog Agent', error as Error);
@@ -53,17 +58,32 @@ export async function configureAgentLogging(port: number): Promise<void> {
 
 export async function removeAgentLogging(): Promise<void> {
   try {
-    const agentConfigBaseDir = await getAgentConfigDir();
-    const shepherdConfigDir = path.join(agentConfigBaseDir, 'ide-shepherd.d');
+    let shepherdConfigDir: string;
+
+    // Try to get path from agent first, fall back to cached path if agent is down
+    try {
+      const agentConfigBaseDir = await getAgentConfigDir();
+      shepherdConfigDir = path.join(agentConfigBaseDir, 'ide-shepherd.d');
+    } catch (error) {
+      if (cachedConfigPath) {
+        shepherdConfigDir = cachedConfigPath;
+        Logger.info('Agent is down, using cached config path for deletion');
+      } else {
+        Logger.warn('Cannot remove config: agent is down and no cached path available');
+        throw new Error('Datadog Agent is not running and config path is not cached');
+      }
+    }
 
     try {
       await fs.access(shepherdConfigDir);
     } catch {
       Logger.info('No Datadog Agent configuration directory to remove');
+      cachedConfigPath = undefined;
       return;
     }
 
     await fs.rm(shepherdConfigDir, { recursive: true, force: true });
+    cachedConfigPath = undefined;
     Logger.info(`Deleted directory ${shepherdConfigDir} with Datadog Agent configuration`);
   } catch (error) {
     Logger.error('Failed to remove Datadog Agent configuration', error as Error);

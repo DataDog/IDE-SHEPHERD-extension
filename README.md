@@ -132,18 +132,17 @@ launchctl start com.datadoghq.agent
 
 See [Datadog Agent Commands](https://docs.datadoghq.com/agent/guide/agent-commands/) for more details.
 
-**4. Test & Send Telemetry**
+**4. Verify Telemetry Status**
 
-You can test the connection and send telemetry data from the sidebar:
+Telemetry is now **sent automatically** in real-time:
 
-- **Agent Status**: Shows if the Datadog Agent is running
-- **Agent Config**: Shows if IDE Shepherd configuration exists
-- **Send Telemetry Data**: Sends all collected telemetry to Datadog
+- Extension installed/updated/uninstalled -> OCSF event sent immediately
+- Security threat detected -> OCSF event sent immediately
 
-Or use the command palette:
+You can verify the connection from the sidebar:
 
-- `IDE Shepherd: Test Datadog Agent Connection`
-- `IDE Shepherd: Send Telemetry Data to Datadog`
+- **Agent Status**: Shows if the Datadog Agent is up and running running
+- **Agent Port**: Shows the port on which the agent is listening
 
 **5. View in Datadog**
 

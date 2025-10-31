@@ -26,15 +26,15 @@ export interface Extension {
   isBuiltIn: boolean;
   extensionPath: string;
   packageJSON?: ExtensionPackageJSON;
+  extensionKind?: vscode.ExtensionKind; // Where the extension runs
 }
 
 export class ExtensionsRepository {
   private static _instance: ExtensionsRepository;
   private _extensions: Map<string, Extension> = new Map();
-  private _disposables: vscode.Disposable[] = [];
 
   private constructor() {
-    this.setupExtensionListeners(); // update extensions repository upon installation/update/disabling/enabling of extensions
+    // Note: Extension change listening is now handled by ExtensionChangeService
     this.buildRepository();
   }
 
@@ -48,12 +48,11 @@ export class ExtensionsRepository {
   /**
    * Build the extensions repository by querying the VS Code API
    */
-  private buildRepository(): void {
+  buildRepository(): void {
     try {
       Logger.debug('ExtensionsRepository: Building extensions repository...');
 
       const vsCodeExtensions = vscode.extensions.all;
-      Logger.debug(`ExtensionsRepository: Found ${vsCodeExtensions.length} total extensions`);
 
       this._extensions.clear();
 
@@ -68,32 +67,14 @@ export class ExtensionsRepository {
           isBuiltIn: this.isBuiltInExtension(ext),
           extensionPath: ext.extensionPath,
           packageJSON: ext.packageJSON,
+          extensionKind: ext.extensionKind,
         };
 
         this._extensions.set(versionedId, extensionInfo);
       }
-
-      Logger.debug(`ExtensionsRepository: Successfully loaded ${this._extensions.size} extensions`);
     } catch (error) {
       Logger.error('ExtensionsRepository: Failed to build repository', error as Error);
     }
-  }
-
-  /**
-   * Setup event listeners for extension changes
-   */
-  private setupExtensionListeners(): void {
-    this._disposables.push(
-      vscode.extensions.onDidChange(() => {
-        Logger.debug('ExtensionsRepository: Extension change detected, rebuilding repository...');
-        this.buildRepository();
-      }),
-    );
-  }
-
-  dispose(): void {
-    this._disposables.forEach((disposable) => disposable.dispose());
-    this._disposables = [];
   }
 
   getAllExtensions(): Extension[] {
