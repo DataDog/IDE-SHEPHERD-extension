@@ -6,7 +6,9 @@
     "lib": ["ES2022"],
     "sourceMap": true,
     "rootDir": "src",
-    "strict": true /* enable all strict type-checking options */
+    "strict": true /* enable all strict type-checking options */,
+    "experimentalDecorators": true /* enable decorator support */,
+    "emitDecoratorMetadata": true /* emit design-type metadata for decorators */
     // "baseUrl": "src", extension host failed to load the extension so we're back to relative paths
     // "paths": {
     // 	"@lib/*": ["lib/*"],

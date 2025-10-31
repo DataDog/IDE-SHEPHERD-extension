@@ -12,8 +12,6 @@ export class MetadataAnalyzer {
    * Analyze an extension's package.json for suspicious patterns
    */
   static analyzeExtension(extensionId: string, packageJSON: ExtensionPackageJSON): HeuristicResult {
-    Logger.debug(`MetadataAnalyzer: Analyzing extension ${extensionId}`);
-
     const detectedPatterns: SuspiciousPattern[] = [];
 
     const rules = getAllRules();
@@ -35,10 +33,6 @@ export class MetadataAnalyzer {
 
     const riskScore = RiskScoring.calculateScore(detectedPatterns);
     const overallRisk = RiskScoring.determineRiskLevel(riskScore);
-
-    Logger.info(
-      `MetadataAnalyzer: Extension ${extensionId} - Risk: ${overallRisk} (${riskScore}), Patterns: ${detectedPatterns.length}`,
-    );
 
     return { extensionId, suspiciousPatterns: detectedPatterns, riskScore, overallRisk };
   }
