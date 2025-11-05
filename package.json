@@ -26,7 +26,7 @@
         {
           "id": "ide-shepherd-explorer",
           "title": "IDE Shepherd",
-          "icon": "$(shield)"
+          "icon": "resources/icons/icon.png"
         }
       ]
     },

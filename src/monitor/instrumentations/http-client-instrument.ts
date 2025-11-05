@@ -151,7 +151,19 @@ function mkCollector(limit: number) {
       if (!c || trunc) {
         return;
       }
-      const chunk = Buffer.isBuffer(c) ? c : Buffer.from(c);
+      if (
+        typeof c === 'function' ||
+        (typeof c === 'object' && !Buffer.isBuffer(c) && !ArrayBuffer.isView(c) && !Array.isArray(c))
+      ) {
+        return;
+      }
+      let chunk: Buffer;
+      try {
+        chunk = Buffer.isBuffer(c) ? c : Buffer.from(c);
+      } catch (err) {
+        return;
+      }
+
       const size = buffer.length + chunk.length;
       if (size <= limit) {
         buffer = Buffer.concat([buffer, chunk]);

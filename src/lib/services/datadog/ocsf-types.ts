@@ -3,6 +3,7 @@
  * https://schema.ocsf.io/
  */
 
+import * as vscode from 'vscode';
 import { SeverityLevel } from '../../events/sec-events';
 import { RiskLevel } from '../../heuristics';
 import { CONFIG } from '../../config';
@@ -55,11 +56,20 @@ export enum OCSFResourceRoleID {
 }
 
 /**
+ * OCSF Environment - IDE information
+ */
+export interface OCSFEnvironment {
+  ide_flavor: string;
+  ide_version: string;
+}
+
+/**
  * Base OCSF metadata
  */
 export interface OCSFMetadata {
   version: string;
   product: { name: string; vendor_name: string };
+  environment: OCSFEnvironment;
 }
 
 /**
@@ -167,8 +177,18 @@ export function createTypeUID(classUID: OCSFClassUID, activityID: ExtensionActiv
 }
 
 export function createOCSFMetadata(): OCSFMetadata {
+  const appName = vscode.env.appName.toLowerCase();
+  let ideFlavor = 'unknown';
+
+  if (appName.includes('cursor')) {
+    ideFlavor = 'cursor';
+  } else if (appName.includes('code') || appName.includes('visual studio code')) {
+    ideFlavor = 'vscode';
+  }
+
   return {
     version: CONFIG.DATADOG.OCSF.SCHEMA_VERSION,
     product: { name: CONFIG.DATADOG.OCSF.PRODUCT_NAME, vendor_name: CONFIG.DATADOG.OCSF.VENDOR_NAME },
+    environment: { ide_flavor: ideFlavor, ide_version: vscode.version },
   };
 }
