@@ -177,7 +177,7 @@ export async function readPortFromConfig(): Promise<number | undefined> {
     const configContent = await fs.readFile(shepherdConfigFile, 'utf-8');
     const portMatch = configContent.match(/port:\s*(\d+)/);
 
-    if (portMatch && portMatch[1]) {
+    if (portMatch?.[1]) {
       return parseInt(portMatch[1], 10);
     }
     return undefined;
