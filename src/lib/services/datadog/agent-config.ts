@@ -150,7 +150,7 @@ export async function isShepherdConfigLoaded(): Promise<boolean> {
 
 /**
  * Check if IDE Shepherd configuration file already exists
- * think multiple instances installed on two or more IDEs
+ * use case: when multiple instances are installed on two or more IDEs
  */
 export async function doesShepherdConfigExist(): Promise<boolean> {
   try {
