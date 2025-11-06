@@ -149,6 +149,44 @@ export async function isShepherdConfigLoaded(): Promise<boolean> {
 }
 
 /**
+ * Check if IDE Shepherd configuration file already exists
+ * use case: when multiple instances are installed on two or more IDEs
+ */
+export async function doesShepherdConfigExist(): Promise<boolean> {
+  try {
+    const agentConfigBaseDir = await getAgentConfigDir();
+    const shepherdConfigDir = path.join(agentConfigBaseDir, 'ide-shepherd.d');
+    const shepherdConfigFile = path.join(shepherdConfigDir, 'conf.yaml');
+
+    await fs.access(shepherdConfigFile);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Read the port from existing IDE Shepherd configuration file
+ */
+export async function readPortFromConfig(): Promise<number | undefined> {
+  try {
+    const agentConfigBaseDir = await getAgentConfigDir();
+    const shepherdConfigDir = path.join(agentConfigBaseDir, 'ide-shepherd.d');
+    const shepherdConfigFile = path.join(shepherdConfigDir, 'conf.yaml');
+
+    const configContent = await fs.readFile(shepherdConfigFile, 'utf-8');
+    const portMatch = configContent.match(/port:\s*(\d+)/);
+
+    if (portMatch?.[1]) {
+      return parseInt(portMatch[1], 10);
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Check if a port is available
  */
 export async function isPortAvailable(port: number): Promise<boolean> {
