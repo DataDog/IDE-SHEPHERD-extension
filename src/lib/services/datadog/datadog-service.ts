@@ -46,7 +46,6 @@ export class DatadogTelemetryService {
 
     this._ocsfTracker = new OCSFTracker(context, this._transport);
 
-    // Start monitoring agent status
     this._lastAgentStatus = await isAgentRunning();
     this.startAgentMonitoring();
 
@@ -118,15 +117,11 @@ export class DatadogTelemetryService {
 
       Logger.info(`DatadogTelemetryService: Enabled telemetry with existing config on port ${port}`);
 
-      // Check if the config is already loaded in the agent
       const configLoaded = await isShepherdConfigLoaded();
 
       if (configLoaded) {
-        // Config is already loaded, no restart needed
         vscode.window.showInformationMessage('✓ Telemetry enabled! Configuration is already active.');
-        Logger.info('DatadogTelemetryService: Config already loaded in agent, no restart needed');
       } else {
-        // Config exists but not loaded yet, offer to restart
         const restartChoice = await vscode.window.showInformationMessage(
           `Telemetry enabled! The agent needs to be restarted to load the configuration.`,
           'Restart Now',
