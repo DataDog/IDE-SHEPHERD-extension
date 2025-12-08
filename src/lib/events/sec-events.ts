@@ -4,7 +4,8 @@
  */
 import { NetworkRuleType } from '../../detection/network-rules';
 import { ProcessRuleType } from '../../detection/process-rules';
-import { ExtensionInfo, TargetEvent, Target, Timestamp } from './ext-events';
+import { TaskRuleType } from '../../detection/task-rules';
+import { ExtensionInfo, WorkspaceInfo, TargetEvent, Target, Timestamp } from './ext-events';
 
 export enum SeverityLevel {
   LOW = 'low',
@@ -53,9 +54,10 @@ export class SecurityEvent {
   public readonly secEventId: string;
   public readonly timestamp: Timestamp;
   public readonly severity: SeverityLevel;
-  public readonly securityEventType: ProcessRuleType | NetworkRuleType;
+  public readonly securityEventType: ProcessRuleType | NetworkRuleType | TaskRuleType;
 
-  public readonly extension: ExtensionInfo;
+  public readonly extension?: ExtensionInfo;
+  public readonly workspace?: WorkspaceInfo;
 
   public readonly iocs: IoC[];
 
@@ -63,16 +65,22 @@ export class SecurityEvent {
 
   constructor(
     originalEvent: TargetEvent<Target>,
-    extension: ExtensionInfo,
+    source: ExtensionInfo | WorkspaceInfo,
     severity: SeverityLevel,
-    securityEventType: ProcessRuleType | NetworkRuleType,
+    securityEventType: ProcessRuleType | NetworkRuleType | TaskRuleType,
     iocs: IoC[],
     timestamp: Timestamp = Date.now(),
   ) {
     this.secEventId = originalEvent.eventId;
     this.timestamp = timestamp;
     this.severity = severity;
-    this.extension = extension;
+
+    if (originalEvent.eventType === Target.WORKSPACE) {
+      this.workspace = source as WorkspaceInfo;
+    } else {
+      this.extension = source as ExtensionInfo;
+    }
+
     this.iocs = iocs;
     this.originalEvent = originalEvent;
     this.securityEventType = securityEventType;
@@ -102,6 +110,7 @@ export class SecurityEvent {
       secEventId: this.secEventId,
       timestamp: this.timestamp,
       extension: this.extension,
+      workspace: this.workspace,
       iocs: this.iocs,
       originalEventData: this.originalEvent.toJSON,
       summary: this.getSummary(),
