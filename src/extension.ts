@@ -9,8 +9,10 @@ import { moduleLoaderPatcher } from './monitor/index';
 import { IDEStatusService } from './lib/services/ide-status-service';
 import { SidebarService } from './lib/services/sidebar-service';
 import { AllowListService } from './lib/services/allowlist-service';
+import { TrustedWorkspaceService } from './lib/services/trusted-workspace-service';
 import { DatadogTelemetryService } from './lib/services/datadog/datadog-service';
 import { ExtensionChangeService } from './lib/services/extension-lifecycle-service';
+import { TaskScanner } from './scanner/task-scanner-with-termination';
 
 export function activate(context: vscode.ExtensionContext) {
   try {
@@ -21,6 +23,12 @@ export function activate(context: vscode.ExtensionContext) {
     const allowListService = AllowListService.getInstance();
     allowListService.initialize(context).then(() => {
       Logger.info('IDE Shepherd Extension: Allow List Service initialized');
+    });
+
+    // Initialize Trusted Workspace Service
+    const trustedWorkspaceService = TrustedWorkspaceService.getInstance();
+    trustedWorkspaceService.initialize(context).then(() => {
+      Logger.info('IDE Shepherd Extension: Trusted Workspace Service initialized');
     });
 
     // Initialize Datadog Telemetry Service
@@ -40,9 +48,16 @@ export function activate(context: vscode.ExtensionContext) {
     const sidebarService = SidebarService.getInstance();
     sidebarService.initialize();
 
+    // Patch the module loader
     Logger.info('IDE Shepherd Extension: Activating module loader patcher...');
     moduleLoaderPatcher.patch();
     Logger.info('IDE Shepherd Extension: Module loader patcher activated successfully');
+
+    // Activate the Task Scanner with Termination
+    Logger.info('IDE Shepherd Extension: Activating Task Scanner ...');
+    const taskScanner = new TaskScanner();
+    taskScanner.activate(context);
+    Logger.info('IDE Shepherd Extension: Task Scanner activated successfully');
 
     const statusCommand = vscode.commands.registerCommand('ide-shepherd.showStatus', () => {
       IDEStatusService.showStatus();
