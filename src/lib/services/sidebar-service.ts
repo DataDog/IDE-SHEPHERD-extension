@@ -10,6 +10,8 @@ import { SecurityEventsViewProvider } from './providers/security-events-provider
 import { ExtensionsAnalysisViewProvider } from './providers/extensions-analysis-provider';
 import { AllowListViewProvider } from './providers/allowlist-view-provider';
 import { SettingsViewProvider } from './providers/settings-provider';
+import { TaskTimelineViewProvider, TaskTimelineEvent } from './providers/task-timeline-provider';
+import { TrustedWorkspaceService } from './trusted-workspace-service';
 
 export class SidebarService {
   private static _instance: SidebarService;
@@ -18,6 +20,7 @@ export class SidebarService {
   private _extensionsProvider: ExtensionsAnalysisViewProvider;
   private _allowListProvider: AllowListViewProvider;
   private _settingsProvider: SettingsViewProvider;
+  private _taskTimelineProvider: TaskTimelineViewProvider;
 
   private constructor() {
     this._statusProvider = new SecurityStatusViewProvider();
@@ -25,6 +28,7 @@ export class SidebarService {
     this._extensionsProvider = new ExtensionsAnalysisViewProvider();
     this._allowListProvider = new AllowListViewProvider();
     this._settingsProvider = new SettingsViewProvider();
+    this._taskTimelineProvider = new TaskTimelineViewProvider();
   }
 
   static getInstance(): SidebarService {
@@ -40,6 +44,7 @@ export class SidebarService {
     vscode.window.registerTreeDataProvider('ide-shepherd-extensions', this._extensionsProvider);
     vscode.window.registerTreeDataProvider('ide-shepherd-allowlist', this._allowListProvider);
     vscode.window.registerTreeDataProvider('ide-shepherd-settings', this._settingsProvider);
+    vscode.window.registerTreeDataProvider('ide-shepherd-task-timeline', this._taskTimelineProvider);
   }
 
   updateStatusView(data: IDEStatusData): void {
@@ -85,5 +90,24 @@ export class SidebarService {
 
   async toggleDatadogTelemetry(): Promise<void> {
     await this._settingsProvider.toggleDatadogTelemetry();
+  }
+
+  // Task timeline methods
+  addTaskEvent(event: TaskTimelineEvent): void {
+    this._taskTimelineProvider.addTaskEvent(event);
+  }
+
+  updateTaskEvent(id: string, updates: Partial<TaskTimelineEvent>): void {
+    this._taskTimelineProvider.updateTaskEvent(id, updates);
+  }
+
+  clearTaskTimeline(): void {
+    this._taskTimelineProvider.clearTimeline();
+  }
+
+  async removeTrustedWorkspace(workspacePath: string): Promise<void> {
+    const trustedWorkspaceService = TrustedWorkspaceService.getInstance();
+    await trustedWorkspaceService.removeFromTrustedWorkspaces(workspacePath);
+    this.refreshAllowListView();
   }
 }

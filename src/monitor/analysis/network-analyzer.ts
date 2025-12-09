@@ -16,6 +16,11 @@ export class NetworkAnalyzer {
         result = this.analyzeUrl(ev);
       }
 
+      if (!ev.extension) {
+        Logger.error('NetworkAnalyzer: Network event missing extension info');
+        return new AnalysisResult();
+      }
+
       result = result.checkAgainstAllowList(ev.extension.id, ev.url, 'NetworkAnalyzer');
 
       const endTime = Date.now();
@@ -58,7 +63,7 @@ export class NetworkAnalyzer {
 
   private checkRule(url: string, ev: NetworkEvent, rule: (typeof NETWORK_RULES)[0]): AnalysisResult | null {
     const match = url.match(rule.pattern);
-    if (match) {
+    if (match && ev.extension) {
       const matchedValue = match[0];
       return new AnalysisResult(
         { allowed: false },
@@ -82,7 +87,7 @@ export class NetworkAnalyzer {
     const localMatch = url.match(LOCAL_IP_PATTERN);
     const wildMatch = url.match(WILDCARD_IP_PATTERN);
 
-    if (ipMatch && !localMatch && !wildMatch) {
+    if (ipMatch && !localMatch && !wildMatch && ev.extension) {
       const matchedIp = ipMatch[0];
       return new AnalysisResult(
         { allowed: false },
