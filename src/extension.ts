@@ -93,6 +93,11 @@ export function activate(context: vscode.ExtensionContext) {
       (publisher: string) => sidebarService.removeTrustedPublisher(publisher),
     );
 
+    const removeTrustedWorkspaceCommand = vscode.commands.registerCommand(
+      'ide-shepherd.removeTrustedWorkspace',
+      (workspacePath: string) => sidebarService.removeTrustedWorkspace(workspacePath),
+    );
+
     // Settings commands
     const refreshSettingsCommand = vscode.commands.registerCommand('ide-shepherd.settings.refresh', () =>
       sidebarService.refreshSettingsView(),
@@ -103,6 +108,11 @@ export function activate(context: vscode.ExtensionContext) {
       () => sidebarService.toggleDatadogTelemetry(),
     );
 
+    const clearTaskTimelineCommand = vscode.commands.registerCommand('ide-shepherd.clearTaskTimeline', () => {
+      sidebarService.clearTaskTimeline();
+      vscode.window.showInformationMessage('Task timeline cleared');
+    });
+
     context.subscriptions.push(
       statusCommand,
       refreshStatusCommand,
@@ -112,8 +122,10 @@ export function activate(context: vscode.ExtensionContext) {
       clearAllowListCommand,
       addTrustedPublisherCommand,
       removeTrustedPublisherCommand,
+      removeTrustedWorkspaceCommand,
       refreshSettingsCommand,
       toggleDatadogTelemetryCommand,
+      clearTaskTimelineCommand,
     );
 
     setTimeout(() => {
