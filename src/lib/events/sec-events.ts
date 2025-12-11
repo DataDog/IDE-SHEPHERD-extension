@@ -39,7 +39,7 @@ export interface IoC {
   finding: string;
   rule: string; // triggered rule
   description: string;
-  confidence: number; // we'll see how to set this
+  confidence: number;
   severity: SeverityLevel; // severity of this specific IoC
 }
 

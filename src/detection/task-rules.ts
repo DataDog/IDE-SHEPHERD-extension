@@ -37,7 +37,7 @@ export const TASK_RULES: TaskRule[] = [
     target: Target.WORKSPACE,
     severity: SeverityLevel.HIGH,
     commandPattern: /curl.*http/i,
-    confidence: 0.9,
+    confidence: 1,
   },
   {
     id: 'task_wget_download',
@@ -47,7 +47,7 @@ export const TASK_RULES: TaskRule[] = [
     target: Target.WORKSPACE,
     severity: SeverityLevel.HIGH,
     commandPattern: /wget/i,
-    confidence: 0.9,
+    confidence: 1,
   },
 
   // Remote Script Execution Rules
@@ -59,7 +59,7 @@ export const TASK_RULES: TaskRule[] = [
     target: Target.WORKSPACE,
     severity: SeverityLevel.MEDIUM,
     commandPattern: /\/tmp\/.*\.sh/i,
-    confidence: 0.7,
+    confidence: 1,
   },
 
   // Encoded Command Rules
@@ -71,7 +71,7 @@ export const TASK_RULES: TaskRule[] = [
     target: Target.WORKSPACE,
     severity: SeverityLevel.HIGH,
     commandPattern: /powershell.*-enc/i,
-    confidence: 0.95,
+    confidence: 1,
   },
   {
     id: 'task_base64_decode',
@@ -81,7 +81,7 @@ export const TASK_RULES: TaskRule[] = [
     target: Target.WORKSPACE,
     severity: SeverityLevel.MEDIUM,
     commandPattern: /base64.*decode/i,
-    confidence: 0.8,
+    confidence: 1,
   },
   {
     id: 'task_eval',
@@ -91,7 +91,7 @@ export const TASK_RULES: TaskRule[] = [
     target: Target.WORKSPACE,
     severity: SeverityLevel.HIGH,
     commandPattern: /eval\(/i,
-    confidence: 0.85,
+    confidence: 1,
   },
 
   // Destructive Operation Rules
@@ -103,7 +103,7 @@ export const TASK_RULES: TaskRule[] = [
     target: Target.WORKSPACE,
     severity: SeverityLevel.MEDIUM,
     commandPattern: /rm\s+-rf/i,
-    confidence: 0.7,
+    confidence: 1,
   },
 
   // Privilege Escalation Rules
@@ -115,7 +115,7 @@ export const TASK_RULES: TaskRule[] = [
     target: Target.WORKSPACE,
     severity: SeverityLevel.MEDIUM,
     commandPattern: /chmod\s+\+x/i,
-    confidence: 0.7,
+    confidence: 1,
   },
   {
     id: 'task_sudo',
@@ -125,7 +125,7 @@ export const TASK_RULES: TaskRule[] = [
     target: Target.WORKSPACE,
     severity: SeverityLevel.HIGH,
     commandPattern: /sudo/i,
-    confidence: 0.8,
+    confidence: 1,
   },
 ];
 

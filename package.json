@@ -2,7 +2,7 @@
   "name": "ide-shepherd-extension",
   "displayName": "ide-shepherd-extension",
   "description": "A security extension capable of realtime monitoring from within the IDE",
-  "version": "1.2.2",
+  "version": "1.3.0",
   "publisher": "datadog",
   "repository": {
     "type": "git",
