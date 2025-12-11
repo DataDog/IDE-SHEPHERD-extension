@@ -11,7 +11,6 @@ import { ExtensionsAnalysisViewProvider } from './providers/extensions-analysis-
 import { AllowListViewProvider } from './providers/allowlist-view-provider';
 import { SettingsViewProvider } from './providers/settings-provider';
 import { TaskTimelineViewProvider, TaskTimelineEvent } from './providers/task-timeline-provider';
-import { TrustedWorkspaceService } from './trusted-workspace-service';
 
 export class SidebarService {
   private static _instance: SidebarService;
@@ -106,8 +105,6 @@ export class SidebarService {
   }
 
   async removeTrustedWorkspace(workspacePath: string): Promise<void> {
-    const trustedWorkspaceService = TrustedWorkspaceService.getInstance();
-    await trustedWorkspaceService.removeFromTrustedWorkspaces(workspacePath);
-    this.refreshAllowListView();
+    await this._allowListProvider.handleRemoveTrustedWorkspace(workspacePath);
   }
 }

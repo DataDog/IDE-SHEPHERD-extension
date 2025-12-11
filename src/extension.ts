@@ -12,7 +12,7 @@ import { AllowListService } from './lib/services/allowlist-service';
 import { TrustedWorkspaceService } from './lib/services/trusted-workspace-service';
 import { DatadogTelemetryService } from './lib/services/datadog/datadog-service';
 import { ExtensionChangeService } from './lib/services/extension-lifecycle-service';
-import { TaskScanner } from './scanner/task-scanner-with-termination';
+import { TaskScanner } from './scanner/task-scanner';
 
 export function activate(context: vscode.ExtensionContext) {
   try {

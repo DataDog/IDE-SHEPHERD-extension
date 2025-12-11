@@ -229,6 +229,9 @@ export class NotificationService {
               await trustedWorkspaceService.addToTrustedWorkspaces(identifier);
               Logger.info(`NotificationService: Added workspace to trusted list: ${identifier}`);
 
+              const sidebarService = SidebarService.getInstance();
+              sidebarService.refreshAllowListView();
+
               vscode.window.showInformationMessage(
                 `Workspace "${vscode.workspace.name}" has been added to the trusted list. Future task operations will be allowed.`,
               );

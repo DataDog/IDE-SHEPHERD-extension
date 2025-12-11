@@ -57,6 +57,12 @@
           "contextualTitle": "Recent Security Events"
         },
         {
+          "id": "ide-shepherd-task-timeline",
+          "name": "Task Timeline",
+          "when": "true",
+          "contextualTitle": "Suspicious Tasks Timeline"
+        },
+        {
           "id": "ide-shepherd-settings",
           "name": "Settings",
           "when": "true",
@@ -130,6 +136,12 @@
         "title": "Toggle Datadog Telemetry",
         "category": "IDE Shepherd",
         "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "ide-shepherd.clearTaskTimeline",
+        "title": "Clear Task Timeline",
+        "category": "IDE Shepherd",
+        "icon": "$(clear-all)"
       }
     ],
     "menus": {
@@ -157,6 +169,11 @@
         {
           "command": "ide-shepherd.settings.refresh",
           "when": "view == ide-shepherd-settings",
+          "group": "navigation"
+        },
+        {
+          "command": "ide-shepherd.clearTaskTimeline",
+          "when": "view == ide-shepherd-task-timeline",
           "group": "navigation"
         }
       ],
@@ -187,6 +204,10 @@
         },
         {
           "command": "ide-shepherd.settings.toggleDatadogTelemetry",
+          "when": "true"
+        },
+        {
+          "command": "ide-shepherd.clearTaskTimeline",
           "when": "true"
         }
       ]
