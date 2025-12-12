@@ -21,6 +21,11 @@ export class ProcessAnalyzer {
         }
       }
 
+      if (!ev.extension) {
+        Logger.error('ProcessAnalyzer: Process event missing extension info');
+        return new AnalysisResult();
+      }
+
       result = result.checkAgainstAllowList(ev.extension.id, ev.cmd, 'ProcessAnalyzer');
 
       const endTime = Date.now();
@@ -50,6 +55,10 @@ export class ProcessAnalyzer {
       if (!rule.flagPattern.test(fullCommand)) {
         return new AnalysisResult();
       }
+    }
+
+    if (!ev.extension) {
+      return new AnalysisResult();
     }
 
     return new AnalysisResult(

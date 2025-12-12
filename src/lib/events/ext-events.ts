@@ -19,12 +19,27 @@ export class ExtensionInfo {
   }
 }
 
+export class WorkspaceInfo {
+  name: string;
+  path: string;
+  isTrusted: boolean; // trusted to run tasks, extend this definition as we add more targets
+  trustedAt?: Timestamp;
+
+  constructor(name: string, path: string, isTrusted: boolean, trustedAt?: Timestamp) {
+    this.name = name;
+    this.path = path;
+    this.isTrusted = isTrusted;
+    this.trustedAt = trustedAt;
+  }
+}
+
 /**
  * High-level class of the event.  Extend in the future for FS, Child-Process …
  */
 export enum Target {
   NETWORK = 'Network',
   PROCESS = 'Process',
+  WORKSPACE = 'Workspace',
 }
 
 export namespace Target {
@@ -38,6 +53,8 @@ export namespace Target {
         return 'globe';
       case Target.PROCESS:
         return 'terminal';
+      case Target.WORKSPACE:
+        return 'folder';
       default:
         return 'question';
     }
@@ -53,16 +70,29 @@ export abstract class TargetEvent<T extends Target> {
   readonly timestamp: Timestamp;
   readonly eventType: T;
 
-  readonly extension: ExtensionInfo;
+  readonly extension?: ExtensionInfo;
+  readonly workspace?: WorkspaceInfo;
 
   // absolute path of the file where the hook lives
   readonly hookFile: string;
 
-  protected constructor(eventType: T, extension: ExtensionInfo, hookFile: string, timestamp: Timestamp = Date.now()) {
+  protected constructor(
+    eventType: T,
+    source: ExtensionInfo | WorkspaceInfo,
+    hookFile: string,
+    timestamp: Timestamp = Date.now(),
+  ) {
     this.eventId = randomUUID();
     this.timestamp = timestamp;
     this.eventType = eventType;
-    this.extension = extension;
+
+    // Determine source type based on Target
+    if (eventType === Target.WORKSPACE) {
+      this.workspace = source as WorkspaceInfo;
+    } else {
+      this.extension = source as ExtensionInfo;
+    }
+
     this.hookFile = hookFile;
   }
 

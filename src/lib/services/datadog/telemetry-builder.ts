@@ -102,8 +102,8 @@ export class TelemetryBuilder {
       timestamp: securityEvent.timestamp,
       security_event_id: securityEvent.secEventId,
       severity: securityEvent.severity,
-      extension_id: securityEvent.extension.id,
-      extension_is_patched: securityEvent.extension.isPatched,
+      extension_id: securityEvent.extension?.id || securityEvent.workspace?.path || 'workspace',
+      extension_is_patched: securityEvent.extension?.isPatched || false,
       iocs: securityEvent.iocs,
       summary: securityEvent.getSummary(),
     };

@@ -2,7 +2,7 @@
   "name": "ide-shepherd-extension",
   "displayName": "ide-shepherd-extension",
   "description": "A security extension capable of realtime monitoring from within the IDE",
-  "version": "1.2.2",
+  "version": "1.3.0",
   "publisher": "datadog",
   "repository": {
     "type": "git",
@@ -55,6 +55,12 @@
           "name": "Security Events",
           "when": "true",
           "contextualTitle": "Recent Security Events"
+        },
+        {
+          "id": "ide-shepherd-task-timeline",
+          "name": "Task Timeline",
+          "when": "true",
+          "contextualTitle": "Suspicious Tasks Timeline"
         },
         {
           "id": "ide-shepherd-settings",
@@ -130,6 +136,12 @@
         "title": "Toggle Datadog Telemetry",
         "category": "IDE Shepherd",
         "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "ide-shepherd.clearTaskTimeline",
+        "title": "Clear Task Timeline",
+        "category": "IDE Shepherd",
+        "icon": "$(clear-all)"
       }
     ],
     "menus": {
@@ -157,6 +169,11 @@
         {
           "command": "ide-shepherd.settings.refresh",
           "when": "view == ide-shepherd-settings",
+          "group": "navigation"
+        },
+        {
+          "command": "ide-shepherd.clearTaskTimeline",
+          "when": "view == ide-shepherd-task-timeline",
           "group": "navigation"
         }
       ],
@@ -187,6 +204,10 @@
         },
         {
           "command": "ide-shepherd.settings.toggleDatadogTelemetry",
+          "when": "true"
+        },
+        {
+          "command": "ide-shepherd.clearTaskTimeline",
           "when": "true"
         }
       ]

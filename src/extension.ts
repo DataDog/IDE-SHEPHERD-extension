@@ -9,8 +9,10 @@ import { moduleLoaderPatcher } from './monitor/index';
 import { IDEStatusService } from './lib/services/ide-status-service';
 import { SidebarService } from './lib/services/sidebar-service';
 import { AllowListService } from './lib/services/allowlist-service';
+import { TrustedWorkspaceService } from './lib/services/trusted-workspace-service';
 import { DatadogTelemetryService } from './lib/services/datadog/datadog-service';
 import { ExtensionChangeService } from './lib/services/extension-lifecycle-service';
+import { TaskScanner } from './monitor/analysis/task-anaylzer';
 
 export function activate(context: vscode.ExtensionContext) {
   try {
@@ -21,6 +23,12 @@ export function activate(context: vscode.ExtensionContext) {
     const allowListService = AllowListService.getInstance();
     allowListService.initialize(context).then(() => {
       Logger.info('IDE Shepherd Extension: Allow List Service initialized');
+    });
+
+    // Initialize Trusted Workspace Service
+    const trustedWorkspaceService = TrustedWorkspaceService.getInstance();
+    trustedWorkspaceService.initialize(context).then(() => {
+      Logger.info('IDE Shepherd Extension: Trusted Workspace Service initialized');
     });
 
     // Initialize Datadog Telemetry Service
@@ -40,9 +48,16 @@ export function activate(context: vscode.ExtensionContext) {
     const sidebarService = SidebarService.getInstance();
     sidebarService.initialize();
 
+    // Patch the module loader
     Logger.info('IDE Shepherd Extension: Activating module loader patcher...');
     moduleLoaderPatcher.patch();
     Logger.info('IDE Shepherd Extension: Module loader patcher activated successfully');
+
+    // Activate the Task Scanner with Termination
+    Logger.info('IDE Shepherd Extension: Activating Task Scanner ...');
+    const taskScanner = new TaskScanner();
+    taskScanner.activate(context);
+    Logger.info('IDE Shepherd Extension: Task Scanner activated successfully');
 
     const statusCommand = vscode.commands.registerCommand('ide-shepherd.showStatus', () => {
       IDEStatusService.showStatus();
@@ -78,6 +93,11 @@ export function activate(context: vscode.ExtensionContext) {
       (publisher: string) => sidebarService.removeTrustedPublisher(publisher),
     );
 
+    const removeTrustedWorkspaceCommand = vscode.commands.registerCommand(
+      'ide-shepherd.removeTrustedWorkspace',
+      (workspacePath: string) => sidebarService.removeTrustedWorkspace(workspacePath),
+    );
+
     // Settings commands
     const refreshSettingsCommand = vscode.commands.registerCommand('ide-shepherd.settings.refresh', () =>
       sidebarService.refreshSettingsView(),
@@ -88,6 +108,11 @@ export function activate(context: vscode.ExtensionContext) {
       () => sidebarService.toggleDatadogTelemetry(),
     );
 
+    const clearTaskTimelineCommand = vscode.commands.registerCommand('ide-shepherd.clearTaskTimeline', () => {
+      sidebarService.clearTaskTimeline();
+      vscode.window.showInformationMessage('Task timeline cleared');
+    });
+
     context.subscriptions.push(
       statusCommand,
       refreshStatusCommand,
@@ -97,8 +122,10 @@ export function activate(context: vscode.ExtensionContext) {
       clearAllowListCommand,
       addTrustedPublisherCommand,
       removeTrustedPublisherCommand,
+      removeTrustedWorkspaceCommand,
       refreshSettingsCommand,
       toggleDatadogTelemetryCommand,
+      clearTaskTimelineCommand,
     );
 
     setTimeout(() => {

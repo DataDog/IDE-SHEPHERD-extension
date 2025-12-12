@@ -5,6 +5,7 @@
 import * as vscode from 'vscode';
 import { SecurityEvent } from '../events/sec-events';
 import { AllowListService } from './allowlist-service';
+import { TrustedWorkspaceService } from './trusted-workspace-service';
 import { SidebarService } from './sidebar-service';
 import { Logger } from '../logger';
 
@@ -14,6 +15,7 @@ export enum BlockedOperationType {
   EXEC = 'exec',
   SPAWN = 'spawn',
   EXEC_SYNC = 'execSync',
+  TASK = 'task',
 }
 
 export class NotificationService {
@@ -43,6 +45,8 @@ export class NotificationService {
           return 'Process Spawn';
         case BlockedOperationType.EXEC_SYNC:
           return 'Synchronous Process Execution';
+        case BlockedOperationType.TASK:
+          return 'Task Execution';
         default:
           return 'Operation';
       }
@@ -51,7 +55,14 @@ export class NotificationService {
     const title = `!!! Security Policy: ${getOperationTitle(type)} Blocked`;
 
     let content = `A(n) <bold>${type}</bold> operation has been <bold>BLOCKED</bold> by IDE Shepherd's security policy.<br><br>`;
-    content += `<strong>EXTENSION:</strong> <bold>${securityEvent.extension.id}</bold><br>`;
+
+    // Determine if this is an extension or workspace event
+    if (securityEvent.extension) {
+      content += `<strong>EXTENSION:</strong> <bold>${securityEvent.extension.id}</bold><br>`;
+    } else if (securityEvent.workspace) {
+      content += `<strong>WORKSPACE:</strong> <bold>${securityEvent.workspace.name}</bold><br>`;
+      content += `<strong>PATH:</strong> ${securityEvent.workspace.path}<br>`;
+    }
 
     if ([BlockedOperationType.REQUEST, BlockedOperationType.RESPONSE].includes(type)) {
       content += `<strong>URL:</strong> ${target}<br><br>`;
@@ -62,10 +73,18 @@ export class NotificationService {
     content += `<strong>SUMMARY:</strong><br>${securityEvent.getSummary().replace(/\n/g, '<br>')}<br><br>`;
     content += `<strong>ACTION:</strong> The ${getOperationTitle(type).toLowerCase()} was automatically blocked to protect your workspace.`;
 
-    await this.showCustomModal(title, content, securityEvent.extension.id);
+    const identifier = securityEvent.extension ? securityEvent.extension.id : securityEvent.workspace?.path;
+    const isWorkspace = !!securityEvent.workspace;
+
+    await this.showCustomModal(title, content, identifier, isWorkspace);
   }
 
-  private static async showCustomModal(title: string, content: string, extensionId?: string): Promise<void> {
+  private static async showCustomModal(
+    title: string,
+    content: string,
+    identifier?: string,
+    isWorkspace: boolean = false,
+  ): Promise<void> {
     return new Promise((resolve) => {
       const panel = vscode.window.createWebviewPanel('customModal', title, vscode.ViewColumn.Active, {
         enableScripts: true,
@@ -170,7 +189,7 @@ export class NotificationService {
                         <div class="content">${content.replace(/\n/g, '<br>')}</div>
                         <div class="button-container">
                             <button class="ok-button" onclick="dismissModal()">Continue blocking</button>
-                            ${extensionId ? '<button class="ignore-button" onclick="ignoreExtension()">Ignore & Allow</button>' : ''}
+                            ${identifier ? '<button class="ignore-button" onclick="ignoreItem()">Ignore & Allow</button>' : ''}
                         </div>
                     </div>
                     <script>
@@ -180,7 +199,7 @@ export class NotificationService {
                             vscode.postMessage({ command: 'dismiss' });
                         }
                         
-                        function ignoreExtension() {
+                        function ignoreItem() {
                             vscode.postMessage({ command: 'ignore' });
                         }
                         
@@ -203,21 +222,35 @@ export class NotificationService {
         if (message.command === 'dismiss') {
           panel.dispose();
           resolve();
-        } else if (message.command === 'ignore' && extensionId) {
+        } else if (message.command === 'ignore' && identifier) {
           try {
-            const allowListService = AllowListService.getInstance();
-            await allowListService.addToUserAllowList(extensionId);
-            Logger.info(`NotificationService: Added ${extensionId} to allow list`);
+            if (isWorkspace) {
+              const trustedWorkspaceService = TrustedWorkspaceService.getInstance();
+              await trustedWorkspaceService.addToTrustedWorkspaces(identifier);
+              Logger.info(`NotificationService: Added workspace to trusted list: ${identifier}`);
 
-            const sidebarService = SidebarService.getInstance();
-            sidebarService.refreshAllowListView();
+              const sidebarService = SidebarService.getInstance();
+              sidebarService.refreshAllowListView();
 
-            vscode.window.showInformationMessage(
-              `Extension ${extensionId} has been added to the allow list. Future operations will be allowed.`,
-            );
+              vscode.window.showInformationMessage(
+                `Workspace "${vscode.workspace.name}" has been added to the trusted list. Future task operations will be allowed.`,
+              );
+            } else {
+              // Handle extension allowlist
+              const allowListService = AllowListService.getInstance();
+              await allowListService.addToUserAllowList(identifier);
+              Logger.info(`NotificationService: Added ${identifier} to allow list`);
+
+              const sidebarService = SidebarService.getInstance();
+              sidebarService.refreshAllowListView();
+
+              vscode.window.showInformationMessage(
+                `Extension ${identifier} has been added to the allow list. Future operations will be allowed.`,
+              );
+            }
           } catch (error) {
-            Logger.error(`NotificationService: Failed to add extension to allow list`, error as Error);
-            vscode.window.showErrorMessage(`Failed to add extension to allow list: ${error}`);
+            Logger.error(`NotificationService: Failed to add to allow/trusted list`, error as Error);
+            vscode.window.showErrorMessage(`Failed to add to allow/trusted list: ${error}`);
           }
           panel.dispose();
           resolve();

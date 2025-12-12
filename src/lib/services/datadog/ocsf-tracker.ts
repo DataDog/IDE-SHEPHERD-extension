@@ -237,13 +237,14 @@ export class OCSFTracker implements ExtensionChangeListener {
     const ocsfEvent = buildDetectionFinding(securityEvent, ExtensionActivityID.CREATE);
     const queued = await this.sendOrQueueOCSFEvent(ocsfEvent);
 
+    const sourceIdentifier = securityEvent.extension?.id || securityEvent.workspace?.path || 'unknown';
     if (!queued) {
       Logger.info(
-        `OCSFTracker: Sent Detection Finding for security event ${securityEvent.secEventId} (Extension: ${securityEvent.extension.id}, Severity: ${securityEvent.severity})`,
+        `OCSFTracker: Sent Detection Finding for security event ${securityEvent.secEventId} (Source: ${sourceIdentifier}, Severity: ${securityEvent.severity})`,
       );
     } else {
       Logger.info(
-        `OCSFTracker: Queued Detection Finding for security event ${securityEvent.secEventId} (Extension: ${securityEvent.extension.id}, Severity: ${securityEvent.severity})`,
+        `OCSFTracker: Queued Detection Finding for security event ${securityEvent.secEventId} (Source: ${sourceIdentifier}, Severity: ${securityEvent.severity})`,
       );
     }
   }
