@@ -28,7 +28,7 @@ export class ExtensionServices {
         // Check if this is a system path (like /opt/homebrew/bin/git)
         if (this._isSystemPath(line)) {
           // last segment after final /
-          const pathMatches = line.match(/\/[^/\s()]+/g);
+          const pathMatches = line.match(/\/[^\/\s()]+/g);
           if (pathMatches && pathMatches.length > 0) {
             const lastSegment = pathMatches[pathMatches.length - 1];
             let binaryName = lastSegment.substring(1);
