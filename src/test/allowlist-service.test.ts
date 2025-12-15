@@ -183,45 +183,45 @@ suite('AllowListService Tests', () => {
     });
 
     test('should add trusted publisher', async () => {
-      await service.addTrustedPublisher('lotm');
+      await service.addTrustedPublisher('test-publisher');
 
       const publishers = service.getTrustedPublishers();
-      expect(publishers).to.include('lotm');
+      expect(publishers).to.include('test-publisher');
     });
 
     test('should save state after adding trusted publisher', async () => {
-      await service.addTrustedPublisher('lotm');
+      await service.addTrustedPublisher('test-publisher');
 
       expect(mockContext.globalState.update.called).to.be.true;
       const savedState = mockContext.globalState.update.lastCall.args[1];
-      expect(savedState.trustedPublishers).to.include('lotm');
+      expect(savedState.trustedPublishers).to.include('test-publisher');
     });
 
     test('should not add duplicate trusted publisher', async () => {
-      await service.addTrustedPublisher('lotm');
-      await service.addTrustedPublisher('lotm');
+      await service.addTrustedPublisher('test-publisher');
+      await service.addTrustedPublisher('test-publisher');
 
       const publishers = service.getTrustedPublishers();
-      expect(publishers.filter((p) => p === 'lotm').length).to.equal(1);
+      expect(publishers.filter((p) => p === 'test-publisher').length).to.equal(1);
     });
 
     test('should remove trusted publisher', async () => {
-      await service.addTrustedPublisher('lotm');
-      await service.removeTrustedPublisher('lotm');
+      await service.addTrustedPublisher('test-publisher');
+      await service.removeTrustedPublisher('test-publisher');
 
       const publishers = service.getTrustedPublishers();
-      expect(publishers).to.not.include('lotm');
+      expect(publishers).to.not.include('test-publisher');
     });
 
     test('should save state after removing trusted publisher', async () => {
-      await service.addTrustedPublisher('lotm');
+      await service.addTrustedPublisher('test-publisher');
       mockContext.globalState.update.resetHistory();
 
-      await service.removeTrustedPublisher('lotm');
+      await service.removeTrustedPublisher('test-publisher');
 
       expect(mockContext.globalState.update.calledOnce).to.be.true;
       const savedState = mockContext.globalState.update.firstCall.args[1];
-      expect(savedState.trustedPublishers).to.not.include('lotm');
+      expect(savedState.trustedPublishers).to.not.include('test-publisher');
     });
 
     test('should handle removing non-existent publisher', async () => {
@@ -229,48 +229,48 @@ suite('AllowListService Tests', () => {
     });
 
     test('should check if publisher is trusted', async () => {
-      await service.addTrustedPublisher('lotm');
+      await service.addTrustedPublisher('test-publisher');
 
-      expect(service.isTrustedPublisher('lotm')).to.be.true;
+      expect(service.isTrustedPublisher('test-publisher')).to.be.true;
       expect(service.isTrustedPublisher('unknown')).to.be.false;
     });
 
     test('should rebuild allow lists after adding trusted publisher', async () => {
       getExtensionsByPublisherStub
-        .withArgs('lotm')
+        .withArgs('test-publisher')
         .returns([
           createMockExtension({
-            id: 'lotm.extension1-1.0.0',
-            packageJSON: { publisher: 'lotm', name: 'extension1', version: '1.0.0' },
+            id: 'test-publisher.extension1-1.0.0',
+            packageJSON: { publisher: 'test-publisher', name: 'extension1', version: '1.0.0' },
           }),
           createMockExtension({
-            id: 'lotm.extension2-1.0.0',
-            packageJSON: { publisher: 'lotm', name: 'extension2', version: '1.0.0' },
+            id: 'test-publisher.extension2-1.0.0',
+            packageJSON: { publisher: 'test-publisher', name: 'extension2', version: '1.0.0' },
           }),
         ]);
 
-      await service.addTrustedPublisher('lotm');
+      await service.addTrustedPublisher('test-publisher');
 
       const trustedPublisherList = service.getTrustedPublisherAllowList();
-      expect(trustedPublisherList).to.include('lotm.extension1-1.0.0');
-      expect(trustedPublisherList).to.include('lotm.extension2-1.0.0');
+      expect(trustedPublisherList).to.include('test-publisher.extension1-1.0.0');
+      expect(trustedPublisherList).to.include('test-publisher.extension2-1.0.0');
     });
 
     test('should rebuild allow lists after removing trusted publisher', async () => {
       getExtensionsByPublisherStub
-        .withArgs('lotm')
+        .withArgs('test-publisher')
         .returns([
           createMockExtension({
-            id: 'lotm.extension1-1.0.0',
-            packageJSON: { publisher: 'lotm', name: 'extension1', version: '1.0.0' },
+            id: 'test-publisher.extension1-1.0.0',
+            packageJSON: { publisher: 'test-publisher', name: 'extension1', version: '1.0.0' },
           }),
         ]);
 
-      await service.addTrustedPublisher('lotm');
-      await service.removeTrustedPublisher('lotm');
+      await service.addTrustedPublisher('test-publisher');
+      await service.removeTrustedPublisher('test-publisher');
 
       const trustedPublisherList = service.getTrustedPublisherAllowList();
-      expect(trustedPublisherList).to.not.include('lotm.extension1-1.0.0');
+      expect(trustedPublisherList).to.not.include('test-publisher.extension1-1.0.0');
     });
 
     test('should return sorted list of trusted publishers', async () => {
@@ -295,16 +295,16 @@ suite('AllowListService Tests', () => {
 
     test('should allow trusted publisher extensions', async () => {
       getExtensionsByPublisherStub
-        .withArgs('lotm')
+        .withArgs('test-publisher')
         .returns([
           createMockExtension({
-            id: 'lotm.extension-1.0.0',
-            packageJSON: { publisher: 'lotm', name: 'extension', version: '1.0.0' },
+            id: 'test-publisher.extension-1.0.0',
+            packageJSON: { publisher: 'test-publisher', name: 'extension', version: '1.0.0' },
           }),
         ]);
 
-      await service.addTrustedPublisher('lotm');
-      expect(service.isAllowed('lotm.extension-1.0.0')).to.be.true;
+      await service.addTrustedPublisher('test-publisher');
+      expect(service.isAllowed('test-publisher.extension-1.0.0')).to.be.true;
     });
 
     test('should block non-allowed extensions', () => {
@@ -336,13 +336,13 @@ suite('AllowListService Tests', () => {
 
     test('should update statistics after adding trusted publisher', async () => {
       getExtensionsByPublisherStub
-        .withArgs('lotm')
+        .withArgs('test-publisher')
         .returns([
-          createMockExtension({ id: 'lotm.ext1-1.0.0', packageJSON: { publisher: 'lotm' } }),
-          createMockExtension({ id: 'lotm.ext2-1.0.0', packageJSON: { publisher: 'lotm' } }),
+          createMockExtension({ id: 'test-publisher.ext1-1.0.0', packageJSON: { publisher: 'test-publisher' } }),
+          createMockExtension({ id: 'test-publisher.ext2-1.0.0', packageJSON: { publisher: 'test-publisher' } }),
         ]);
 
-      await service.addTrustedPublisher('lotm');
+      await service.addTrustedPublisher('test-publisher');
 
       const stats = service.getStatistics();
       expect(stats.trustedPublisherCount).to.equal(2);
