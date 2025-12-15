@@ -122,6 +122,9 @@ export class ExtensionsRepository {
   private isBuiltInExtension(extension: vscode.Extension<any>): boolean {
     const path = extension.extensionPath.toLowerCase();
 
+    // These patterns match both VS Code and Cursor native extensions:
+    // VS Code: /Applications/Visual Studio Code.app/Contents/Resources/app/extensions/
+    // Cursor: /Applications/Cursor.app/Contents/Resources/app/extensions/
     const builtInPatterns = ['/resources/app/extensions/', '\\resources\\app\\extensions\\'];
 
     return builtInPatterns.some((pattern) => path.includes(pattern.toLowerCase()));

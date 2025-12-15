@@ -23,7 +23,9 @@ export const CONFIG = {
       MAX_RECENT_EVENTS: 10, // Maximum number of recent events to display
     },
   },
-  ALLOWLIST: { DEFAULT_TRUSTED_PUBLISHERS: ['ms-vscode', 'ms-python', 'github', 'git', 'datadog', 'cursor'] },
+  ALLOWLIST: {
+    DEFAULT_TRUSTED_PUBLISHERS: ['ms-vscode', 'ms-python', 'github', 'git', 'datadog', 'cursor', 'anysphere'],
+  },
   DATADOG: {
     SOURCE: 'ide-shepherd',
     SERVICE: 'ide-shepherd-telemetry',

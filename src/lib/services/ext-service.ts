@@ -111,6 +111,7 @@ export class ExtensionServices {
       const patterns = [
         // User extensions
         /(?:\.vscode|\.vscode-insiders)[/\\]extensions[/\\]([^/\\]+)/,
+        /(?:\.cursor)[/\\]extensions[/\\]([^/\\]+)/,
         // Built-in extensions
         /\/app[/\\]extensions[/\\]([^/\\]+)/,
         // Windows built-in
