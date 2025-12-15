@@ -149,159 +149,148 @@ suite('ExtensionServices Tests', () => {
     test('should detect extension from stack trace on macOS', () => {
       getPlatformStub.returns(PlatformType.MACOS);
 
-      // Mock Error.stack to simulate extension call
-      const originalStack = Error.prototype.stack;
-      Object.defineProperty(Error.prototype, 'stack', {
-        get: function () {
-          return `Error
+      // Stub Error constructor to return mock stack
+      const mockStack = `Error
     at ExtensionServices.getCallContext (/mock/ide-shepherd/ext-service.js:20:20)
     at someFunction (/Users/user/.vscode/extensions/test.extension-1.0.0/index.js:42:10)
     at Object.<anonymous> (/Users/user/.vscode/extensions/test.extension-1.0.0/main.js:100:5)`;
-        },
-        configurable: true,
-      });
+
+      const OriginalError = global.Error;
+      const MockError: any = function (this: any, message?: string) {
+        const err = new OriginalError(message);
+        err.stack = mockStack;
+        return err;
+      };
+      MockError.prototype = OriginalError.prototype;
+      (global as any).Error = MockError;
 
       const result = ExtensionServices.getCallContext();
       expect(result.extension).to.equal('test.extension-1.0.0');
 
       // Restore
-      Object.defineProperty(Error.prototype, 'stack', {
-        get: function () {
-          return originalStack;
-        },
-        configurable: true,
-      });
+      (global as any).Error = OriginalError;
     });
 
     test('should detect extension from stack trace on Windows', () => {
       getPlatformStub.returns(PlatformType.WINDOWS);
 
-      const originalStack = Error.prototype.stack;
-      Object.defineProperty(Error.prototype, 'stack', {
-        get: function () {
-          return `Error
+      const mockStack = `Error
     at ExtensionServices.getCallContext (C:\\ide-shepherd\\ext-service.js:20:20)
     at someFunction (C:\\Users\\user\\.vscode\\extensions\\test.extension-1.0.0\\index.js:42:10)`;
-        },
-        configurable: true,
-      });
+
+      const OriginalError = global.Error;
+      const MockError: any = function (this: any, message?: string) {
+        const err = new OriginalError(message);
+        err.stack = mockStack;
+        return err;
+      };
+      MockError.prototype = OriginalError.prototype;
+      (global as any).Error = MockError;
 
       const result = ExtensionServices.getCallContext();
       expect(result.extension).to.equal('test.extension-1.0.0');
 
-      Object.defineProperty(Error.prototype, 'stack', {
-        get: function () {
-          return originalStack;
-        },
-        configurable: true,
-      });
+      (global as any).Error = OriginalError;
     });
 
     test('should detect built-in extension from stack trace', () => {
-      const originalStack = Error.prototype.stack;
-      Object.defineProperty(Error.prototype, 'stack', {
-        get: function () {
-          return `Error
+      const mockStack = `Error
     at ExtensionServices.getCallContext (/mock/ide-shepherd/ext-service.js:20:20)
     at handler (/app/extensions/typescript-language-features/out/extension.js:500:15)`;
-        },
-        configurable: true,
-      });
+
+      const OriginalError = global.Error;
+      const MockError: any = function (this: any, message?: string) {
+        const err = new OriginalError(message);
+        err.stack = mockStack;
+        return err;
+      };
+      MockError.prototype = OriginalError.prototype;
+      (global as any).Error = MockError;
 
       const result = ExtensionServices.getCallContext();
       expect(result.extension).to.equal('typescript-language-features');
 
-      Object.defineProperty(Error.prototype, 'stack', {
-        get: function () {
-          return originalStack;
-        },
-        configurable: true,
-      });
+      (global as any).Error = OriginalError;
     });
 
     test('should detect system binary from stack trace', () => {
-      const originalStack = Error.prototype.stack;
-      Object.defineProperty(Error.prototype, 'stack', {
-        get: function () {
-          return `Error
+      const mockStack = `Error
     at ExtensionServices.getCallContext (/mock/ide-shepherd/ext-service.js:20:20)
-    at /opt/homebrew/bin/git (native)`;
-        },
-        configurable: true,
-      });
+    at /opt/homebrew/bin/git`;
+
+      const OriginalError = global.Error;
+      const MockError: any = function (this: any, message?: string) {
+        const err = new OriginalError(message);
+        err.stack = mockStack;
+        return err;
+      };
+      MockError.prototype = OriginalError.prototype;
+      (global as any).Error = MockError;
 
       const result = ExtensionServices.getCallContext();
       expect(result.extension).to.equal('system:git');
 
-      Object.defineProperty(Error.prototype, 'stack', {
-        get: function () {
-          return originalStack;
-        },
-        configurable: true,
-      });
+      (global as any).Error = OriginalError;
     });
 
     test('should return caller:unknown when no extension found', () => {
-      const originalStack = Error.prototype.stack;
-      Object.defineProperty(Error.prototype, 'stack', {
-        get: function () {
-          return `Error
+      const mockStack = `Error
     at ExtensionServices.getCallContext (/mock/ide-shepherd/ext-service.js:20:20)
     at Module._load (internal/modules/cjs/loader.js:863:27)
     at node:internal/process/task_queues:95:5`;
-        },
-        configurable: true,
-      });
+
+      const OriginalError = global.Error;
+      const MockError: any = function (this: any, message?: string) {
+        const err = new OriginalError(message);
+        err.stack = mockStack;
+        return err;
+      };
+      MockError.prototype = OriginalError.prototype;
+      (global as any).Error = MockError;
 
       const result = ExtensionServices.getCallContext();
       expect(result.extension).to.equal('caller:unknown');
 
-      Object.defineProperty(Error.prototype, 'stack', {
-        get: function () {
-          return originalStack;
-        },
-        configurable: true,
-      });
+      (global as any).Error = OriginalError;
     });
 
     test('should return unknown-stack when no stack available', () => {
-      const originalStack = Error.prototype.stack;
-      Object.defineProperty(Error.prototype, 'stack', {
-        get: function () {
-          return undefined;
-        },
-        configurable: true,
-      });
+      const OriginalError = global.Error;
+      const MockError: any = function (this: any, message?: string) {
+        const err = new OriginalError(message);
+        err.stack = undefined;
+        return err;
+      };
+      MockError.prototype = OriginalError.prototype;
+      (global as any).Error = MockError;
 
       const result = ExtensionServices.getCallContext();
       expect(result.extension).to.equal('unknown-stack');
 
-      Object.defineProperty(Error.prototype, 'stack', {
-        get: function () {
-          return originalStack;
-        },
-        configurable: true,
-      });
+      (global as any).Error = OriginalError;
     });
 
     test('should return stack-error on exception', () => {
-      const originalStack = Error.prototype.stack;
-      Object.defineProperty(Error.prototype, 'stack', {
-        get: function () {
-          throw new Error('Stack access failed');
-        },
-        configurable: true,
-      });
+      const OriginalError = global.Error;
+      try {
+        const MockError: any = function (this: any, message?: string) {
+          const err = new OriginalError(message);
+          Object.defineProperty(err, 'stack', {
+            get: function () {
+              throw new OriginalError('Stack access failed');
+            },
+            configurable: true,
+          });
+          return err;
+        };
+        MockError.prototype = OriginalError.prototype;
+        (global as any).Error = MockError;
 
-      const result = ExtensionServices.getCallContext();
-      expect(result.extension).to.equal('stack-error');
-
-      Object.defineProperty(Error.prototype, 'stack', {
-        get: function () {
-          return originalStack;
-        },
-        configurable: true,
-      });
+        const result = ExtensionServices.getCallContext();
+        expect(result.extension).to.equal('stack-error');
+      } finally {
+        (global as any).Error = OriginalError;
+      }
     });
   });
 });

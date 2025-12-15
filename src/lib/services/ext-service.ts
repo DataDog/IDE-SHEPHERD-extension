@@ -27,9 +27,12 @@ export class ExtensionServices {
 
         // Check if this is a system path (like /opt/homebrew/bin/git)
         if (this._isSystemPath(line)) {
-          const binaryMatch = line.match(/\/([^/]+)(?:\s|$|\))/);
-          if (binaryMatch) {
-            return { extension: `system:${binaryMatch[1]}` };
+          // last segment after final /
+          const pathMatches = line.match(/\/[^/\s()]+/g);
+          if (pathMatches && pathMatches.length > 0) {
+            const lastSegment = pathMatches[pathMatches.length - 1];
+            let binaryName = lastSegment.substring(1);
+            return { extension: `system:${binaryName}` };
           }
           return { extension: 'system:unknown' };
         }

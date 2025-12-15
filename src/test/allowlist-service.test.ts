@@ -190,6 +190,8 @@ suite('AllowListService Tests', () => {
     });
 
     test('should save state after adding trusted publisher', async () => {
+      mockContext.globalState.update.resetHistory();
+
       await service.addTrustedPublisher('test-publisher');
 
       expect(mockContext.globalState.update.called).to.be.true;
