@@ -25,6 +25,15 @@ export class ExtensionServices {
           continue;
         }
 
+        // Check if this is a system path (like /opt/homebrew/bin/git)
+        if (this._isSystemPath(line)) {
+          const binaryMatch = line.match(/\/([^/]+)(?:\s|$|\))/);
+          if (binaryMatch) {
+            return { extension: `system:${binaryMatch[1]}` };
+          }
+          return { extension: 'system:unknown' };
+        }
+
         // Look for extension
         if (!extension) {
           const platform = IDEStatusService.getPlatform();
@@ -45,7 +54,7 @@ export class ExtensionServices {
       }
 
       return {
-        extension: extension || 'caller? who-nose', // since we're using vscode specific static paths, expect this error there
+        extension: extension || 'caller:unknown', // :( adios caller:who-nose
       };
     } catch (error) {
       Logger.error('Failed to get call context', error as Error);
@@ -56,6 +65,23 @@ export class ExtensionServices {
   static _shouldSkipStackLine(line: string) {
     const skipPatterns = ['ide-shepherd', 'node:internal', 'Module._load', 'at Object.Module.', 'at Module.require'];
     return skipPatterns.some((pattern) => line.includes(pattern));
+  }
+
+  /**
+   * Check if the path is a system binary/library path
+   */
+  static _isSystemPath(line: string): boolean {
+    const systemPathPatterns = [
+      '/opt/homebrew/',
+      '/usr/local/',
+      '/usr/bin/',
+      '/bin/',
+      '/usr/lib/',
+      '/System/',
+      'C:\\Windows\\',
+      'C:\\Program Files',
+    ];
+    return systemPathPatterns.some((pattern) => line.includes(pattern));
   }
 
   private static getExtensionPatternsForPlatform(platform: PlatformType): RegExp[] {
