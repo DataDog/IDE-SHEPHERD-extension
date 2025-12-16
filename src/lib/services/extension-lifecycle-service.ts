@@ -54,7 +54,7 @@ export class ExtensionChangeService {
     try {
       // Update repository with current extension state
       // extensions.all is immediately updated when onDidChange fires
-      ExtensionsRepository.getInstance().buildRepository();
+      await ExtensionsRepository.getInstance().buildRepository();
 
       // Notify all registered listeners
       Logger.debug(`ExtensionChangeService: Notifying ${this.listeners.length} listener(s)`);
