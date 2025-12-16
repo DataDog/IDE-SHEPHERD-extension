@@ -342,6 +342,33 @@ suite('NetworkAnalyzer Tests', () => {
       expect(result!.verdict.allowed).to.be.true;
     });
 
+    test('should allow Cloudflare DNS 1.1.1.1', () => {
+      const extensionInfo = createMockExtensionInfo('test.extension', true);
+      const event = new NetworkEvent('http', 'http://1.1.1.1', 'request:pre', __filename, extensionInfo);
+
+      const result = analyzer.analyze(event);
+
+      expect(result!.verdict.allowed).to.be.true;
+    });
+
+    test('should allow Google DNS 8.8.8.8', () => {
+      const extensionInfo = createMockExtensionInfo('test.extension', true);
+      const event = new NetworkEvent('http', 'http://8.8.8.8:53', 'request:pre', __filename, extensionInfo);
+
+      const result = analyzer.analyze(event);
+
+      expect(result!.verdict.allowed).to.be.true;
+    });
+
+    test('should allow cloud metadata service IP 169.254.x.x', () => {
+      const extensionInfo = createMockExtensionInfo('test.extension', true);
+      const event = new NetworkEvent('http', 'http://169.254.169.254', 'request:pre', __filename, extensionInfo);
+
+      const result = analyzer.analyze(event);
+
+      expect(result!.verdict.allowed).to.be.true;
+    });
+
     test('should detect external IP with port', () => {
       const extensionInfo = createMockExtensionInfo('test.extension', true);
       const event = new NetworkEvent('http', 'http://93.184.216.34:8080', 'request:pre', __filename, extensionInfo);

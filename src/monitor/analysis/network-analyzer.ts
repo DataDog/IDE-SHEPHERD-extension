@@ -3,7 +3,13 @@ import { NetworkEvent } from '../../lib/events/network-events';
 import { Logger } from '../../lib/logger';
 import { IDEStatusService } from '../../lib/services/ide-status-service';
 import { AnalysisResult } from './analyzer';
-import { NETWORK_RULES, NetworkRuleType, LOCAL_IP_PATTERN, WILDCARD_IP_PATTERN } from '../../detection/network-rules';
+import {
+  NETWORK_RULES,
+  NetworkRuleType,
+  LOCAL_IP_PATTERN,
+  WILDCARD_IP_PATTERN,
+  LOCALHOST_PATTERN,
+} from '../../detection/network-rules';
 
 export class NetworkAnalyzer {
   analyze(ev: NetworkEvent): AnalysisResult | undefined {
@@ -86,8 +92,9 @@ export class NetworkAnalyzer {
     const ipMatch = url.match(rule.pattern);
     const localMatch = url.match(LOCAL_IP_PATTERN);
     const wildMatch = url.match(WILDCARD_IP_PATTERN);
+    const localhostMatch = url.match(LOCALHOST_PATTERN);
 
-    if (ipMatch && !localMatch && !wildMatch && ev.extension) {
+    if (ipMatch && !localMatch && !wildMatch && !localhostMatch && ev.extension) {
       const matchedIp = ipMatch[0];
       return new AnalysisResult(
         { allowed: false },

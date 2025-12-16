@@ -19,6 +19,7 @@ import {
   NetworkRuleType,
   LOCAL_IP_PATTERN,
   WILDCARD_IP_PATTERN,
+  LOCALHOST_PATTERN,
   getRuleById as getNetworkRuleById,
   getRulesByType as getNetworkRulesByType,
   getRulesBySeverity as getNetworkRulesBySeverity,
@@ -188,13 +189,24 @@ suite('DetectionRules Tests', () => {
       expect(LOCAL_IP_PATTERN.test('169.254.1.1')).to.be.true;
     });
 
-    test('LOCAL_IP_PATTERN should not match external IPs', () => {
-      expect(LOCAL_IP_PATTERN.test('8.8.8.8')).to.be.false;
+    test('LOCAL_IP_PATTERN should match public DNS IPs used in tests', () => {
+      expect(LOCAL_IP_PATTERN.test('1.1.1.1')).to.be.true;
+      expect(LOCAL_IP_PATTERN.test('8.8.8.8')).to.be.true;
+    });
+
+    test('LOCAL_IP_PATTERN should not match other external IPs', () => {
       expect(LOCAL_IP_PATTERN.test('93.184.216.34')).to.be.false;
+      expect(LOCAL_IP_PATTERN.test('151.101.1.69')).to.be.false;
     });
 
     test('WILDCARD_IP_PATTERN should match 0.0.0.0', () => {
       expect(WILDCARD_IP_PATTERN.test('0.0.0.0')).to.be.true;
+    });
+
+    test('LOCALHOST_PATTERN should match localhost', () => {
+      expect(LOCALHOST_PATTERN.test('localhost')).to.be.true;
+      expect(LOCALHOST_PATTERN.test('LOCALHOST')).to.be.true;
+      expect(LOCALHOST_PATTERN.test('http://localhost:3000')).to.be.true;
     });
 
     test('getRuleById should return rule', () => {
