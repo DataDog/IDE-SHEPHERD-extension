@@ -4,9 +4,9 @@
  */
 
 import { expect } from 'chai';
-import { ExtensionServices } from '../lib/services/ext-service';
-import { IDEStatusService } from '../lib/services/ide-status-service';
-import { PlatformType } from '../lib/ide-status';
+import { ExtensionServices } from '../../lib/services/ext-service';
+import { IDEStatusService } from '../../lib/services/ide-status-service';
+import { PlatformType } from '../../lib/ide-status';
 const sinon = require('sinon');
 
 suite('ExtensionServices Tests', () => {

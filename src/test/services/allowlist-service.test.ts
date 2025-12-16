@@ -7,9 +7,9 @@ const sinonChai = require('sinon-chai');
 const sinon = require('sinon');
 use(sinonChai);
 
-import { AllowListService } from '../lib/services/allowlist-service';
-import { ExtensionsRepository } from '../lib/extensions';
-import { createMockExtensionContext, createMockExtension, createBuiltInExtension } from './test-utils';
+import { AllowListService } from '../../lib/services/allowlist-service';
+import { ExtensionsRepository } from '../../lib/extensions';
+import { createMockExtensionContext, createMockExtension, createBuiltInExtension } from '../test-utils';
 
 suite('AllowListService Tests', () => {
   let service: AllowListService;
