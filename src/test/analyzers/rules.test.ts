@@ -59,11 +59,22 @@ suite('DetectionRules Tests', () => {
     test('PowerShell rule flagPattern should match suspicious flags', () => {
       const rule = PROCESS_RULES.find((r) => r.id === 'powershell_execution');
       expect(rule!.flagPattern).to.exist;
+      expect(rule!.flagPattern!.test('-Command Get-Process')).to.be.true;
+      expect(rule!.flagPattern!.test('-c Get-Process')).to.be.true;
       expect(rule!.flagPattern!.test('-enc BASE64')).to.be.true;
       expect(rule!.flagPattern!.test('-EncodedCommand BASE64')).to.be.true;
       expect(rule!.flagPattern!.test('-ExecutionPolicy Bypass')).to.be.true;
       expect(rule!.flagPattern!.test('-NoProfile')).to.be.true;
       expect(rule!.flagPattern!.test('-WindowStyle Hidden')).to.be.true;
+      expect(rule!.flagPattern!.test('-w Hidden')).to.be.true;
+    });
+
+    test('PowerShell rule flagPattern should NOT match benign flags', () => {
+      const rule = PROCESS_RULES.find((r) => r.id === 'powershell_execution');
+      expect(rule!.flagPattern).to.exist;
+      expect(rule!.flagPattern!.test('-Version')).to.be.false;
+      expect(rule!.flagPattern!.test('-Help')).to.be.false;
+      expect(rule!.flagPattern!.test('-?')).to.be.false;
     });
 
     test('Command Injection rule should match shell commands', () => {

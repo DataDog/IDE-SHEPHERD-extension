@@ -128,13 +128,14 @@ suite('ProcessAnalyzer Tests', () => {
       expect(result!.verdict.allowed).to.be.false;
     });
 
-    test('should detect pwsh command', () => {
+    test('should detect pwsh command with suspicious flags', () => {
       const extensionInfo = createMockExtensionInfo('test.extension', true);
-      const event = new ExecEvent('pwsh', ['-Version', '7'], {}, __filename, extensionInfo);
+      const event = new ExecEvent('pwsh', ['-c', 'Get-Process'], {}, __filename, extensionInfo);
 
       const result = analyzer.analyze(event);
 
       expect(result!.verdict.allowed).to.be.false;
+      expect(result!.securityEvent).to.exist;
     });
 
     test('should detect suspicious powershell flags', () => {
@@ -398,26 +399,40 @@ suite('ProcessAnalyzer Tests', () => {
   });
 
   suite('Flag Pattern Validation', () => {
-    test('should require flag pattern match when specified', () => {
+    test('should block powershell with -Command flag (suspicious)', () => {
       const extensionInfo = createMockExtensionInfo('test.extension', true);
-      // PowerShell without suspicious flags - should still match command pattern
       const event = new ExecEvent('powershell', ['-Command', 'Get-Date'], {}, __filename, extensionInfo);
 
       const result = analyzer.analyze(event);
 
-      // PowerShell rule has flagPattern, so benign commands should be allowed
-      // Actually, looking at the code, it checks flagPattern if it exists
-      expect(result!.verdict.allowed).to.be.false; // Still blocked because PowerShell itself is suspicious
+      expect(result!.verdict.allowed).to.be.false;
+      expect(result!.securityEvent).to.exist;
     });
 
-    test('should not match if flag pattern exists but does not match', () => {
+    test('should block powershell with -c flag (short form)', () => {
       const extensionInfo = createMockExtensionInfo('test.extension', true);
-      // PowerShell with safe flags
+      const event = new ExecEvent('powershell', ['-c', 'Get-Process'], {}, __filename, extensionInfo);
+
+      const result = analyzer.analyze(event);
+
+      expect(result!.verdict.allowed).to.be.false;
+    });
+
+    test('should allow powershell with benign flags', () => {
+      const extensionInfo = createMockExtensionInfo('test.extension', true);
       const event = new ExecEvent('powershell', ['-Version'], {}, __filename, extensionInfo);
 
       const result = analyzer.analyze(event);
 
-      // Should allow because flagPattern doesn't match
+      expect(result!.verdict.allowed).to.be.true;
+    });
+
+    test('should allow powershell with -Help flag', () => {
+      const extensionInfo = createMockExtensionInfo('test.extension', true);
+      const event = new ExecEvent('powershell', ['-Help'], {}, __filename, extensionInfo);
+
+      const result = analyzer.analyze(event);
+
       expect(result!.verdict.allowed).to.be.true;
     });
   });
