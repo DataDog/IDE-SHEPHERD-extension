@@ -35,7 +35,8 @@ export const PROCESS_RULES: ProcessRule[] = [
     target: Target.PROCESS,
     severity: SeverityLevel.HIGH,
     commandPattern: /\b(powershell|pwsh)(\.exe)?\b/i,
-    flagPattern: /-(?:enc|encodedcommand|exec|executionpolicy\s+bypass|noprofile|windowstyle\s+hidden|noninteractive)/i,
+    flagPattern:
+      /-(?:c(?:ommand)?|enc(?:odedcommand)?|exec(?:utionpolicy)?(?:\s+bypass)?|noprofile|w(?:indowstyle)?(?:\s+hidden)?|noninteractive)/i,
     confidence: 1,
   },
 

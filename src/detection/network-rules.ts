@@ -34,7 +34,7 @@ export const NETWORK_RULES: NetworkRule[] = [
     target: Target.NETWORK,
     severity: SeverityLevel.HIGH,
     pattern:
-      /([a-zA-Z0-9\-\.\_]+)(bit\.ly|workers\.dev|appdomain\.cloud|ngrok\.io|termbin\.com|localhost\.run|webhook\.(site|cool)|oastify\.com|burpcollaborator\.(me|net)|trycloudflare\.com|oast\.(pro|live|site|online|fun|me)|ply\.gg|pipedream\.net|dnslog\.cn|webhook-test\.com|typedwebhook\.tools|beeceptor\.com|ngrok-free\.(app|dev))/,
+      /(bit\.ly|workers\.dev|appdomain\.cloud|ngrok\.io|termbin\.com|localhost\.run|webhook\.(site|cool)|oastify\.com|burpcollaborator\.(me|net)|trycloudflare\.com|oast\.(pro|live|site|online|fun|me)|ply\.gg|pipedream\.net|dnslog\.cn|webhook-test\.com|typedwebhook\.tools|beeceptor\.com|ngrok-free\.(app|dev))/,
     confidence: 1,
   },
 
@@ -89,9 +89,16 @@ export const NETWORK_RULES: NetworkRule[] = [
 ];
 
 // Helper patterns for IP filtering
+// Excludes:
+// - Local IPv4: 127.x.x.x, 10.x.x.x, 192.168.x.x, 172.16-31.x.x, 169.254.x.x (link-local/metadata)
+// - Public DNS used in tests: 1.1.1.1 (Cloudflare), 8.8.8.8 (Google)
+// - Localhost
 export const LOCAL_IP_PATTERN =
-  /(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|169\.254\.)\d{1,3}\.\d{1,3}\.\d{1,3}/;
-export const WILDCARD_IP_PATTERN = /[0\.0\.0\.0]/;
+  /(127\.|10\.)\d{1,3}\.\d{1,3}\.\d{1,3}|(192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|169\.254\.)\d{1,3}\.\d{1,3}|1\.1\.1\.1|8\.8\.8\.8/;
+
+// Wildcard IP (0.0.0.0) and localhost
+export const WILDCARD_IP_PATTERN = /0\.0\.0\.0/;
+export const LOCALHOST_PATTERN = /localhost/i;
 
 export function getRuleById(id: string): NetworkRule | undefined {
   return NETWORK_RULES.find((rule) => rule.id === id);

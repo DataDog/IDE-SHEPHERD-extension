@@ -175,14 +175,6 @@ export class TaskScanner {
     vscode.window.showWarningMessage(`IDE-SHEPHERD: Terminated ${count} active task(s)`);
   }
 
-  /**
-   * Enable/disable auto-termination
-   */
-  public setAutoTerminate(enabled: boolean): void {
-    this.autoTerminateEnabled = enabled;
-    Logger.info(`Auto-termination ${enabled ? 'enabled' : 'disabled'}`);
-  }
-
   private getTaskId(task: vscode.Task): string {
     return `${task.source}_${task.name}_${task.definition.type}`;
   }
