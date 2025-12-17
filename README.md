@@ -182,30 +182,51 @@ Command Palette (`Ctrl+Shift+P`) > `Developer: Show Logs` > `IDE Shepherd Extens
 
 ## Security Detection Rules
 
-IDE Shepherd employs multiple layers of security detection to identify potentially malicious extensions and network activity:
+IDE Shepherd employs multiple layers of security detection to identify potentially malicious extensions, network activity, process execution, and workspace tasks:
 
 ### Metadata Heuristics
 
 | Rule ID               | Detection Name      | Category   | Severity | Description                                                          |
 | --------------------- | ------------------- | ---------- | -------- | -------------------------------------------------------------------- |
+| `void_description`    | Void Description    | Metadata   | Medium   | Extensions with no description or very short description (<10 chars) |
 | `missing_repository`  | Missing Repository  | Metadata   | Low      | Extensions without repository or homepage links                      |
 | `suspicious_version`  | Suspicious Version  | Metadata   | Low      | Suspicious version patterns (0.0.0, 99.99.99, etc.)                  |
-| `hidden_commands`     | Hidden Commands     | Commands   | Low      | Registered commands not exposed in UI                                |
 | `generic_category`    | Generic Category    | Metadata   | Medium   | Extensions categorized as "Other"                                    |
 | `wildcard_activation` | Wildcard Activation | Activation | Medium   | Extensions that activate on all events (\*)                          |
-| `void_description`    | Void Description    | Metadata   | Medium   | Extensions with no description or very short description (<10 chars) |
+| `hidden_commands`     | Hidden Commands     | Commands   | Low      | Registered commands not exposed in UI                                |
 
 ### Network Monitoring
 
-| Detection Type     | Severity | Description                                       |
-| ------------------ | -------- | ------------------------------------------------- |
-| Suspicious Domains | High     | Requests to known malicious or suspicious domains |
+| Rule ID                    | Detection Name           | Type | Severity | Description                                          |
+| -------------------------- | ------------------------ | ---- | -------- | ---------------------------------------------------- |
+| `suspicious_domains`       | Suspicious Domains       | URL  | High     | Request to known suspicious domain (tunneling, etc.) |
+| `exfiltration_domains`     | Exfiltration Domains     | URL  | High     | Request to potential data exfiltration service       |
+| `malware_download_domains` | Malware Download Domains | URL  | High     | Request to known malware distribution domain         |
+| `intel_domains`            | Intel Domains            | URL  | Medium   | Request to IP intelligence service                   |
+| `external_ip`              | Unknown External IP      | IP   | Medium   | Request to external IP address                       |
 
 ### Process Monitoring
 
-| Detection Type      | Severity | Description                                        |
-| ------------------- | -------- | -------------------------------------------------- |
-| Suspicious Commands | High     | Execution of potentially dangerous system commands |
+| Rule ID                | Detection Name       | Type    | Severity | Description                                      |
+| ---------------------- | -------------------- | ------- | -------- | ------------------------------------------------ |
+| `powershell_execution` | PowerShell Execution | SCRIPT  | High     | Suspicious PowerShell execution with flags       |
+| `command_injection`    | Command Injection    | COMMAND | High     | Command injection attempt (sh, bash, curl, etc.) |
+
+### Task Detection
+
+VS Code workspace tasks are monitored for potentially dangerous operations:
+
+| Rule ID                   | Detection Name             | Type                 | Severity | Description                                         |
+| ------------------------- | -------------------------- | -------------------- | -------- | --------------------------------------------------- |
+| `task_curl_download`      | Network Download (curl)    | NETWORK              | High     | Task downloads content from the internet using curl |
+| `task_wget_download`      | Network Download (wget)    | NETWORK              | High     | Task downloads content from the internet using wget |
+| `task_powershell_encoded` | PowerShell Encoded Command | ENCODED_COMMAND      | High     | Task uses PowerShell with encoded command           |
+| `task_eval`               | Dynamic Code Evaluation    | ENCODED_COMMAND      | High     | Task uses eval() for dynamic code execution         |
+| `task_sudo`               | Sudo Execution             | PRIVILEGE_ESCALATION | High     | Task uses sudo for privilege escalation             |
+| `task_temp_script`        | Temporary Script Execution | REMOTE_SCRIPT        | Medium   | Task executes a script from the temporary directory |
+| `task_base64_decode`      | Base64 Decode              | ENCODED_COMMAND      | Medium   | Task uses base64 decoding (potential obfuscation)   |
+| `task_rm_rf`              | Recursive File Deletion    | DESTRUCTIVE          | Medium   | Task attempts to recursively delete files           |
+| `task_chmod_executable`   | Make File Executable       | PRIVILEGE_ESCALATION | Medium   | Task makes a file executable (potential backdoor)   |
 
 ## Limitations
 
@@ -219,3 +240,8 @@ IDE Shepherd employs multiple layers of security detection to identify potential
 - **False Positives**: Some legitimate extensions may trigger heuristic rules (e.g., extensions with minimal descriptions)
 - **Manual Review**: High-risk detections should be manually reviewed before taking action
 - **Extension Kind**: IDE Shepherd's monitoring is limited to workspace and ui extensions and doesn't extend to "web"
+
+### Known Limitations
+
+- **Activation Event Race Condition**: IDE Shepherd uses `*` activation events to load as early as possible during the IDE startup and patch the Node.js environment. In rare cases, smaller extensions with the same activation event may load faster and evade hook instrumentation
+- **Task Blocking Race Condition**: If task verification takes too long, a task may be executed before IDE Shepherd can terminate it. This is a timing-dependent limitation of the task blocking mechanism

@@ -1,15 +1,21 @@
 Component,Origin,License,Copyright
 uuid,https://github.com/uuidjs/uuid,MIT,Copyright (c) 2010-2020 Robert Kieffer and other contributors
+@types/chai,https://github.com/DefinitelyTyped/DefinitelyTyped,MIT,Copyright (c) Microsoft Corporation
 @types/mocha,https://github.com/DefinitelyTyped/DefinitelyTyped,MIT,Copyright (c) Microsoft Corporation
 @types/node,https://github.com/DefinitelyTyped/DefinitelyTyped,MIT,Copyright (c) Microsoft Corporation
+@types/sinon,https://github.com/DefinitelyTyped/DefinitelyTyped,MIT,Copyright (c) Microsoft Corporation
+@types/sinon-chai,https://github.com/DefinitelyTyped/DefinitelyTyped,MIT,Copyright (c) Microsoft Corporation
 @types/vscode,https://github.com/DefinitelyTyped/DefinitelyTyped,MIT,Copyright (c) Microsoft Corporation
 @typescript-eslint/eslint-plugin,https://github.com/typescript-eslint/typescript-eslint,MIT,Copyright (c) 2019 typescript-eslint and other contributors
 @typescript-eslint/parser,https://github.com/typescript-eslint/typescript-eslint,MIT,Copyright (c) 2019 typescript-eslint and other contributors
 @vscode/test-cli,https://github.com/microsoft/vscode-test,MIT,Copyright (c) Microsoft Corporation
 @vscode/test-electron,https://github.com/microsoft/vscode-test,MIT,Copyright (c) Microsoft Corporation
+chai,https://github.com/chaijs/chai,MIT,Copyright (c) 2017 Chai.js Assertion Library
 eslint,https://github.com/eslint/eslint,MIT,Copyright OpenJS Foundation and other contributors
 husky,https://github.com/typicode/husky,MIT,Copyright (c) 2021 typicode
 lint-staged,https://github.com/okonet/lint-staged,MIT,Copyright (c) 2016 Andrey Okonetchnikov
 prettier,https://github.com/prettier/prettier,MIT,Copyright (c) James Long and contributors
+sinon,https://github.com/sinonjs/sinon,BSD-3-Clause,Copyright (c) 2010-2025 Christian Johansen
+sinon-chai,https://github.com/domenic/sinon-chai,BSD-2-Clause,Copyright (c) 2012 Domenic Denicola
 typescript,https://github.com/microsoft/TypeScript,Apache-2.0,Copyright (c) Microsoft Corporation
 
