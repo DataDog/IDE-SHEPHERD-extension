@@ -1,20 +1,50 @@
 # IDE Shepherd Extension
 
-IDE Shepherd is a Visual Studio Code extension capable of securely monitoring the IDE activity in real time, protecting your workspace from malicious extensions and network requests.
+IDE Shepherd is a Visual Studio Code and Cursor extension capable of securely monitoring the IDE activity in real time, protecting your workspace from malicious extensions and network requests.
+
+## Installation
+
+### Installing from GitHub Releases
+
+1. **Download the latest release**
+
+   Go to the [Releases page](https://github.com/DataDog/IDE-SHEPHERD-extension/releases) and download the latest `.vsix` file (e.g., `ide-shepherd-extension-2.0.0.vsix`).
+
+2. **Install the extension**
+
+   For VS Code:
+
+   ```bash
+   code --install-extension ide-shepherd-extension-2.0.0.vsix
+   ```
+
+   For Cursor:
+
+   ```bash
+   cursor --install-extension ide-shepherd-extension-2.0.0.vsix
+   ```
+
+3. **Reload your IDE**
+
+   Restart VS Code/Cursor or reload the window (`Ctrl+Shift+P` or `Cmd+Shift+P` -> "Developer: Reload Window")
+
+4. **Verify installation**
+
+   The IDE Shepherd icon should appear in the Activity Bar (left sidebar).
 
 ## Development
 
 ### Prerequisites
 
 - Node.js (20.x recommended)
-- VS Code (1.99.3)
+- VS Code (1.99.3) or Cursor
 
 ### Development Setup
 
 1. **Clone the repository**
 
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/DataDog/IDE-SHEPHERD-extension
    cd IDE-SHEPHERD-extension
    ```
 
@@ -63,33 +93,30 @@ IDE Shepherd is a Visual Studio Code extension capable of securely monitoring th
    vsce package
    ```
 
-### Testing the Extension
-
-1. **Install from local package**
-
-   ```bash
-   code --install-extension ide-shepherd-extension-*.vsix
-   ```
-
-2. **Reload VS Code**
-   - Restart VS Code or reload the window (`Ctrl+Shift+P` → "Developer: Reload Window")
-
 ### Installation
 
 1. **Install from VSIX file**
+
+   For VS Code:
 
    ```bash
    code --install-extension /path/to/ide-shepherd-1.0.0.vsix
    ```
 
-2. **Reload VS Code**
-   - Restart VS Code or reload the window (`Ctrl+Shift+P` → "Developer: Reload Window")
+   For Cursor:
+
+   ```bash
+   cursor --install-extension /path/to/ide-shepherd-1.0.0.vsix
+   ```
+
+2. **Reload your IDE**
+   - Restart VS Code/Cursor or reload the window (`Ctrl+Shift+P` or `Cmd+Shift+P` → "Developer: Reload Window")
 
 ## Usage
 
 ### Security Monitoring
 
-The extension automatically starts monitoring when VS Code loads:
+The extension automatically starts monitoring when VS Code (Cursor) loads:
 
 - **Module Patching**: Intercepts and monitors HTTP requests and child process executions
 - **Real-time Analysis**: Analyzes network traffic and process spawning for security threats
@@ -112,7 +139,7 @@ First, ensure the Datadog Agent is installed and running on your system. See [Da
 
 IDE Shepherd now **automatically configures the Datadog Agent** when you enable telemetry for the first time:
 
-1. Open the IDE Shepherd sidebar in VS Code
+1. Open the IDE Shepherd sidebar in VS Code or Cursor
 2. Navigate to **Settings → Datadog Telemetry**
 3. Click on **Telemetry: Disabled** to enable it
 4. IDE Shepherd will automatically:
@@ -214,7 +241,7 @@ IDE Shepherd employs multiple layers of security detection to identify potential
 
 ### Task Detection
 
-VS Code workspace tasks are monitored for potentially dangerous operations:
+VS Code and Cursor workspace tasks are monitored for potentially dangerous operations:
 
 | Rule ID                   | Detection Name             | Type                 | Severity | Description                                         |
 | ------------------------- | -------------------------- | -------------------- | -------- | --------------------------------------------------- |
@@ -232,7 +259,7 @@ VS Code workspace tasks are monitored for potentially dangerous operations:
 
 ### Extension Development Host
 
-- **Deactivate Before Development**: You must deactivate IDE Shepherd before opening the Extension Development Host (`F5` or "Run Extension"). The module patching system can interfere with the extension development environment. Therefore it is recommended to disable the extension in VS Code settings before running extension development.
+- **Deactivate Before Development**: You must deactivate IDE Shepherd before opening the Extension Development Host (`F5` or "Run Extension"). The module patching system can interfere with the extension development environment. Therefore it is recommended to disable the extension in VS Code or Cursor settings before running extension development.
 
 ### Security Posture
 
