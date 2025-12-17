@@ -63,8 +63,6 @@ export class ModuleLoaderPatcher {
       if (CONFIG.MODULES.CHILD_PROCESS_MODULES.includes(spec)) {
         patchChildProcess(exp);
       }
-
-      Object.defineProperty(exp, '__patched__', { value: true });
     } catch (error) {
       Logger.error(`ModuleLoaderPatcher: Failed to patch exports for ${spec}`, error as Error);
       throw error;
