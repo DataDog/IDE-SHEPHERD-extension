@@ -93,7 +93,7 @@ export const NETWORK_RULES: NetworkRule[] = [
 // - Local IPv4: 127.x.x.x, 10.x.x.x, 192.168.x.x, 172.16-31.x.x, 169.254.x.x (link-local/metadata)
 // - Public DNS used in tests: 1.1.1.1 (Cloudflare), 8.8.8.8 (Google)
 // - Localhost
-export const LOCAL_IP_PATTERN =
+export const EXCLUDED_IP_PATTERN =
   /(127\.|10\.)\d{1,3}\.\d{1,3}\.\d{1,3}|(192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|169\.254\.)\d{1,3}\.\d{1,3}|1\.1\.1\.1|8\.8\.8\.8/;
 
 // Wildcard IP (0.0.0.0) and localhost
