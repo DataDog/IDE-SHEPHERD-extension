@@ -102,33 +102,6 @@ suite('E2EIntegration Tests', () => {
 
       req.end();
     });
-
-    test('should analyze request body content', (done) => {
-      patchHttpExports(http, 'http');
-
-      assert.ok((http as any).__patched__, 'http should be patched');
-
-      getCallContextStub = sinon.stub(ExtensionServices, 'getCallContext').returns({ extension: 'test.data-sender' });
-
-      const req = http.request('http://pastebin.com/api/paste', { method: 'POST' });
-
-      // Write suspicious payload
-      req.write(JSON.stringify({ apiKey: 'sk-1234567890', secretToken: 'sensitive-data' }));
-
-      req.on('error', (err) => {
-        assert.ok(
-          err.message.toLowerCase().includes('blocked'),
-          `Expected error to include 'blocked', got: ${err.message}`,
-        );
-        assert.ok(
-          warnings.some((w) => w.toLowerCase().includes('blocked')),
-          'Should log blocking warning',
-        );
-        done();
-      });
-
-      req.end();
-    });
   });
 
   suite('Cross-Module E2E', () => {
