@@ -264,37 +264,35 @@ export function patchHttpExports(http: any, protocol: Protocol) {
     const parsed = normalizeArgs(http, args[0], args[1], args[2]);
     Logger.debug(`HTTP Plugin: Intercepted ${protocol} request to: ${Logger.truncate(parsed.uri, 100)}`);
 
+    // preemptive block for malicious URLs, ie before creating request
+    const urlEvent = new NetworkEvent(
+      protocol,
+      parsed.uri,
+      'request:pre',
+      __filename,
+      extensionInfo,
+      undefined,
+      parsed.options,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      false,
+    );
+    const urlResult = networkAnalyzer.analyze(urlEvent);
+
+    if (urlResult && !urlResult.verdict.allowed && urlResult.securityEvent) {
+      Logger.warn(`HTTP Plugin: Blocked request based on URL analysis: ${parsed.uri}`);
+      NotificationService.showSecurityBlockingInfo(parsed.uri, urlResult.securityEvent, BlockedOperationType.REQUEST);
+      // Return mock immediately
+      return createDynamicMock(null);
+    }
+
+    // --> only create the real request if URL passed validation
     const req = orig(...args);
 
-    let urlAnalyzed = false;
     let blocked = false;
     const { push, result } = mkCollector(CONFIG.NETWORK.MAX_CAPTURE_BYTES);
-
-    // preemptive block for malicious URLs
-    if (!urlAnalyzed) {
-      const urlEvent = new NetworkEvent(
-        protocol,
-        parsed.uri,
-        'request:pre',
-        __filename,
-        extensionInfo,
-        undefined,
-        parsed.options,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        false,
-      );
-      const urlResult = networkAnalyzer.analyze(urlEvent);
-      urlAnalyzed = true;
-
-      if (urlResult && !urlResult.verdict.allowed && urlResult.securityEvent) {
-        blocked = true;
-        Logger.warn(`HTTP Plugin: Blocked request based on URL analysis: ${parsed.uri}`);
-        NotificationService.showSecurityBlockingInfo(parsed.uri, urlResult.securityEvent, BlockedOperationType.REQUEST);
-      }
-    }
 
     req.write = new Proxy(req.write, {
       apply(t, th, [c, ...rest]) {
