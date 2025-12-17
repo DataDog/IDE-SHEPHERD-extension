@@ -17,7 +17,7 @@ import {
 import {
   NETWORK_RULES,
   NetworkRuleType,
-  LOCAL_IP_PATTERN,
+  EXCLUDED_IP_PATTERN,
   WILDCARD_IP_PATTERN,
   LOCALHOST_PATTERN,
   getRuleById as getNetworkRuleById,
@@ -181,22 +181,22 @@ suite('DetectionRules Tests', () => {
       expect(rule!.pattern.test('http://8.8.8.8:80')).to.be.true;
     });
 
-    test('LOCAL_IP_PATTERN should match local IPs', () => {
-      expect(LOCAL_IP_PATTERN.test('127.0.0.1')).to.be.true;
-      expect(LOCAL_IP_PATTERN.test('10.0.0.1')).to.be.true;
-      expect(LOCAL_IP_PATTERN.test('192.168.1.1')).to.be.true;
-      expect(LOCAL_IP_PATTERN.test('172.16.0.1')).to.be.true;
-      expect(LOCAL_IP_PATTERN.test('169.254.1.1')).to.be.true;
+    test('EXCLUDED_IP_PATTERN should match local IPs', () => {
+      expect(EXCLUDED_IP_PATTERN.test('127.0.0.1')).to.be.true;
+      expect(EXCLUDED_IP_PATTERN.test('10.0.0.1')).to.be.true;
+      expect(EXCLUDED_IP_PATTERN.test('192.168.1.1')).to.be.true;
+      expect(EXCLUDED_IP_PATTERN.test('172.16.0.1')).to.be.true;
+      expect(EXCLUDED_IP_PATTERN.test('169.254.1.1')).to.be.true;
     });
 
-    test('LOCAL_IP_PATTERN should match public DNS IPs used in tests', () => {
-      expect(LOCAL_IP_PATTERN.test('1.1.1.1')).to.be.true;
-      expect(LOCAL_IP_PATTERN.test('8.8.8.8')).to.be.true;
+    test('EXCLUDED_IP_PATTERN should match public DNS IPs used in tests', () => {
+      expect(EXCLUDED_IP_PATTERN.test('1.1.1.1')).to.be.true;
+      expect(EXCLUDED_IP_PATTERN.test('8.8.8.8')).to.be.true;
     });
 
-    test('LOCAL_IP_PATTERN should not match other external IPs', () => {
-      expect(LOCAL_IP_PATTERN.test('93.184.216.34')).to.be.false;
-      expect(LOCAL_IP_PATTERN.test('151.101.1.69')).to.be.false;
+    test('EXCLUDED_IP_PATTERN should not match other external IPs', () => {
+      expect(EXCLUDED_IP_PATTERN.test('93.184.216.34')).to.be.false;
+      expect(EXCLUDED_IP_PATTERN.test('151.101.1.69')).to.be.false;
     });
 
     test('WILDCARD_IP_PATTERN should match 0.0.0.0', () => {

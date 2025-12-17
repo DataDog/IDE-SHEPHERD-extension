@@ -6,7 +6,7 @@ import { AnalysisResult } from './analyzer';
 import {
   NETWORK_RULES,
   NetworkRuleType,
-  LOCAL_IP_PATTERN,
+  EXCLUDED_IP_PATTERN,
   WILDCARD_IP_PATTERN,
   LOCALHOST_PATTERN,
 } from '../../detection/network-rules';
@@ -90,7 +90,7 @@ export class NetworkAnalyzer {
 
   private checkExternalIp(url: string, ev: NetworkEvent, rule: (typeof NETWORK_RULES)[0]): AnalysisResult | null {
     const ipMatch = url.match(rule.pattern);
-    const localMatch = url.match(LOCAL_IP_PATTERN);
+    const localMatch = url.match(EXCLUDED_IP_PATTERN);
     const wildMatch = url.match(WILDCARD_IP_PATTERN);
     const localhostMatch = url.match(LOCALHOST_PATTERN);
 
