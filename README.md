@@ -1,6 +1,10 @@
 # IDE Shepherd Extension
 
-IDE Shepherd is a Visual Studio Code and Cursor extension capable of securely monitoring the IDE activity in real time, protecting your workspace from malicious extensions and network requests.
+**IDE Shepherd** is a security extension for VS Code and Cursor IDEs that provides **real-time runtime protection** against malicious extensions and supply chain attacks. Using advanced **require-in-the-middle (RITM) instrumentation**, IDE Shepherd intercepts Node.js primitives at the module loading layer, enabling comprehensive monitoring and blocking of suspicious network requests, process executions, dynamic code evaluation, and workspace tasks.
+
+<p align="center">
+  <img src="resources/icons/shepherd.png" alt="IDE Shepherd Logo" width="200"/>
+</p>
 
 ## Installation
 
@@ -30,7 +34,7 @@ IDE Shepherd is a Visual Studio Code and Cursor extension capable of securely mo
 
 4. **Verify installation**
 
-   The IDE Shepherd icon should appear in the Activity Bar (left sidebar).
+   The IDE Shepherd icon should appear in the Activity Bar (left sidebar for VS Code, toggle the top menu for Cursor).
 
 ## Development
 
@@ -118,84 +122,28 @@ IDE Shepherd is a Visual Studio Code and Cursor extension capable of securely mo
 
 The extension automatically starts monitoring when VS Code (Cursor) loads:
 
-- **Module Patching**: Intercepts and monitors HTTP requests and child process executions
+- **Hybrid RITM + Monkey Patching**: Uses a two-layer approach to intercept module loading (`Module._load`) and patch Node.js primitives
+  - Layer 1: Hooks into the module loading system to catch **all** future `require()` calls
+  - Layer 2: Patches individual exports (e.g., `http.request`, `child_process.spawn`)
 - **Real-time Analysis**: Analyzes network traffic and process spawning for security threats
 
-### Datadog Telemetry Integration
+**Quick Overview:**
 
-IDE Shepherd supports sending telemetry data to Datadog via the Datadog Agent for centralized monitoring and analysis:
+```mermaid
+flowchart TD
+    A[0. IDE Shepherd Activates Early] --> B[1. Hook Module._load<br/>RITM Pattern]
+    B --> C[2. Extension Loads]
+    C --> D[3. Extension calls require#40;'_module_'#41;]
+    D --> E[4. Module._load<br/>Hook Intercepts]
+    E --> F[5. Patch http.request,<br/>child_process.exec, etc.]
+    F --> G[7. Extension calls<br/>http.request]
+    G --> H[ Monitored & Analyzed]
 
-- **Extension Repository Data**: User-installed extensions with metadata.
-- **Security Events**: Real-time reporting of detected threats and IoCs
-- **Metadata Analysis**: Risk scores and suspicious patterns from heuristic analysis
-
-#### Quick Setup
-
-**1. Install and Start Datadog Agent**
-
-First, ensure the Datadog Agent is installed and running on your system. See [Datadog Agent Installation Guide](https://docs.datadoghq.com/agent/).
-
-**2. Enable Telemetry in IDE Shepherd**
-
-IDE Shepherd now **automatically configures the Datadog Agent** when you enable telemetry for the first time:
-
-1. Open the IDE Shepherd sidebar in VS Code or Cursor
-2. Navigate to **Settings → Datadog Telemetry**
-3. Click on **Telemetry: Disabled** to enable it
-4. IDE Shepherd will automatically:
-   - Create the configuration directory: `/opt/datadog-agent/etc/conf.d/ide-shepherd.d/`
-   - Write the configuration file: `conf.yaml` with the appropriate settings
-   - Configure the agent to listen on the specified port
-
-**3. Restart Datadog Agent**
-
-After the automatic configuration, restart the Datadog Agent for changes to take effect:
-
-```bash
-# macOS
-launchctl stop com.datadoghq.agent
-launchctl start com.datadoghq.agent
+    style B fill:#4a9eff,stroke:#2563eb,color:#fff
+    style E fill:#4a9eff,stroke:#2563eb,color:#fff
+    style F fill:#4a9eff,stroke:#2563eb,color:#fff
+    style H fill:#22c55e,stroke:#16a34a,color:#fff
 ```
-
-See [Datadog Agent Commands](https://docs.datadoghq.com/agent/guide/agent-commands/) for more details.
-
-**4. Verify Telemetry Status**
-
-Telemetry is now **sent automatically** in real-time:
-
-- Extension installed/updated/uninstalled -> OCSF event sent immediately
-- Security threat detected -> OCSF event sent immediately
-
-You can verify the connection from the sidebar:
-
-- **Agent Status**: Shows if the Datadog Agent is up and running running
-- **Agent Port**: Shows the port on which the agent is listening
-
-**5. View in Datadog**
-
-- Go to [Datadog Logs Explorer](https://app.datadoghq.com/logs)
-- Filter: `source:ide-shepherd service:ide-shepherd-telemetry`
-
-#### Manual Configuration (Optional)
-
-If you prefer to manually configure the Datadog Agent, create `/opt/datadog-agent/etc/conf.d/ide-shepherd.d/conf.yaml`:
-
-```yaml
-logs:
-  - type: tcp
-    port: 10518
-    service: 'ide-shepherd-telemetry'
-    source: 'ide-shepherd'
-```
-
-Then restart the agent and configure the same port in IDE Shepherd settings.
-
-#### Disabling Telemetry
-
-When you disable telemetry in IDE Shepherd, you'll be asked whether to:
-
-- **Remove the agent configuration**: Automatically deletes the IDE Shepherd configuration from Datadog Agent
-- **Keep the configuration**: Leaves the agent configuration in place for future use
 
 ### Viewing Status & Logs
 
@@ -216,10 +164,10 @@ IDE Shepherd employs multiple layers of security detection to identify potential
 | Rule ID               | Detection Name      | Category   | Severity | Description                                                          |
 | --------------------- | ------------------- | ---------- | -------- | -------------------------------------------------------------------- |
 | `void_description`    | Void Description    | Metadata   | Medium   | Extensions with no description or very short description (<10 chars) |
-| `missing_repository`  | Missing Repository  | Metadata   | Low      | Extensions without repository or homepage links                      |
-| `suspicious_version`  | Suspicious Version  | Metadata   | Low      | Suspicious version patterns (0.0.0, 99.99.99, etc.)                  |
 | `generic_category`    | Generic Category    | Metadata   | Medium   | Extensions categorized as "Other"                                    |
 | `wildcard_activation` | Wildcard Activation | Activation | Medium   | Extensions that activate on all events (\*)                          |
+| `missing_repository`  | Missing Repository  | Metadata   | Low      | Extensions without repository or homepage links                      |
+| `suspicious_version`  | Suspicious Version  | Metadata   | Low      | Suspicious version patterns (0.0.0, 99.99.99, etc.)                  |
 | `hidden_commands`     | Hidden Commands     | Commands   | Low      | Registered commands not exposed in UI                                |
 
 ### Network Monitoring
@@ -270,5 +218,83 @@ VS Code and Cursor workspace tasks are monitored for potentially dangerous opera
 
 ### Known Limitations
 
-- **Activation Event Race Condition**: IDE Shepherd uses `*` activation events to load as early as possible during the IDE startup and patch the Node.js environment. In rare cases, smaller extensions with the same activation event may load faster and evade hook instrumentation
+- **Activation Event Race Condition**: IDE Shepherd uses `*` activation events to load early and patch `Module._load` (RITM pattern). In rare cases, smaller extensions may load faster and execute code **before** the RITM hook is installed. However, once the hook is active, all subsequent `require()` calls are intercepted regardless of load order.
 - **Task Blocking Race Condition**: If task verification takes too long, a task may be executed before IDE Shepherd can terminate it. This is a timing-dependent limitation of the task blocking mechanism
+
+## Observability
+
+### Datadog Telemetry Integration
+
+IDE Shepherd supports sending telemetry data to Datadog via the Datadog Agent for centralized monitoring and analysis:
+
+- **Extension Repository Data**: User-installed extensions with metadata
+- **Security Events**: Real-time reporting of detected threats and IoCs
+- **Metadata Analysis**: Risk scores and suspicious patterns from heuristic analysis
+
+#### Quick Setup
+
+**1. Install and Start Datadog Agent**
+
+First, ensure the Datadog Agent is installed and running on your system. See [Datadog Agent Installation Guide](https://docs.datadoghq.com/agent/).
+
+**2. Enable Telemetry in IDE Shepherd**
+
+IDE Shepherd now **automatically configures the Datadog Agent** when you enable telemetry for the first time:
+
+1. Open the IDE Shepherd sidebar in VS Code or Cursor
+2. Navigate to **Settings → Datadog Telemetry**
+3. Click on **Telemetry: Disabled** to enable it
+4. IDE Shepherd will automatically:
+   - Create the configuration directory: `/opt/datadog-agent/etc/conf.d/ide-shepherd.d/`
+   - Write the configuration file: `conf.yaml` with the appropriate settings
+   - Configure the agent to listen on the specified port
+
+**3. Restart Datadog Agent**
+
+After the automatic configuration, restart the Datadog Agent for changes to take effect:
+
+```bash
+# macOS
+launchctl stop com.datadoghq.agent
+launchctl start com.datadoghq.agent
+```
+
+See [Datadog Agent Commands](https://docs.datadoghq.com/agent/guide/agent-commands/) for more details.
+
+**4. Verify Telemetry Status**
+
+Telemetry is now **sent automatically** in real-time:
+
+- Extension installed/updated/uninstalled → OCSF event sent immediately
+- Security threat detected → OCSF event sent immediately
+
+You can verify the connection from the sidebar:
+
+- **Agent Status**: Shows if the Datadog Agent is up and running
+- **Agent Port**: Shows the port on which the agent is listening
+
+**5. View in Datadog**
+
+- Go to [Datadog Logs Explorer](https://app.datadoghq.com/logs)
+- Filter: `source:ide-shepherd service:ide-shepherd-telemetry`
+
+#### Manual Configuration (Optional)
+
+If you prefer to manually configure the Datadog Agent, create `/opt/datadog-agent/etc/conf.d/ide-shepherd.d/conf.yaml`:
+
+```yaml
+logs:
+  - type: tcp
+    port: 10518
+    service: 'ide-shepherd-telemetry'
+    source: 'ide-shepherd'
+```
+
+Then restart the agent and configure the same port in IDE Shepherd settings.
+
+#### Disabling Telemetry
+
+When you disable telemetry in IDE Shepherd, you'll be asked whether to:
+
+- **Remove the agent configuration**: Automatically deletes the IDE Shepherd configuration from Datadog Agent
+- **Keep the configuration**: Leaves the agent configuration in place for future use
