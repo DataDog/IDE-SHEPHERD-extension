@@ -160,10 +160,10 @@ IDE Shepherd employs multiple layers of security detection to identify potential
 | Rule ID               | Detection Name      | Category   | Severity | Description                                                          |
 | --------------------- | ------------------- | ---------- | -------- | -------------------------------------------------------------------- |
 | `void_description`    | Void Description    | Metadata   | Medium   | Extensions with no description or very short description (<10 chars) |
-| `missing_repository`  | Missing Repository  | Metadata   | Low      | Extensions without repository or homepage links                      |
-| `suspicious_version`  | Suspicious Version  | Metadata   | Low      | Suspicious version patterns (0.0.0, 99.99.99, etc.)                  |
 | `generic_category`    | Generic Category    | Metadata   | Medium   | Extensions categorized as "Other"                                    |
 | `wildcard_activation` | Wildcard Activation | Activation | Medium   | Extensions that activate on all events (\*)                          |
+| `missing_repository`  | Missing Repository  | Metadata   | Low      | Extensions without repository or homepage links                      |
+| `suspicious_version`  | Suspicious Version  | Metadata   | Low      | Suspicious version patterns (0.0.0, 99.99.99, etc.)                  |
 | `hidden_commands`     | Hidden Commands     | Commands   | Low      | Registered commands not exposed in UI                                |
 
 ### Network Monitoring
