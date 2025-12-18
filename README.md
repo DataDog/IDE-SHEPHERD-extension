@@ -1,6 +1,10 @@
 # IDE Shepherd Extension
 
-IDE Shepherd is a Visual Studio Code and Cursor extension capable of securely monitoring the IDE activity in real time, protecting your workspace from malicious extensions and network requests.
+**IDE Shepherd** is a security extension for VS Code and Cursor IDEs that provides **real-time runtime protection** against malicious extensions and supply chain attacks. Using advanced **require-in-the-middle (RITM) instrumentation**, IDE Shepherd intercepts Node.js primitives at the module loading layer, enabling comprehensive monitoring and blocking of suspicious network requests, process executions, dynamic code evaluation, and workspace tasks.
+
+<p align="center">
+  <img src="resources/icons/shepherd.png" alt="IDE Shepherd Logo" width="200"/>
+</p>
 
 ## Installation
 
@@ -30,7 +34,7 @@ IDE Shepherd is a Visual Studio Code and Cursor extension capable of securely mo
 
 4. **Verify installation**
 
-   The IDE Shepherd icon should appear in the Activity Bar (left sidebar).
+   The IDE Shepherd icon should appear in the Activity Bar (left sidebar for VS Code, toggle the top menu for Cursor).
 
 ## Development
 
