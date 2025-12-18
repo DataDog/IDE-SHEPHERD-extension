@@ -128,8 +128,8 @@ The extension automatically starts monitoring when VS Code (Cursor) loads:
 ```mermaid
 flowchart TD
     A[0. IDE Shepherd Activates Early] --> B[1. Hook Module._load<br/>RITM Pattern]
-    B --> C[2. Extensions Load Later]
-    C --> D[3. Extension calls require#40;'http'#41;]
+    B --> C[2. Extension Loads]
+    C --> D[3. Extension calls require#40;'_module_'#41;]
     D --> E[4. Module._load<br/>Hook Intercepts]
     E --> F[5. Patch http.request,<br/>child_process.exec, etc.]
     F --> G[7. Extension calls<br/>http.request]
