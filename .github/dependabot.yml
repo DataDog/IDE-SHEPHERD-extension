@@ -5,7 +5,7 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
-    open-pull-requests-limit: 0
+    open-pull-requests-limit: 10
     groups:
       # Group all non-major updates together
       minor-and-patch:
@@ -20,6 +20,7 @@ updates:
     commit-message:
       prefix: 'deps'
       prefix-development: 'deps-dev'
+
   # GitHub Actions
   - package-ecosystem: 'github-actions'
     directory: '/'
