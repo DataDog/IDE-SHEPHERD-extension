@@ -131,7 +131,7 @@ export interface OCSFBaseFinding {
 export interface OCSFDetectionFinding extends OCSFBaseFinding {
   class_uid: OCSFClassUID.DETECTION_FINDING;
   type_uid: number; // 200401 (CREATE) | 200402 (UPDATE) | 200403 (CLOSE)
-  resources?: OCSFResource[];
+  resources?: OCSFResource;
   observables?: OCSFObservable[];
 }
 
