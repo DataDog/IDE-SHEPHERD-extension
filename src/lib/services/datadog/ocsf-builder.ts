@@ -43,12 +43,10 @@ export function buildDetectionFinding(
       title: `Security Detection: ${primaryIoC.rule}`,
       desc: primaryIoC.description,
     },
-    resources: [
-      {
-        uid: securityEvent.extension?.id || securityEvent.workspace?.path || 'unknown',
-        role_id: OCSFResourceRoleID.ACTOR,
-      },
-    ],
+    resources: {
+      uid: securityEvent.extension?.id || securityEvent.workspace?.path || 'unknown',
+      role_id: OCSFResourceRoleID.ACTOR,
+    },
     observables: securityEvent.iocs.map((ioc) => ({
       name: ioc.rule,
       type_id: getObservableType(securityEvent.originalEvent.eventType),
