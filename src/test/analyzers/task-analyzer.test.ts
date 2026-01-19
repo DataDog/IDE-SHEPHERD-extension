@@ -8,7 +8,7 @@ const sinonChai = require('sinon-chai');
 
 use(sinonChai);
 
-import { TaskScanner } from '../../monitor/analysis/task-anaylzer';
+import { TaskScanner } from '../../monitor/analysis/task-analyzer';
 import { TASK_RULES, TaskRuleType } from '../../detection/task-rules';
 import { TrustedWorkspaceService } from '../../lib/services/trusted-workspace-service';
 import { IDEStatusService } from '../../lib/services/ide-status-service';

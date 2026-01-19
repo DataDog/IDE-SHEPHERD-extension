@@ -102,8 +102,6 @@ suite('ExtensionChangeService Tests', () => {
 
       // At least one should have executed
       expect(buildRepositoryStub.callCount).to.be.greaterThan(0);
-
-      console.log(`Total calls: ${buildRepositoryStub.callCount}, Max concurrent: ${maxConcurrentExecutions}`);
     });
   });
 
