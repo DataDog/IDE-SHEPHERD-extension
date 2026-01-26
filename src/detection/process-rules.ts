@@ -48,7 +48,7 @@ export const PROCESS_RULES: ProcessRule[] = [
     type: ProcessRuleType.COMMAND,
     target: Target.PROCESS,
     severity: SeverityLevel.HIGH,
-    commandPattern: /\b(sh|bash|zsh|curl|wget)\b/i,
+    commandPattern: /(?:\|\s*(sh|bash|zsh|cmd)\b|\b(curl|wget)\b)/i,
     confidence: 1,
   },
 ];
