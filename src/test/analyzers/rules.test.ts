@@ -78,14 +78,22 @@ suite('DetectionRules Tests', () => {
       expect(rule!.flagPattern!.test('-?')).to.be.false;
     });
 
-    test('Command Injection rule should match shell commands', () => {
+    test('Command Injection rule should match pipe-to-shell and network commands', () => {
       const rule = PROCESS_RULES.find((r) => r.id === 'command_injection');
       expect(rule).to.exist;
-      expect(rule!.commandPattern.test('bash')).to.be.true;
-      expect(rule!.commandPattern.test('sh')).to.be.true;
-      expect(rule!.commandPattern.test('zsh')).to.be.true;
+      // Should match pipe-to-shell patterns
+      expect(rule!.commandPattern.test('| sh')).to.be.true;
+      expect(rule!.commandPattern.test('| bash')).to.be.true;
+      expect(rule!.commandPattern.test('| zsh')).to.be.true;
+      expect(rule!.commandPattern.test('| cmd')).to.be.true;
+      expect(rule!.commandPattern.test('|sh')).to.be.true; // no space
+      // Should match curl/wget
       expect(rule!.commandPattern.test('curl')).to.be.true;
       expect(rule!.commandPattern.test('wget')).to.be.true;
+      // Should NOT match standalone shell commands
+      expect(rule!.commandPattern.test('bash')).to.be.false;
+      expect(rule!.commandPattern.test('sh')).to.be.false;
+      expect(rule!.commandPattern.test('zsh')).to.be.false;
     });
 
     test('getRuleById should return rule', () => {
