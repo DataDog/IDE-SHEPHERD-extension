@@ -292,7 +292,7 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@types/chai": "^4.3.20",
+    "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
     "@types/sinon": "^21.0.0",
