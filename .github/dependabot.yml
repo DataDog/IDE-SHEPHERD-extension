@@ -1,0 +1,33 @@
+version: 2
+updates:
+- package-ecosystem: npm
+  directory: /
+  schedule:
+    interval: weekly
+  open-pull-requests-limit: 10
+  groups:
+    minor-and-patch:
+      patterns:
+      - '*'
+      update-types:
+      - minor
+      - patch
+  labels:
+  - dependencies
+  - npm
+  commit-message:
+    prefix: deps
+    prefix-development: deps-dev
+  cooldown:
+    default-days: 14
+- package-ecosystem: github-actions
+  directory: /
+  schedule:
+    interval: weekly
+  labels:
+  - dependencies
+  - github-actions
+  commit-message:
+    prefix: ci
+  cooldown:
+    default-days: 14
