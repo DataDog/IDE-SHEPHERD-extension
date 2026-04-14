@@ -140,3 +140,7 @@ export function activate(context: vscode.ExtensionContext) {
     throw error;
   }
 }
+
+export function deactivate() {
+  IDEStatusService.stopAutoRefresh();
+}

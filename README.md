@@ -3,8 +3,12 @@
 **IDE Shepherd** is a security extension for VS Code and Cursor IDEs that provides **real-time runtime protection** against malicious extensions and supply chain attacks. Using advanced **require-in-the-middle (RITM) instrumentation**, IDE Shepherd intercepts Node.js primitives at the module loading layer, enabling comprehensive monitoring and blocking of suspicious network requests, process executions, dynamic code evaluation, and workspace tasks.
 
 <p align="center">
-  <img src="resources/icons/shepherd.png" alt="IDE Shepherd Logo" width="200"/>
+  <img src="resources/icons/icon.png" alt="IDE Shepherd Logo" width="200"/>
 </p>
+
+---
+
+## Check out the new Datadog Agent [integration](https://docs.datadoghq.com/integrations/ide-shepherd/) and Cloud SIEM [content pack](https://app.datadoghq.com/security/siem/content-packs?query=%22IDE-SHEPHERD%22) for IDE-SHEPHERD.
 
 ## Installation
 
