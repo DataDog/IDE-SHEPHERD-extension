@@ -291,6 +291,9 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
         },
       );
 
+      // Clear the persisted config path now that the config file is gone.
+      await DatadogTelemetryService.getInstance().persistCachedConfigPath();
+
       // config file has been removed, restart agent
       this._onDidChangeTreeData.fire();
 

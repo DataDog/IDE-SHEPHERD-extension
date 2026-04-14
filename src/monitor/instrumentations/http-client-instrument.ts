@@ -1,3 +1,4 @@
+import { CONFIG } from '../../lib/config';
 import { NetworkEvent } from '../../lib/events/network-events';
 import type { Protocol } from '../../lib/events/network-events';
 import url from 'url';
@@ -142,6 +143,44 @@ function createDynamicMock(realRequest: any): any {
   return mockReq;
 }
 
+function mkCollector(limit: number) {
+  let buffer = Buffer.alloc(0);
+  let trunc = false;
+  return {
+    push(c: any) {
+      if (!c || trunc) {
+        return;
+      }
+      if (
+        typeof c === 'function' ||
+        (typeof c === 'object' && !Buffer.isBuffer(c) && !ArrayBuffer.isView(c) && !Array.isArray(c))
+      ) {
+        return;
+      }
+      let chunk: Buffer;
+      try {
+        chunk = Buffer.isBuffer(c) ? c : Buffer.from(c);
+      } catch (err) {
+        return;
+      }
+
+      const size = buffer.length + chunk.length;
+      if (size <= limit) {
+        buffer = Buffer.concat([buffer, chunk]);
+      } else {
+        const slice = limit - buffer.length;
+        if (slice > 0) {
+          buffer = Buffer.concat([buffer, chunk.subarray(0, slice)]);
+        }
+        trunc = true;
+      }
+    },
+    result() {
+      return { data: buffer.toString(), truncated: trunc };
+    },
+  };
+}
+
 // We want a thorough coverage of http client since we're analyzing ALL traffic
 // credit: dd-trace-js
 function combineOptions(inputURL: any, inputOptions: any) {
@@ -250,7 +289,165 @@ export function patchHttpExports(http: any, protocol: Protocol) {
     }
 
     // --> only create the real request if URL passed validation
-    return orig(...args);
+    const req = orig(...args);
+
+    let blocked = false;
+    const { push, result } = mkCollector(CONFIG.NETWORK.MAX_CAPTURE_BYTES);
+
+    req.write = new Proxy(req.write, {
+      apply(t, th, [c, ...rest]) {
+        if (blocked) {
+          return c?.length || 0;
+        }
+
+        push(c);
+
+        const { data } = result();
+        const chunkEvent = new NetworkEvent(
+          protocol,
+          parsed.uri,
+          'request:post',
+          __filename,
+          extensionInfo,
+          undefined,
+          parsed.options,
+          undefined,
+          undefined,
+          undefined,
+          data,
+          false,
+        );
+        const chunkResult = networkAnalyzer.analyze(chunkEvent);
+
+        if (chunkResult && !chunkResult.verdict.allowed && chunkResult.securityEvent) {
+          blocked = true;
+          Logger.warn(`HTTP Plugin: Blocked request based on chunk analysis: ${data}`);
+          NotificationService.showSecurityBlockingInfo(
+            parsed.uri,
+            chunkResult.securityEvent,
+            BlockedOperationType.REQUEST,
+          );
+          return c?.length || 0;
+        }
+
+        return t.apply(th, [c, ...rest]);
+      },
+    });
+
+    req.end = new Proxy(req.end, {
+      apply(t, th, [c, ...rest]) {
+        if (blocked) {
+          return createDynamicMock(req);
+        }
+
+        push(c);
+
+        const { data, truncated } = result();
+        const post = new NetworkEvent(
+          protocol,
+          parsed.uri,
+          'request:post',
+          __filename,
+          extensionInfo,
+          undefined,
+          parsed.options,
+          undefined,
+          undefined,
+          undefined,
+          data,
+          truncated,
+        );
+        const analysisResult = networkAnalyzer.analyze(post);
+        if (analysisResult && !analysisResult.verdict.allowed && analysisResult.securityEvent) {
+          Logger.warn(`HTTP Plugin: Blocked request:post based on analyzer verdict: ${parsed.uri}`);
+          Logger.debug('HTTP Plugin: Creating dynamic mock for blocked request');
+          const blockedReq = createDynamicMock(req);
+
+          NotificationService.showSecurityBlockingInfo(
+            parsed.uri,
+            analysisResult.securityEvent,
+            BlockedOperationType.REQUEST,
+          );
+
+          return blockedReq;
+        } else {
+          t.apply(th, [c, ...rest]);
+        }
+        return req;
+      },
+    });
+
+    req.once('response', (res: any) => {
+      const { push: rp, result: rResult } = mkCollector(CONFIG.NETWORK.MAX_CAPTURE_BYTES);
+      let responseBlocked = false;
+
+      res.on('data', (chunk: any) => {
+        if (responseBlocked) {
+          return;
+        }
+
+        rp(chunk);
+        const { data } = rResult();
+        const dataEvent = new NetworkEvent(
+          protocol,
+          parsed.uri,
+          'response',
+          __filename,
+          extensionInfo,
+          undefined,
+          undefined,
+          res.statusCode,
+          res.headers,
+          undefined,
+          data,
+          false,
+        );
+        const dataAnalysis = networkAnalyzer.analyze(dataEvent);
+
+        if (dataAnalysis && !dataAnalysis.verdict.allowed && dataAnalysis.securityEvent) {
+          Logger.warn(`HTTP Plugin: Blocked response based on data analysis: ${parsed.uri}`);
+          responseBlocked = true;
+          res.destroy();
+          NotificationService.showSecurityBlockingInfo(
+            parsed.uri,
+            dataAnalysis.securityEvent,
+            BlockedOperationType.RESPONSE,
+          );
+        }
+      });
+
+      res.on('end', () => {
+        if (responseBlocked) {
+          return;
+        }
+
+        const { data, truncated } = rResult();
+        const finalEvent = new NetworkEvent(
+          protocol,
+          parsed.uri,
+          'response',
+          __filename,
+          extensionInfo,
+          undefined,
+          undefined,
+          res.statusCode,
+          res.headers,
+          undefined,
+          data,
+          truncated,
+        );
+        const finalAnalysis = networkAnalyzer.analyze(finalEvent);
+        if (finalAnalysis && !finalAnalysis.verdict.allowed && finalAnalysis.securityEvent) {
+          Logger.warn(`HTTP Plugin: Blocked response based on final analysis: ${parsed.uri}`);
+          NotificationService.showSecurityBlockingInfo(
+            parsed.uri,
+            finalAnalysis.securityEvent,
+            BlockedOperationType.RESPONSE,
+          );
+        }
+      });
+    });
+    return req;
   };
 
   http.get = function (...a: any[]) {

@@ -143,4 +143,5 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
   IDEStatusService.stopAutoRefresh();
+  DatadogTelemetryService.getInstance().dispose();
 }

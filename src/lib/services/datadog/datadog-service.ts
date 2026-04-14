@@ -162,6 +162,9 @@ export class DatadogTelemetryService {
         }
       }
 
+      // Persist the config path so it survives the next extension host restart
+      await this.persistCachedConfigPath();
+
       // Flush any queued events
       if (this._ocsfTracker) {
         await this._ocsfTracker.flushQueuedEvents();
@@ -234,6 +237,9 @@ export class DatadogTelemetryService {
             `DatadogTelemetryService: Could not remove agent config file - ${error instanceof Error ? error.message : error}`,
           );
         }
+
+        // Clear the persisted path — config file is gone, nothing to restore on next restart.
+        await this.persistCachedConfigPath();
 
         // Inform user and disable telemetry
         vscode.window
