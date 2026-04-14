@@ -16,7 +16,8 @@ const AUTO_REFRESH_CONFIG = CONFIG.UI.AUTO_REFRESH;
 
 export class IDEStatusService {
   private static _status: IDEStatus;
-  private static _lock = false;
+  private static _lockQueue: Array<() => void> = [];
+  private static _locked = false;
   private static _refreshInterval: NodeJS.Timeout | null = null;
 
   // Logger output channel (moved from old IDEStatusManager)
@@ -59,17 +60,25 @@ export class IDEStatusService {
   }
 
   /**
-   * Simple spinlock for thread safety
+   * Async mutex: callers queue up and are resumed in FIFO order.
    */
   private static async acquireLock(): Promise<void> {
-    while (this._lock) {
-      await new Promise((resolve) => setTimeout(resolve, 1));
+    if (!this._locked) {
+      this._locked = true;
+      return;
     }
-    this._lock = true;
+    return new Promise<void>((resolve) => {
+      this._lockQueue.push(resolve);
+    });
   }
 
   private static releaseLock(): void {
-    this._lock = false;
+    const next = this._lockQueue.shift();
+    if (next) {
+      next(); // hand lock to next waiter
+    } else {
+      this._locked = false;
+    }
   }
 
   static async getStatus(): Promise<IDEStatus> {

@@ -17,6 +17,14 @@ const DEFAULT_AGENT_PORT = 10518;
 // Cache for config directory path to allow config file deletion even when agent is down
 let cachedConfigPath: string | undefined;
 
+export function getCachedConfigPath(): string | undefined {
+  return cachedConfigPath;
+}
+
+export function setCachedConfigPath(path: string | undefined): void {
+  cachedConfigPath = path;
+}
+
 /**
  * Configure a local dd agent for accepting logs from IDE Shepherd.
  */

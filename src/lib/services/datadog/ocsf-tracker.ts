@@ -73,7 +73,9 @@ export class OCSFTracker implements ExtensionChangeListener {
   }
 
   /**
-   * Flush all queued events to Datadog agent
+   * Flush all queued events to Datadog agent.
+   * Snapshots and clears the queue before sending so events that arrive
+   * concurrently during the flush are not overwritten.
    */
   async flushQueuedEvents(): Promise<void> {
     this.loadQueue();
@@ -82,15 +84,21 @@ export class OCSFTracker implements ExtensionChangeListener {
       return;
     }
 
-    Logger.info(`OCSFTracker: Flushing ${this.eventQueue.length} queued events`);
+    // Take ownership of the current queue and clear it immediately,
+    // so new events queued during the send go into the (now-empty) queue.
+    const eventsToSend = this.eventQueue;
+    this.eventQueue = [];
+    await this.saveQueue();
+
+    Logger.info(`OCSFTracker: Flushing ${eventsToSend.length} queued events`);
 
     try {
-      await this.transport.send(this.eventQueue);
-      Logger.info(`OCSFTracker: Successfully sent ${this.eventQueue.length} queued events`);
-      this.eventQueue = [];
-
-      await this.saveQueue();
+      await this.transport.send(eventsToSend);
+      Logger.info(`OCSFTracker: Successfully sent ${eventsToSend.length} queued events`);
     } catch (error) {
+      // Restore failed events to the front so they're retried on the next flush.
+      this.eventQueue = [...eventsToSend, ...this.eventQueue];
+      await this.saveQueue();
       Logger.error('OCSFTracker: Failed to flush queued events', error as Error);
     }
   }

@@ -246,6 +246,9 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
         },
       );
 
+      // Persist the config dir path so it survives an extension host restart.
+      await DatadogTelemetryService.getInstance().persistCachedConfigPath();
+
       await config.update('agentPort', portToUse, vscode.ConfigurationTarget.Global);
 
       // config file has been updated, agent needs to restart to apply changes
@@ -287,6 +290,9 @@ export class SettingsViewProvider implements vscode.TreeDataProvider<SidebarTree
           await removeAgentLogging();
         },
       );
+
+      // Clear the persisted config path now that the config file is gone.
+      await DatadogTelemetryService.getInstance().persistCachedConfigPath();
 
       // config file has been removed, restart agent
       this._onDidChangeTreeData.fire();

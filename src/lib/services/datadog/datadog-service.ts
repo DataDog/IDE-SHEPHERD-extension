@@ -14,6 +14,8 @@ import {
   readPortFromConfig,
   restartAgent,
   isShepherdConfigLoaded,
+  getCachedConfigPath,
+  setCachedConfigPath,
 } from './agent-config';
 
 /**
@@ -27,6 +29,8 @@ export class DatadogTelemetryService {
   private _ocsfTracker?: OCSFTracker;
   private _agentMonitorTimer?: NodeJS.Timeout;
   private _lastAgentStatus: boolean = false;
+  private _consecutiveAgentFailures: number = 0;
+  private static readonly AGENT_DOWN_THRESHOLD = 3; // require 3 consecutive failures (~90s) before disabling
 
   private constructor() {
     this._transport = new DatadogTransport();
@@ -39,10 +43,20 @@ export class DatadogTelemetryService {
     return DatadogTelemetryService._instance;
   }
 
+  private static readonly CACHED_CONFIG_PATH_KEY = 'ide-shepherd.cachedAgentConfigPath';
+
   @CatchErrors('DatadogTelemetryService')
   async initialize(context: vscode.ExtensionContext): Promise<void> {
     this._context = context;
     const config = this._transport.getConfig();
+
+    // Restore the agent config dir path cached from the previous session so that
+    // removeAgentLogging() can still find the config file if the agent is down on startup.
+    const savedPath = context.globalState.get<string>(DatadogTelemetryService.CACHED_CONFIG_PATH_KEY);
+    if (savedPath) {
+      setCachedConfigPath(savedPath);
+      Logger.info(`DatadogTelemetryService: Restored cached agent config path: ${savedPath}`);
+    }
 
     this._ocsfTracker = new OCSFTracker(context, this._transport);
 
@@ -148,6 +162,9 @@ export class DatadogTelemetryService {
         }
       }
 
+      // Persist the config path so it survives the next extension host restart
+      await this.persistCachedConfigPath();
+
       // Flush any queued events
       if (this._ocsfTracker) {
         await this._ocsfTracker.flushQueuedEvents();
@@ -183,20 +200,33 @@ export class DatadogTelemetryService {
   }
 
   /**
-   * Monitor agent status and auto-disable telemetry if agent goes down
+   * Monitor agent status and auto-disable telemetry if agent goes down.
+   * Requires multiple consecutive failures before disabling to avoid false positives
+   * during transient events like IDE updates or restarts.
    */
   private startAgentMonitoring(): void {
     // Check agent status every 30 seconds
     this._agentMonitorTimer = setInterval(async () => {
       const config = this._transport.getConfig();
       if (!config.isEnabled) {
+        this._consecutiveAgentFailures = 0;
         return; // Telemetry already disabled
       }
 
       const agentRunning = await isAgentRunning();
 
-      if (this._lastAgentStatus && !agentRunning) {
-        Logger.warn('DatadogTelemetryService: Agent stopped, disabling telemetry');
+      if (agentRunning) {
+        this._consecutiveAgentFailures = 0;
+      } else {
+        this._consecutiveAgentFailures++;
+        Logger.warn(
+          `DatadogTelemetryService: Agent unreachable (consecutive failures: ${this._consecutiveAgentFailures}/${DatadogTelemetryService.AGENT_DOWN_THRESHOLD})`,
+        );
+      }
+
+      if (!agentRunning && this._consecutiveAgentFailures >= DatadogTelemetryService.AGENT_DOWN_THRESHOLD) {
+        this._consecutiveAgentFailures = 0;
+        Logger.warn('DatadogTelemetryService: Agent confirmed stopped, disabling telemetry');
 
         // Try to remove config file (will use cached path since agent is down)
         try {
@@ -207,6 +237,9 @@ export class DatadogTelemetryService {
             `DatadogTelemetryService: Could not remove agent config file - ${error instanceof Error ? error.message : error}`,
           );
         }
+
+        // Clear the persisted path — config file is gone, nothing to restore on next restart.
+        await this.persistCachedConfigPath();
 
         // Inform user and disable telemetry
         vscode.window
@@ -225,6 +258,20 @@ export class DatadogTelemetryService {
 
       this._lastAgentStatus = agentRunning;
     }, 30000); // check every 30 seconds
+  }
+
+  /**
+   * Persist the current agent config directory path to globalState so it can be
+   * restored after an extension host restart (e.g. IDE update).
+   * Call this right after configureAgentLogging() succeeds.
+   */
+  async persistCachedConfigPath(): Promise<void> {
+    if (!this._context) {
+      return;
+    }
+    const path = getCachedConfigPath();
+    await this._context.globalState.update(DatadogTelemetryService.CACHED_CONFIG_PATH_KEY, path);
+    Logger.info(`DatadogTelemetryService: Persisted agent config path: ${path}`);
   }
 
   dispose(): void {

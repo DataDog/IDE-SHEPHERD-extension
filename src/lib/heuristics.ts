@@ -59,11 +59,19 @@ export class RiskScoring {
   static readonly RISK_THRESHOLDS = { low: 20, medium: 40, high: 80 };
 
   static calculateScore(patterns: SuspiciousPattern[]): number {
-    let totalScore = 0;
-    for (const pattern of patterns) {
-      totalScore += this.SEVERITY_WEIGHTS[pattern.severity];
+    if (patterns.length === 0) {
+      return 0;
     }
-    return totalScore;
+
+    // Sort weights descending so the most severe finding anchors the score.
+    const weights = patterns.map((p) => this.SEVERITY_WEIGHTS[p.severity]).sort((a, b) => b - a);
+
+    // Base score = highest single finding.
+    // Each additional finding contributes 25% of its own weight so that
+    // accumulating many LOW patterns cannot push a score into HIGH territory.
+    const base = weights[0];
+    const bonus = weights.slice(1).reduce((sum, w) => sum + Math.floor(w * 0.25), 0);
+    return base + bonus;
   }
 
   static determineRiskLevel(riskScore: number): RiskLevel {

@@ -113,13 +113,25 @@ export class TaskScanner {
   }
 
   /**
+   * Normalize a command string for pattern matching
+   */
+  private normalizeCommand(cmd: string): string {
+    return cmd
+      .replace(/\\\n\s*/g, ' ') // backslash-newline (shell continuation)
+      .replace(/\r?\n/g, ' ') // bare newlines
+      .replace(/\s+/g, ' ') // collapse runs of whitespace
+      .trim();
+  }
+
+  /**
    * Analyze task and terminate immediately if suspicious
    */
   private async analyzeTask(info: TaskExecutionInfo, execution: vscode.TaskExecution, taskId: string): Promise<void> {
     const fullCommand = this.getFullCommand(info);
+    const normalizedCommand = this.normalizeCommand(fullCommand);
 
     for (const rule of TASK_RULES) {
-      if (rule.commandPattern.test(fullCommand)) {
+      if (rule.commandPattern.test(normalizedCommand)) {
         Logger.warn(`SUSPICIOUS TASK DETECTED! Task: ${info.taskName} | Rule: ${rule.name}`);
 
         SidebarService.getInstance().updateTaskEvent(taskId, { isSuspicious: true, suspiciousPattern: rule.name });

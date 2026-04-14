@@ -296,14 +296,12 @@ export function patchHttpExports(http: any, protocol: Protocol) {
 
     req.write = new Proxy(req.write, {
       apply(t, th, [c, ...rest]) {
-        // if we've already blocked the request, don't send the subsequent chunks
         if (blocked) {
           return c?.length || 0;
         }
 
         push(c);
 
-        // analyze current data chunk based on the constructed buffer
         const { data } = result();
         const chunkEvent = new NetworkEvent(
           protocol,
@@ -329,7 +327,7 @@ export function patchHttpExports(http: any, protocol: Protocol) {
             chunkResult.securityEvent,
             BlockedOperationType.REQUEST,
           );
-          return c?.length || 0; // Don't send this chunk
+          return c?.length || 0;
         }
 
         return t.apply(th, [c, ...rest]);
@@ -365,7 +363,6 @@ export function patchHttpExports(http: any, protocol: Protocol) {
           Logger.debug('HTTP Plugin: Creating dynamic mock for blocked request');
           const blockedReq = createDynamicMock(req);
 
-          // Show security notification
           NotificationService.showSecurityBlockingInfo(
             parsed.uri,
             analysisResult.securityEvent,
