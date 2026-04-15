@@ -11,6 +11,7 @@ export const CONFIG = {
   MODULES: {
     HTTP_MODULES: ['http', 'https', 'node:http', 'node:https'],
     CHILD_PROCESS_MODULES: ['child_process', 'node:child_process'],
+    FS_MODULES: ['fs', 'node:fs', 'fs/promises', 'node:fs/promises'],
   },
   LOGGER: { MAX_TRUNCATE_LENGTH: 1000, LEVELS: { INFO: 'INFO', WARN: 'WARN', ERROR: 'ERROR', DEBUG: 'DEBUG' } },
   NETWORK: {

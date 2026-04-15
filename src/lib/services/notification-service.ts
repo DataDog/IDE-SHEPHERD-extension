@@ -16,6 +16,8 @@ export enum BlockedOperationType {
   SPAWN = 'spawn',
   EXEC_SYNC = 'execSync',
   TASK = 'task',
+  FS_READ = 'fsRead',
+  FS_WRITE = 'fsWrite',
 }
 
 export class NotificationService {

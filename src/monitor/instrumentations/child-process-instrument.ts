@@ -54,7 +54,7 @@ export function patchChildProcess(
   if (childProcess.__patched__) {
     return;
   }
-  // Patch exec function
+  // ── exec ──────────────────────────────────────────────────────────────
   const origExec = childProcess.exec.bind(childProcess);
   const patchedExec = function patchedExec(
     command: string,
@@ -132,7 +132,7 @@ export function patchChildProcess(
 
   childProcess.exec = patchedExec as typeof childProcess.exec;
 
-  // Patch spawn function
+  // ── spawn ──────────────────────────────────────────────────────────────
   const origSpawn = childProcess.spawn.bind(childProcess);
 
   function patchedSpawn(command: string, options?: SpawnOptions): ChildProcess;
