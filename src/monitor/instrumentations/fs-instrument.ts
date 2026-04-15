@@ -16,9 +16,15 @@ function makeBlockedError(filePath: string): NodeJS.ErrnoException {
 }
 
 function resolvePath(fileArg: unknown): string {
-  if (typeof fileArg === 'string') {return fileArg;}
-  if (fileArg instanceof URL) {return fileArg.pathname;}
-  if (Buffer.isBuffer(fileArg)) {return fileArg.toString();}
+  if (typeof fileArg === 'string') {
+    return fileArg;
+  }
+  if (fileArg instanceof URL) {
+    return fileArg.pathname;
+  }
+  if (Buffer.isBuffer(fileArg)) {
+    return fileArg.toString();
+  }
   return String(fileArg);
 }
 
