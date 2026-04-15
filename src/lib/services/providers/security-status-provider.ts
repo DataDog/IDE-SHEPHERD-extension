@@ -147,6 +147,14 @@ export class SecurityStatusViewProvider implements vscode.TreeDataProvider<Sideb
             `${Target.getValue(Target.PROCESS)}: ${this._statusData!.securityEvents.process}`,
             vscode.TreeItemCollapsibleState.None,
           ),
+          new vscode.TreeItem(
+            `${Target.getValue(Target.WORKSPACE)}: ${this._statusData!.securityEvents.workspace}`,
+            vscode.TreeItemCollapsibleState.None,
+          ),
+          new vscode.TreeItem(
+            `${Target.getValue(Target.FILESYSTEM)}: ${this._statusData!.securityEvents.filesystem}`,
+            vscode.TreeItemCollapsibleState.None,
+          ),
         );
         break;
 

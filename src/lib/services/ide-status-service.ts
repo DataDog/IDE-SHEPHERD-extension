@@ -299,6 +299,7 @@ export class IDEStatusService {
         total: status.totalSecurityEvents,
         network: status.securityEventsByTarget.Network || 0,
         process: status.securityEventsByTarget.Process || 0,
+        workspace: status.securityEventsByTarget.Workspace || 0,
         filesystem: status.securityEventsByTarget.FileSystem || 0,
         recentEvents: status.lastSecurityEvents || [],
       },

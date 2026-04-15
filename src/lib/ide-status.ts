@@ -25,6 +25,7 @@ export interface IDEStatusData {
     total: number;
     network: number;
     process: number;
+    workspace: number;
     filesystem: number;
     recentEvents: SecurityEvent[];
   };
