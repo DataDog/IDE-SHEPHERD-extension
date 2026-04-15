@@ -20,7 +20,8 @@ function resolvePath(fileArg: unknown): string {
     return fileArg;
   }
   if (fileArg instanceof URL) {
-    return fileArg.pathname;
+    const pathname = fileArg.pathname;
+    return /^\/[a-z]:/i.test(pathname) ? pathname.slice(1) : pathname;
   }
   if (Buffer.isBuffer(fileArg)) {
     return fileArg.toString();
