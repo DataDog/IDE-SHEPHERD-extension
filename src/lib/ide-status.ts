@@ -21,7 +21,13 @@ export interface IDEStatusData {
   uptime: string;
   lastUpdate: string;
   extensionsMonitored: { total: number; extensions: { id: string }[] };
-  securityEvents: { total: number; network: number; process: number; recentEvents: SecurityEvent[] };
+  securityEvents: {
+    total: number;
+    network: number;
+    process: number;
+    filesystem: number;
+    recentEvents: SecurityEvent[];
+  };
   performance: { avgProcessingTime: string; eventsProcessed: number; totalProcessingTime: number };
   extensionAnalysis?: { results: BatchAnalysisResult; totalExtensions: number; analyzedExtensions: number };
 }

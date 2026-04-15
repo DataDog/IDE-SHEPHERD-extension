@@ -34,7 +34,12 @@ export class IDEStatusService {
     return {
       patchedExtensions: [],
       totalSecurityEvents: 0,
-      securityEventsByTarget: { [Target.NETWORK]: 0, [Target.PROCESS]: 0, [Target.WORKSPACE]: 0 },
+      securityEventsByTarget: {
+        [Target.NETWORK]: 0,
+        [Target.PROCESS]: 0,
+        [Target.WORKSPACE]: 0,
+        [Target.FILESYSTEM]: 0,
+      },
       lastSecurityEvents: [],
       monitoringStartTime: Date.now(),
       lastUpdateTime: Date.now(),
@@ -294,6 +299,7 @@ export class IDEStatusService {
         total: status.totalSecurityEvents,
         network: status.securityEventsByTarget.Network || 0,
         process: status.securityEventsByTarget.Process || 0,
+        filesystem: status.securityEventsByTarget.FileSystem || 0,
         recentEvents: status.lastSecurityEvents || [],
       },
       performance: {

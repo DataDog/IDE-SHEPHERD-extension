@@ -40,6 +40,7 @@ export enum Target {
   NETWORK = 'Network',
   PROCESS = 'Process',
   WORKSPACE = 'Workspace',
+  FILESYSTEM = 'FileSystem',
 }
 
 export namespace Target {
@@ -55,6 +56,8 @@ export namespace Target {
         return 'terminal';
       case Target.WORKSPACE:
         return 'folder';
+      case Target.FILESYSTEM:
+        return 'file';
       default:
         return 'question';
     }

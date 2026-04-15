@@ -8,6 +8,7 @@ import { Logger } from '../lib/logger';
 import { CONFIG } from '../lib/config';
 import { patchHttpExports } from './instrumentations/http-client-instrument';
 import { patchChildProcess } from './instrumentations/child-process-instrument';
+import { patchFs } from './instrumentations/fs-instrument';
 import { Protocol } from '../lib/events/network-events';
 
 const { Module } = require('module');
@@ -32,7 +33,11 @@ export class ModuleLoaderPatcher {
         const exports = self.originalLoad.apply(this, arguments);
 
         const toHook: string[] = [];
-        for (const moduleGroup of [CONFIG.MODULES.HTTP_MODULES, CONFIG.MODULES.CHILD_PROCESS_MODULES]) {
+        for (const moduleGroup of [
+          CONFIG.MODULES.HTTP_MODULES,
+          CONFIG.MODULES.CHILD_PROCESS_MODULES,
+          CONFIG.MODULES.FS_MODULES,
+        ]) {
           toHook.push(...moduleGroup);
         }
 
@@ -62,6 +67,10 @@ export class ModuleLoaderPatcher {
 
       if (CONFIG.MODULES.CHILD_PROCESS_MODULES.includes(spec)) {
         patchChildProcess(exp);
+      }
+
+      if (CONFIG.MODULES.FS_MODULES.includes(spec)) {
+        patchFs(exp);
       }
     } catch (error) {
       Logger.error(`ModuleLoaderPatcher: Failed to patch exports for ${spec}`, error as Error);
