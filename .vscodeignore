@@ -1,0 +1,31 @@
+# Source TypeScript (compiled output in out/ is distributed)
+src/**
+
+# Test output
+out/test/**
+
+# Build tooling
+tsconfig*.json
+eslint.config.*
+.eslintrc.*
+.prettierrc*
+prettier.config.*
+lint-staged.config.*
+
+# Hooks and CI
+.husky/**
+.github/**
+
+# Git metadata
+.gitignore
+.gitattributes
+
+# Dev IDE config
+.vscode/**
+.vscode-test/**
+
+# Packaged files
+*.vsix
+
+# Node modules
+node_modules/**

@@ -1,7 +1,17 @@
 {
   "name": "ide-shepherd-extension",
-  "displayName": "ide-shepherd-extension",
-  "description": "A security extension capable of realtime monitoring from within the IDE",
+  "displayName": "IDE Shepherd",
+  "description": "Real-time runtime protection against malicious extensions and supply chain attacks",
+  "keywords": [
+    "security",
+    "protection",
+    "monitoring",
+    "supply chain",
+    "threat detection",
+    "malicious extensions",
+    "runtime protection",
+    "file system monitoring"
+  ],
   "version": "2.1.0",
   "publisher": "datadog",
   "license": "Apache-2.0",
