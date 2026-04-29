@@ -1,6 +1,6 @@
 # IDE Shepherd Extension
 
-**IDE Shepherd** is a security extension for VS Code and Cursor IDEs that provides **real-time runtime protection** against malicious extensions and supply chain attacks. Using advanced **require-in-the-middle (RITM) instrumentation**, IDE Shepherd intercepts Node.js primitives at the module loading layer, enabling comprehensive monitoring and blocking of suspicious network requests, process executions, dynamic code evaluation, and workspace tasks.
+**IDE Shepherd** is a security extension for VS Code and Cursor IDEs that provides **real-time runtime protection** against malicious extensions and supply chain attacks. Using advanced **require-in-the-middle (RITM) instrumentation**, IDE Shepherd intercepts Node.js primitives at the module loading layer, enabling comprehensive monitoring and blocking of suspicious network requests, process executions, file system access, dynamic code evaluation, and workspace tasks.
 
 <p align="center">
   <img src="resources/icons/icon.png" alt="IDE Shepherd Logo" width="200"/>
@@ -10,116 +10,6 @@
 
 ## Check out the new Datadog Agent [integration](https://docs.datadoghq.com/integrations/ide-shepherd/) and Cloud SIEM [content pack](https://app.datadoghq.com/security/siem/content-packs?query=%22IDE-SHEPHERD%22) for IDE-SHEPHERD.
 
-## Installation
-
-### Installing from GitHub Releases
-
-1. **Download the latest release**
-
-   Go to the [Releases page](https://github.com/DataDog/IDE-SHEPHERD-extension/releases) and download the latest `.vsix` file (e.g., `ide-shepherd-extension-2.0.0.vsix`).
-
-2. **Install the extension**
-
-   For VS Code:
-
-   ```bash
-   code --install-extension ide-shepherd-extension-2.0.0.vsix
-   ```
-
-   For Cursor:
-
-   ```bash
-   cursor --install-extension ide-shepherd-extension-2.0.0.vsix
-   ```
-
-3. **Reload your IDE**
-
-   Restart VS Code/Cursor or reload the window (`Ctrl+Shift+P` or `Cmd+Shift+P` -> "Developer: Reload Window")
-
-4. **Verify installation**
-
-   The IDE Shepherd icon should appear in the Activity Bar (left sidebar for VS Code, toggle the top menu for Cursor).
-
-## Development
-
-### Prerequisites
-
-- Node.js (20.x recommended)
-- VS Code (1.99.3) or Cursor
-
-### Development Setup
-
-1. **Clone the repository**
-
-   ```bash
-   git clone https://github.com/DataDog/IDE-SHEPHERD-extension
-   cd IDE-SHEPHERD-extension
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-3. **Install VS Code Extension Manager (optional, for packaging)**
-   ```bash
-   npm install -g @vscode/vsce
-   ```
-
-### Development Workflow
-
-1. **Compile TypeScript**
-
-   ```bash
-   npm run compile
-   # Or for continuous compilation during development:
-   npm run watch
-   ```
-
-2. **Run formatting**
-
-   ```bash
-   npm run format
-   npm run format:check
-   ```
-
-3. **Type checking**
-
-   ```bash
-   npm run typecheck
-   ```
-
-4. **Run tests**
-
-   ```bash
-   npm test
-   ```
-
-5. **Package the extension into a VSIX file**
-   ```bash
-   vsce package
-   ```
-
-### Installation
-
-1. **Install from VSIX file**
-
-   For VS Code:
-
-   ```bash
-   code --install-extension /path/to/ide-shepherd-1.0.0.vsix
-   ```
-
-   For Cursor:
-
-   ```bash
-   cursor --install-extension /path/to/ide-shepherd-1.0.0.vsix
-   ```
-
-2. **Reload your IDE**
-   - Restart VS Code/Cursor or reload the window (`Ctrl+Shift+P` or `Cmd+Shift+P` → "Developer: Reload Window")
-
 ## Usage
 
 ### Security Monitoring
@@ -128,8 +18,8 @@ The extension automatically starts monitoring when VS Code (Cursor) loads:
 
 - **Hybrid RITM + Monkey Patching**: Uses a two-layer approach to intercept module loading (`Module._load`) and patch Node.js primitives
   - Layer 1: Hooks into the module loading system to catch **all** future `require()` calls
-  - Layer 2: Patches individual exports (e.g., `http.request`, `child_process.spawn`)
-- **Real-time Analysis**: Analyzes network traffic and process spawning for security threats
+  - Layer 2: Patches individual exports (e.g., `http.request`, `child_process.spawn`, `fs.readFile`)
+- **Real-time Analysis**: Analyzes network traffic, process spawning, file system access, and workspace tasks for security threats
 
 **Quick Overview:**
 
@@ -139,7 +29,7 @@ flowchart TD
     B --> C[2. Extension Loads]
     C --> D[3. Extension calls require#40;'_module_'#41;]
     D --> E[4. Module._load<br/>Hook Intercepts]
-    E --> F[5. Patch http.request,<br/>child_process.exec, etc.]
+    E --> F[5. Patch http.request,<br/>child_process.exec, fs.readFile, etc.]
     F --> G[7. Extension calls<br/>http.request]
     G --> H[ Monitored & Analyzed]
 
@@ -161,7 +51,7 @@ Command Palette (`Ctrl+Shift+P`) > `Developer: Show Logs` > `IDE Shepherd Extens
 
 ## Security Detection Rules
 
-IDE Shepherd employs multiple layers of security detection to identify potentially malicious extensions, network activity, process execution, and workspace tasks:
+IDE Shepherd employs multiple layers of security detection to identify potentially malicious extensions, network activity, process execution, file system access, and workspace tasks:
 
 ### Metadata Heuristics
 
@@ -190,6 +80,35 @@ IDE Shepherd employs multiple layers of security detection to identify potential
 | ---------------------- | -------------------- | ------- | -------- | ------------------------------------------------ |
 | `powershell_execution` | PowerShell Execution | SCRIPT  | High     | Suspicious PowerShell execution with flags       |
 | `command_injection`    | Command Injection    | COMMAND | High     | Command injection attempt (sh, bash, curl, etc.) |
+
+### File System Monitoring
+
+IDE Shepherd intercepts `fs` module calls (`readFile`, `writeFile`, `appendFile`, and their sync/promise variants) to detect credential theft and persistence attempts. Suspicious operations are **blocked** and reported as security events.
+
+**Credential Access Detection (Read)**
+
+| Rule ID                | Detection Name       | Severity | Description                                                             |
+| ---------------------- | -------------------- | -------- | ----------------------------------------------------------------------- |
+| `read_ssh_private_key` | SSH Private Key Read | High     | Read access to `~/.ssh/id_rsa`, `id_ed25519`, etc.                      |
+| `read_system_passwd`   | System Password File | High     | Read access to `/etc/passwd`, `/etc/shadow`                             |
+| `read_aws_credentials` | AWS Credentials Read | High     | Read access to `~/.aws/credentials`                                     |
+| `read_gnupg_key`       | GnuPG Key Read       | High     | Read access to `~/.gnupg/` key material                                 |
+| `read_netrc`           | Netrc Credentials    | High     | Read access to `~/.netrc` (plaintext credentials)                       |
+| `read_aws_config`      | AWS Config Read      | Medium   | Read access to `~/.aws/config` (role ARNs, profile data)                |
+| `read_kube_config`     | Kubernetes Config    | Medium   | Read access to `~/.kube/config` (cluster credentials)                   |
+| `read_shell_history`   | Shell History Read   | Medium   | Read access to `.bash_history`, `.zsh_history` (command reconnaissance) |
+| `read_git_credentials` | Git Credentials Read | Medium   | Read access to `~/.git-credentials` (plaintext tokens)                  |
+| `read_docker_config`   | Docker Config Read   | Medium   | Read access to `~/.docker/config.json` (registry auth tokens)           |
+
+**Persistence Mechanism Detection (Write)**
+
+| Rule ID                 | Detection Name              | Severity | Description                                                            |
+| ----------------------- | --------------------------- | -------- | ---------------------------------------------------------------------- |
+| `write_authorized_keys` | SSH Authorized Keys Write   | High     | Write to `~/.ssh/authorized_keys` — potential backdoor                 |
+| `write_cron`            | Cron / Scheduled Task Write | High     | Write to cron directories or Windows Scheduled Tasks                   |
+| `write_launch_agent`    | Launch Agent Write          | High     | Write to `~/Library/LaunchAgents/` or Windows Startup folder           |
+| `write_etc_hosts`       | Hosts File Write            | High     | Write to `/etc/hosts` or Windows hosts file — potential DNS poisoning  |
+| `write_shell_profile`   | Shell Profile Write         | Medium   | Write to `.bashrc`, `.zshrc`, PowerShell profile (startup persistence) |
 
 ### Task Detection
 
@@ -302,3 +221,106 @@ When you disable telemetry in IDE Shepherd, you'll be asked whether to:
 
 - **Remove the agent configuration**: Automatically deletes the IDE Shepherd configuration from Datadog Agent
 - **Keep the configuration**: Leaves the agent configuration in place for future use
+
+## Installation
+
+### From the Marketplace
+
+Search for **IDE Shepherd** in the Extensions panel (`Ctrl+Shift+X` / `Cmd+Shift+X`) or install from:
+
+- [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=datadog.ide-shepherd-extension)
+- [Open VSX Registry](https://open-vsx.org/extension/datadog/ide-shepherd-extension)
+
+### From a VSIX File
+
+Download the latest `.vsix` from the [GitHub Releases](https://github.com/DataDog/IDE-SHEPHERD-extension/releases) page, then install it via the command line:
+
+For VS Code:
+
+```bash
+code --install-extension ide-shepherd-extension-2.1.0.vsix
+```
+
+For Cursor:
+
+```bash
+cursor --install-extension ide-shepherd-extension-2.1.0.vsix
+```
+
+Reload your IDE after installation (`Ctrl+Shift+P` or `Cmd+Shift+P` → "Developer: Reload Window").
+
+## Development
+
+### Prerequisites
+
+- Node.js (20.x recommended)
+- VS Code (1.99.3) or Cursor
+
+### Development Setup
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/DataDog/IDE-SHEPHERD-extension
+   cd IDE-SHEPHERD-extension
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Install VS Code Extension Manager (optional, for packaging)**
+   ```bash
+   npm install -g @vscode/vsce
+   ```
+
+### Development Workflow
+
+1. **Compile TypeScript**
+
+   ```bash
+   npm run compile
+   # Or for continuous compilation during development:
+   npm run watch
+   ```
+
+2. **Run formatting**
+
+   ```bash
+   npm run format
+   npm run format:check
+   ```
+
+3. **Type checking**
+
+   ```bash
+   npm run typecheck
+   ```
+
+4. **Run tests**
+
+   ```bash
+   npm test
+   ```
+
+5. **Package the extension into a VSIX file**
+
+   ```bash
+   vsce package
+   ```
+
+6. **Install from locally built VSIX**
+
+   For VS Code:
+
+   ```bash
+   code --install-extension /path/to/ide-shepherd-extension-*.vsix
+   ```
+
+   For Cursor:
+
+   ```bash
+   cursor --install-extension /path/to/ide-shepherd-extension-*.vsix
+   ```
