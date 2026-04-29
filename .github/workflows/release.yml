@@ -65,14 +65,11 @@ jobs:
 
       - name: Package extension
         if: steps.version-check.outputs.version_bumped == 'true'
-        run: vsce package --no-dependencies
-
-      - name: Locate VSIX
-        if: steps.version-check.outputs.version_bumped == 'true'
         id: locate-vsix
         run: |
-          file=$(find . -maxdepth 1 -name '*.vsix' | head -1)
-          echo "vsix_name=${file#./}" >> $GITHUB_OUTPUT
+          VSIX="ide-shepherd-extension-${{ steps.version-check.outputs.new_version }}.vsix"
+          vsce package --no-dependencies --out "$VSIX"
+          echo "vsix_name=$VSIX" >> $GITHUB_OUTPUT
 
       - name: Upload VSIX as workflow artifact
         if: steps.version-check.outputs.version_bumped == 'true'
@@ -88,6 +85,7 @@ jobs:
         run: |
           VERSION="${{ steps.version-check.outputs.new_version }}"
           NOTES=$(awk "/^## \[$VERSION\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
+          NOTES="${NOTES/EOF/REDACTED}"
           echo "notes<<EOF" >> $GITHUB_OUTPUT
           echo "$NOTES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
