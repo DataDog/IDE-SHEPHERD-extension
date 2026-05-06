@@ -32,7 +32,6 @@ export class ModuleLoaderPatcher {
 
     for (const moduleName of allModuleNames) {
       try {
-         
         const exports = require(moduleName);
         this.patchExports(exports, moduleName);
       } catch {
