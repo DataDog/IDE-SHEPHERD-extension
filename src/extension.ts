@@ -19,6 +19,12 @@ export function activate(context: vscode.ExtensionContext) {
     Logger.init(context);
     Logger.info('IDE Shepherd Extension: Logger initialized');
 
+    // Patch the module loader first — before any other service init — to minimise
+    // the window in which another extension's module-level require() runs unhooked.
+    Logger.info('IDE Shepherd Extension: Activating module loader patcher...');
+    moduleLoaderPatcher.patch();
+    Logger.info('IDE Shepherd Extension: Module loader patcher activated successfully');
+
     // Initialize Allow List Service
     const allowListService = AllowListService.getInstance();
     allowListService.initialize(context).then(() => {
@@ -47,11 +53,6 @@ export function activate(context: vscode.ExtensionContext) {
 
     const sidebarService = SidebarService.getInstance();
     sidebarService.initialize();
-
-    // Patch the module loader
-    Logger.info('IDE Shepherd Extension: Activating module loader patcher...');
-    moduleLoaderPatcher.patch();
-    Logger.info('IDE Shepherd Extension: Module loader patcher activated successfully');
 
     // Activate the Task Scanner with Termination
     Logger.info('IDE Shepherd Extension: Activating Task Scanner ...');

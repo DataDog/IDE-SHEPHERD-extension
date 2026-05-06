@@ -5,11 +5,13 @@
 import { Logger } from '../lib/logger';
 import { HeuristicResult, SuspiciousPattern, BatchAnalysisResult, RiskScoring, RiskLevel } from '../lib/heuristics';
 import { getAllRules, getRuleById } from '../detection/heuristic-rules';
-import { ExtensionPackageJSON } from '../lib/extensions';
+import { Extension, ExtensionPackageJSON } from '../lib/extensions';
+import { SourceAnalyzer } from './source-analyzer';
 
 export class MetadataAnalyzer {
   /**
-   * Analyze an extension's package.json for suspicious patterns
+   * Analyze an extension's package.json for suspicious metadata patterns.
+   * Source-code scanning is not included here — use analyzeExtensionCombined for that.
    */
   static analyzeExtension(extensionId: string, packageJSON: ExtensionPackageJSON): HeuristicResult {
     const detectedPatterns: SuspiciousPattern[] = [];
@@ -38,12 +40,27 @@ export class MetadataAnalyzer {
   }
 
   /**
-   * Analyze multiple extensions and return summary
+   * Run both metadata and source-code analysis for a single extension,
+   * merging all findings into one HeuristicResult.
    */
-  static analyzeBatch(extensions: { id: string; packageJSON: ExtensionPackageJSON }[]): BatchAnalysisResult {
+  static async analyzeExtensionCombined(extension: Extension): Promise<HeuristicResult> {
+    const metadataResult = this.analyzeExtension(extension.id, extension.packageJSON ?? {});
+    const sourcePatterns = await SourceAnalyzer.analyzeExtension(extension.id, extension.extensionPath);
+
+    const allPatterns = [...metadataResult.suspiciousPatterns, ...sourcePatterns];
+    const riskScore = RiskScoring.calculateScore(allPatterns);
+    const overallRisk = RiskScoring.determineRiskLevel(riskScore);
+
+    return { extensionId: extension.id, suspiciousPatterns: allPatterns, riskScore, overallRisk };
+  }
+
+  /**
+   * Analyze multiple extensions (metadata + source) and return a summary.
+   */
+  static async analyzeBatch(extensions: Extension[]): Promise<BatchAnalysisResult> {
     Logger.info(`MetadataAnalyzer: Starting batch analysis of ${extensions.length} extensions`);
 
-    const results = extensions.map((ext) => this.analyzeExtension(ext.id, ext.packageJSON));
+    const results = await Promise.all(extensions.map((ext) => this.analyzeExtensionCombined(ext)));
 
     const summary = {
       total: results.length,

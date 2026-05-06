@@ -36,7 +36,6 @@ export class SecurityStatusViewProvider implements vscode.TreeDataProvider<Sideb
       return Promise.resolve([
         this.createMonitoringStatusItem(),
         this.createSystemInfoItem(),
-        this.createExtensionsItem(),
         this.createSecurityEventsItem(),
         this.createPerformanceItem(),
       ]);
@@ -59,16 +58,6 @@ export class SecurityStatusViewProvider implements vscode.TreeDataProvider<Sideb
     const item = new vscode.TreeItem('System Information', vscode.TreeItemCollapsibleState.Expanded);
     item.iconPath = new vscode.ThemeIcon('info');
     item.contextValue = 'system';
-    return item;
-  }
-
-  private createExtensionsItem(): SidebarTreeItem {
-    const item = new vscode.TreeItem(
-      `Telemetry sources (${this._statusData!.extensionsMonitored.total})`,
-      vscode.TreeItemCollapsibleState.Collapsed,
-    );
-    item.iconPath = new vscode.ThemeIcon('extensions');
-    item.contextValue = 'extensions';
     return item;
   }
 
@@ -108,17 +97,6 @@ export class SecurityStatusViewProvider implements vscode.TreeDataProvider<Sideb
           new vscode.TreeItem(`Uptime: ${this._statusData!.uptime}`, vscode.TreeItemCollapsibleState.None),
           new vscode.TreeItem(`Last Update: ${this._statusData!.lastUpdate}`, vscode.TreeItemCollapsibleState.None),
         );
-        break;
-
-      case 'extensions':
-        this._statusData!.extensionsMonitored.extensions.forEach((ext) => {
-          const item = new vscode.TreeItem(ext.id, vscode.TreeItemCollapsibleState.None);
-          item.iconPath = new vscode.ThemeIcon('symbol-module');
-          children.push(item);
-        });
-        if (children.length === 0) {
-          children.push(new vscode.TreeItem('No telemetry sources', vscode.TreeItemCollapsibleState.None));
-        }
         break;
 
       case 'extension-analysis':

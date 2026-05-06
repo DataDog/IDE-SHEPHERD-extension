@@ -77,10 +77,12 @@ export class SidebarService {
 
   async addTrustedPublisher(): Promise<void> {
     await this._allowListProvider.handleAddTrustedPublisher();
+    this._extensionsProvider.runAnalysis();
   }
 
   async removeTrustedPublisher(publisher: string): Promise<void> {
     await this._allowListProvider.handleRemoveTrustedPublisher(publisher);
+    this._extensionsProvider.runAnalysis();
   }
 
   refreshSettingsView(): void {

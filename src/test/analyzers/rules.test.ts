@@ -43,18 +43,20 @@ suite('DetectionRules Tests', () => {
         expect(rule.type).to.exist;
         expect(rule.target).to.equal(Target.PROCESS);
         expect(rule.severity).to.exist;
-        expect(rule.commandPattern).to.be.instanceOf(RegExp);
         expect(rule.confidence).to.be.a('number');
+        // Every rule must have at least one matching mechanism
+        const hasMatcher = rule.commandPattern instanceof RegExp || typeof rule.optionsMatcher === 'function';
+        expect(hasMatcher).to.be.true;
       });
     });
 
     test('PowerShell rule should match powershell commands', () => {
       const rule = PROCESS_RULES.find((r) => r.id === 'powershell_execution');
       expect(rule).to.exist;
-      expect(rule!.commandPattern.test('powershell')).to.be.true;
-      expect(rule!.commandPattern.test('powershell.exe')).to.be.true;
-      expect(rule!.commandPattern.test('pwsh')).to.be.true;
-      expect(rule!.commandPattern.test('POWERSHELL')).to.be.true;
+      expect(rule!.commandPattern!.test('powershell')).to.be.true;
+      expect(rule!.commandPattern!.test('powershell.exe')).to.be.true;
+      expect(rule!.commandPattern!.test('pwsh')).to.be.true;
+      expect(rule!.commandPattern!.test('POWERSHELL')).to.be.true;
     });
 
     test('PowerShell rule flagPattern should match suspicious flags', () => {
@@ -82,18 +84,18 @@ suite('DetectionRules Tests', () => {
       const rule = PROCESS_RULES.find((r) => r.id === 'command_injection');
       expect(rule).to.exist;
       // Should match pipe-to-shell patterns
-      expect(rule!.commandPattern.test('| sh')).to.be.true;
-      expect(rule!.commandPattern.test('| bash')).to.be.true;
-      expect(rule!.commandPattern.test('| zsh')).to.be.true;
-      expect(rule!.commandPattern.test('| cmd')).to.be.true;
-      expect(rule!.commandPattern.test('|sh')).to.be.true; // no space
+      expect(rule!.commandPattern!.test('| sh')).to.be.true;
+      expect(rule!.commandPattern!.test('| bash')).to.be.true;
+      expect(rule!.commandPattern!.test('| zsh')).to.be.true;
+      expect(rule!.commandPattern!.test('| cmd')).to.be.true;
+      expect(rule!.commandPattern!.test('|sh')).to.be.true; // no space
       // Should match curl/wget
-      expect(rule!.commandPattern.test('curl')).to.be.true;
-      expect(rule!.commandPattern.test('wget')).to.be.true;
+      expect(rule!.commandPattern!.test('curl')).to.be.true;
+      expect(rule!.commandPattern!.test('wget')).to.be.true;
       // Should NOT match standalone shell commands
-      expect(rule!.commandPattern.test('bash')).to.be.false;
-      expect(rule!.commandPattern.test('sh')).to.be.false;
-      expect(rule!.commandPattern.test('zsh')).to.be.false;
+      expect(rule!.commandPattern!.test('bash')).to.be.false;
+      expect(rule!.commandPattern!.test('sh')).to.be.false;
+      expect(rule!.commandPattern!.test('zsh')).to.be.false;
     });
 
     test('getRuleById should return rule', () => {

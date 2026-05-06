@@ -194,6 +194,10 @@ export class AllowListService {
         this._trustedPublishers = new Set(savedState.trustedPublishers);
         Logger.info(`AllowListService: Loaded ${this._trustedPublishers.size} trusted publishers`);
       }
+
+      // Rebuild after loading so _trustedPublisherAllowList reflects persisted publishers,
+      // not just the defaults that were available at construction time.
+      this.rebuildAllowLists();
     } catch (error) {
       Logger.error('AllowListService: Failed to load state', error as Error);
     }

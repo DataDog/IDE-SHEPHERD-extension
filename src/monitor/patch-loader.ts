@@ -19,12 +19,38 @@ export class ModuleLoaderPatcher {
   private originalLoad!: typeof Module._load;
   private patched = false;
 
+  // Patch modules that are already in the require cache before the RITM hook
+  // is installed. Without this, any module loaded before IDE Shepherd activated
+  // (child_process, fs, http are loaded early by the VS Code host) remains
+  // unpatched — all existing references to those exports stay unmonitored.
+  private patchCachedModules(): void {
+    const allModuleNames = [
+      ...CONFIG.MODULES.HTTP_MODULES,
+      ...CONFIG.MODULES.CHILD_PROCESS_MODULES,
+      ...CONFIG.MODULES.FS_MODULES,
+    ];
+
+    for (const moduleName of allModuleNames) {
+      try {
+         
+        const exports = require(moduleName);
+        this.patchExports(exports, moduleName);
+      } catch {
+        // module unavailable on this Node version (e.g. node:fs/promises < 14.18) — skip
+      }
+    }
+  }
+
   patch(): void {
     if (this.patched) {
       return;
     }
 
     try {
+      // Eagerly patch modules that are already loaded — must run before the
+      // RITM hook so that pre-existing exports references are covered.
+      this.patchCachedModules();
+
       // patch Module._load for future requires
       const self = this;
       this.originalLoad = (Module as any)._load;
