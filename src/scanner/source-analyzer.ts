@@ -10,7 +10,7 @@ import { SOURCE_RULES } from '../detection/source-rules';
 const SKIP_NODE_MODULES = new Set(['typescript', '@vscode', '@types', 'electron']);
 
 const MAX_FILES = 500;
-const MAX_FILE_BYTES = 512 * 1024;
+const MAX_FILE_BYTES = 1024 * 1024;
 
 export class SourceAnalyzer {
   static async analyzeExtension(extensionId: string, extensionPath: string): Promise<SuspiciousPattern[]> {
