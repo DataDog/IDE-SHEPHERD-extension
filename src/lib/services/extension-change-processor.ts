@@ -86,7 +86,7 @@ export class ExtensionChangeProcessorService {
       return null;
     }
 
-    const result = MetadataAnalyzer.analyzeExtension(extension.id, extension.packageJSON);
+    const result = await MetadataAnalyzer.analyzeExtensionCombined(extension);
     await stateTracker.updateState(extension, result, change.changeType);
 
     Logger.info(

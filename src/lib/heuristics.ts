@@ -7,7 +7,8 @@ import type { ExtensionPackageJSON } from './extensions';
 export enum PatternCategory {
   Metadata = 'metadata',
   Activation = 'activation',
-  Commands = 'commands', // add advisories for dependencies
+  Commands = 'commands',
+  Source = 'source',
 }
 
 export enum RiskLevel {

@@ -1,10 +1,20 @@
 # IDE Shepherd Extension
 
-**IDE Shepherd** is a security extension for VS Code and Cursor IDEs that provides **real-time runtime protection** against malicious extensions and supply chain attacks. Using advanced **require-in-the-middle (RITM) instrumentation**, IDE Shepherd intercepts Node.js primitives at the module loading layer, enabling comprehensive monitoring and blocking of suspicious network requests, process executions, file system access, dynamic code evaluation, and workspace tasks.
+**IDE Shepherd** is a security extension for VS Code and Cursor IDEs that detects and blocks malicious extensions and supply chain attacks — **including threats that are already installed and running**. It operates on two layers: a **runtime interception layer** that hooks Node.js primitives (`http`, `child_process`, `fs`) as they are loaded, blocking suspicious network requests, process executions, and file system access in real time; and a **static source analysis layer** that scans every `.js` file in an extension's directory — including `node_modules` — for known attack primitives such as obfuscated exec calls, download-and-execute patterns, and reverse shell signatures.
+
+When a threat is detected, IDE Shepherd surfaces it immediately in the sidebar and gives you **granular trust controls**: allowlist a specific extension version you have reviewed, trust an entire publisher whose extensions you rely on, or mark a workspace as trusted so legitimate build tasks are never interrupted. Everything blocked by default can be explicitly permitted — putting you in control of what runs in your IDE rather than choosing between security and usability.
 
 <p align="center">
   <img src="resources/icons/icon.png" alt="IDE Shepherd Logo" width="200"/>
 </p>
+
+![extension demo](/resources/extension_detection.gif)
+
+> **Extension threat detection** — The **Iolite Smart Contract Plugin** is a real malicious VS Code extension that was removed from the official marketplace on March 28th, 2026. It injected heavily Unicode-obfuscated code into a bundled `node_modules` dependency to download and execute a remote payload via `child_process.exec`. IDE Shepherd intercepts the call before it runs, blocks execution, and surfaces a detailed security event in the sidebar. From that notification you can immediately add the extension to your allow list if you have reviewed it and consider it safe, or trust its publisher to exempt all of their extensions from future checks.
+
+![task demo](/resources/task_detection.gif)
+
+> **Workspace task detection** — Malicious `.vscode/tasks.json` files have been weaponized in the wild as part of the **"Contagious Interview"** campaign. The fake repository is configured to silently download and execute a remote payload the moment a developer opens and trusts the workspace. IDE Shepherd detects and blocks the task before any command runs and notifies you with the full details. If the repository is one you own or have audited, you can add it to your **trusted workspaces** list with one click. Future tasks from that workspace will run without interruption, while all others remain monitored.
 
 ---
 
@@ -76,10 +86,23 @@ IDE Shepherd employs multiple layers of security detection to identify potential
 
 ### Process Monitoring
 
-| Rule ID                | Detection Name       | Type    | Severity | Description                                      |
-| ---------------------- | -------------------- | ------- | -------- | ------------------------------------------------ |
-| `powershell_execution` | PowerShell Execution | SCRIPT  | High     | Suspicious PowerShell execution with flags       |
-| `command_injection`    | Command Injection    | COMMAND | High     | Command injection attempt (sh, bash, curl, etc.) |
+| Rule ID                   | Detection Name          | Type    | Severity | Description                                                                            |
+| ------------------------- | ----------------------- | ------- | -------- | -------------------------------------------------------------------------------------- |
+| `powershell_execution`    | PowerShell Execution    | SCRIPT  | High     | Suspicious PowerShell execution with evasion flags (encoded, bypass, hidden)           |
+| `command_injection`       | Command Injection       | COMMAND | High     | Command piped to a shell interpreter or downloaded via curl/wget                       |
+| `windows_script_host`     | Windows Script Host     | COMMAND | High     | Execution via `cscript`, `wscript`, or `mshta` — not used by legitimate extensions     |
+| `detached_silent_process` | Detached Silent Process | COMMAND | High     | Process spawned with `detached: true` and `stdio: 'ignore'` — payload delivery pattern |
+
+### Static Source Analysis
+
+IDE Shepherd scans every `.js` file inside an extension's installation directory (including `node_modules`) for TTP-based attack primitives. Each rule requires **two independent signals** in the same file, keeping the false-positive rate low while reliably identifying malicious combinations. Findings contribute to the extension's overall risk score displayed in the Extension Analysis sidebar.
+
+| Rule ID                  | Detection Name          | Severity | Description                                                                                                                                                           |
+| ------------------------ | ----------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `download_and_execute`   | Download and Execute    | Medium   | File contains a network download primitive (`https.get`, `fetch`, `XMLHttpRequest`) **and** `exec`/`spawn` — the core RCE payload delivery pattern                    |
+| `reverse_shell`          | Reverse Shell Pattern   | High     | File opens a raw TCP socket (`net.Socket`, `net.connect`) **and** calls `exec`/`spawn` — standard reverse shell building blocks                                       |
+| `eval_dynamic_payload`   | Dynamic Eval Payload    | High     | `eval()` called on decoded content (`atob`, `Buffer.from`, `decodeURIComponent`) or `new Function()` with a dynamic argument — obfuscation-agnostic payload execution |
+| `detached_unref_pattern` | Detached Silent Process | Medium   | File spawns a process with `detached: true` and calls `.unref()` — standard pattern for a payload that outlives its parent process                                    |
 
 ### File System Monitoring
 
@@ -141,8 +164,9 @@ VS Code and Cursor workspace tasks are monitored for potentially dangerous opera
 
 ### Known Limitations
 
-- **Activation Event Race Condition**: IDE Shepherd uses `*` activation events to load early and patch `Module._load` (RITM pattern). In rare cases, smaller extensions may load faster and execute code **before** the RITM hook is installed. However, once the hook is active, all subsequent `require()` calls are intercepted regardless of load order.
-- **Task Blocking Race Condition**: If task verification takes too long, a task may be executed before IDE Shepherd can terminate it. This is a timing-dependent limitation of the task blocking mechanism
+- **Module-Level Destructuring Gap**: IDE Shepherd patches `child_process`, `http`, and `fs` exports in-place as early as possible. However, if a malicious extension unpacks a function at module evaluation time — e.g. `const { exec } = require('child_process')` at the top level — that local variable captures the original reference before any hook can be installed. Patching the exports object afterwards has no effect on the captured reference, so the call bypasses the runtime hook entirely. **Static source analysis** (`download_and_execute`, `eval_dynamic_payload`, etc.) is the reliable detection path for this class of attack, as it operates independently of hook timing.
+- **Activation Window**: IDE Shepherd installs its hooks at the very start of `activate()`, but the VS Code extension host may have already evaluated other extension modules before our activation begins. Extensions whose entire payload runs synchronously in module scope (not in `activate()`) may therefore evade the runtime layer. Static analysis aims at bridging this gap.
+- **Task Blocking Race Condition**: If task verification takes too long, a task may be executed before IDE Shepherd can terminate it. This is a timing-dependent limitation of the task blocking mechanism.
 
 ## Observability
 

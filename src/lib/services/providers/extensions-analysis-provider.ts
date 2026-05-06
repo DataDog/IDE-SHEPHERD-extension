@@ -4,9 +4,10 @@
 
 import * as vscode from 'vscode';
 import { MetadataAnalyzer } from '../../../scanner/metadata-analyzer';
-import { ExtensionPackageJSON, ExtensionsRepository } from '../../extensions';
+import { ExtensionsRepository } from '../../extensions';
 import { BatchAnalysisResult, RiskLevel } from '../../heuristics';
 import { SeverityLevel } from '../../events/sec-events';
+import { AllowListService } from '../allowlist-service';
 
 type SidebarTreeItem = vscode.TreeItem;
 
@@ -21,9 +22,11 @@ export class ExtensionsAnalysisViewProvider implements vscode.TreeDataProvider<S
 
   private _analysisResults: BatchAnalysisResult | null = null;
   private _extensionsRepo: ExtensionsRepository;
+  private _allowListService: AllowListService;
 
   constructor() {
     this._extensionsRepo = ExtensionsRepository.getInstance();
+    this._allowListService = AllowListService.getInstance();
     this.runAnalysis();
   }
 
@@ -195,25 +198,27 @@ export class ExtensionsAnalysisViewProvider implements vscode.TreeDataProvider<S
    * Run extension analysis using MetadataAnalyzer
    */
   runAnalysis(): void {
-    try {
-      const userExtensions = this._extensionsRepo.getUserExtensions();
+    const userExtensions = this._extensionsRepo
+      .getUserExtensions()
+      .filter((ext) => !this._allowListService.isAllowed(ext.id));
 
-      const extensionsForAnalysis = userExtensions
-        .filter((ext) => ext.packageJSON)
-        .map((ext) => ({ id: ext.id, packageJSON: ext.packageJSON as ExtensionPackageJSON }));
-
-      this._analysisResults = MetadataAnalyzer.analyzeBatch(extensionsForAnalysis);
-      this._onDidChangeTreeData.fire();
-    } catch (error) {
-      vscode.window.showErrorMessage(`Extension analysis failed: ${error}`);
-    }
+    MetadataAnalyzer.analyzeBatch(userExtensions)
+      .then((results) => {
+        this._analysisResults = results;
+        this._onDidChangeTreeData.fire();
+      })
+      .catch((error) => {
+        vscode.window.showErrorMessage(`Extension analysis failed: ${error}`);
+      });
   }
 
   /**
    * Get current analysis data for status integration
    */
   getAnalysisData(): { results: BatchAnalysisResult; totalExtensions: number; analyzedExtensions: number } {
-    const userExtensions = this._extensionsRepo.getUserExtensions();
+    const userExtensions = this._extensionsRepo
+      .getUserExtensions()
+      .filter((ext) => !this._allowListService.isAllowed(ext.id));
     const extensionsWithPackageJSON = userExtensions.filter((ext) => ext.packageJSON);
 
     const results = this._analysisResults || { results: [], summary: { total: 0, low: 0, medium: 0, high: 0 } };

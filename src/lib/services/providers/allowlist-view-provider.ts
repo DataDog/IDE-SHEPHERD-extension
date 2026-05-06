@@ -335,14 +335,21 @@ export class AllowListViewProvider implements vscode.TreeDataProvider<SidebarTre
           children.push(new vscode.TreeItem('No allowed extensions', vscode.TreeItemCollapsibleState.None));
         } else {
           userExtensions.forEach((extId) => {
-            // Look up the extension to get its display name
-            const extension = this._extensionsRepo.getExtensionById(extId);
+            // The stored ID may be versioned ("publisher.name-1.0.0") or non-versioned
+            // ("publisher.name") depending on the code path that added the entry.
+            // Try versioned lookup first, then fall back to displayName lookup.
+            const extension =
+              this._extensionsRepo.getExtensionById(extId) ?? this._extensionsRepo.getExtensionByDisplayName(extId);
             const displayLabel = extension?.displayName || extId;
 
             const item = new vscode.TreeItem(displayLabel, vscode.TreeItemCollapsibleState.None);
             item.iconPath = new vscode.ThemeIcon('extensions');
             item.contextValue = 'user-allowed-extension';
-            item.description = `v${extension?.packageJSON?.version || 'unknown'}`;
+            // Prefer packageJSON.version; fall back to the suffix embedded in the versioned ID.
+            const version =
+              extension?.packageJSON?.version ??
+              (extension ? extension.id.slice(extension.displayName.length + 1) : undefined);
+            item.description = version ? `v${version}` : undefined;
             item.tooltip = extension
               ? `${displayLabel}\nClick to remove from allow list`
               : `${extId}\nClick to remove from allow list`;

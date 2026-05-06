@@ -44,17 +44,26 @@ export class ProcessAnalyzer {
   private checkRule(ev: ExecEvent, rule: (typeof PROCESS_RULES)[0]): AnalysisResult {
     const fullCommand = `${ev.cmd} ${ev.args.join(' ')}`;
 
-    // Check if command matches the rule's command pattern
-    const commandMatches = rule.commandPattern.test(ev.cmd) || rule.commandPattern.test(fullCommand);
-
-    if (!commandMatches) {
-      return new AnalysisResult();
-    }
-
-    if (rule.flagPattern) {
-      if (!rule.flagPattern.test(fullCommand)) {
+    if (rule.commandPattern) {
+      const commandMatches = rule.commandPattern.test(ev.cmd) || rule.commandPattern.test(fullCommand);
+      if (!commandMatches) {
         return new AnalysisResult();
       }
+      if (rule.flagPattern && !rule.flagPattern.test(fullCommand)) {
+        return new AnalysisResult();
+      }
+    }
+
+    if (rule.optionsMatcher) {
+      const opts = (ev.options ?? {}) as Record<string, unknown>;
+      if (!rule.optionsMatcher(opts)) {
+        return new AnalysisResult();
+      }
+    }
+
+    // A rule with neither commandPattern nor optionsMatcher would be a misconfiguration — skip it.
+    if (!rule.commandPattern && !rule.optionsMatcher) {
+      return new AnalysisResult();
     }
 
     if (!ev.extension) {
