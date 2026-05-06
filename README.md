@@ -35,18 +35,28 @@ The extension automatically starts monitoring when VS Code (Cursor) loads:
 
 ```mermaid
 flowchart TD
-    A[0. IDE Shepherd Activates Early] --> B[1. Hook Module._load<br/>RITM Pattern]
-    B --> C[2. Extension Loads]
-    C --> D[3. Extension calls require#40;'_module_'#41;]
-    D --> E[4. Module._load<br/>Hook Intercepts]
-    E --> F[5. Patch http.request,<br/>child_process.exec, fs.readFile, etc.]
-    F --> G[7. Extension calls<br/>http.request]
-    G --> H[ Monitored & Analyzed]
+    A[IDE Shepherd Activates Early]
+
+    A --> B[Hook Module._load - RITM]
+    A --> C[Register Task Listeners]
+
+    B --> D[Extension makes API call]
+    D --> E[Intercept and analyze call]
+    E --> F{Is it Malicious}
+    F --No --> R0[Allow]
+    F --Yes --> R1[Blocked and Reported]
+
+
+    C --> G[VS Code task starts]
+    G --> H[Analyze command against task rules]
+    H --> F
 
     style B fill:#4a9eff,stroke:#2563eb,color:#fff
     style E fill:#4a9eff,stroke:#2563eb,color:#fff
-    style F fill:#4a9eff,stroke:#2563eb,color:#fff
-    style H fill:#22c55e,stroke:#16a34a,color:#fff
+    style R1 fill:#ff0000,stroke:#ff0000,color:#fff
+    style R0 fill:#22c55e,stroke:#16a34a,color:#fff
+    style C fill:#f59e0b,stroke:#d97706,color:#fff
+    style H fill:#f59e0b,stroke:#d97706,color:#fff
 ```
 
 ### Viewing Status & Logs
