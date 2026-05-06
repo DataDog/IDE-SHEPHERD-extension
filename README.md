@@ -43,8 +43,8 @@ flowchart TD
     B --> D[Extension makes API call]
     D --> E[Intercept and analyze call]
     E --> F{Is it Malicious}
-    F --No --> R0[Allow]
-    F --Yes --> R1[Block and Report]
+    F -->|No| R0[Allow]
+    F -->|Yes| R1[Block and Report]
 
 
     C --> G[VS Code task starts]
