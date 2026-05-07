@@ -1,0 +1,30 @@
+name: Publish to Open VSX
+
+on:
+  workflow_run:
+    workflows: ['Package Extension']
+    types: [completed]
+
+jobs:
+  publish:
+    name: Publish to Open VSX
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Download VSIX from release
+        id: download
+        run: |
+          TAG="${{ github.event.workflow_run.head_branch }}"
+          VERSION="${TAG#v}"
+          VSIX="ide-shepherd-extension-${VERSION}.vsix"
+          gh release download "$TAG" --pattern "*.vsix" --repo "${{ github.repository }}"
+          echo "vsix_name=$VSIX" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Publish to Open VSX Registry
+        uses: HaaLeo/publish-vscode-extension@ddfa605606270abb79040fc684324cae53a3b1b0 # v1
+        with:
+          pat: ${{ secrets.OPEN_VSX_TOKEN }}
+          extensionFile: ${{ steps.download.outputs.vsix_name }}
