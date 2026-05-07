@@ -23,8 +23,7 @@
     "vscode": "^1.99.3"
   },
   "categories": [
-    "Other",
-    "Security"
+    "Other"
   ],
   "icon": "resources/icons/icon.png",
   "activationEvents": [
