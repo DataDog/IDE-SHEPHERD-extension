@@ -23,9 +23,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      - name: Install vsce
+        run: npm install -g @vscode/vsce@3.9.1
+
       - name: Publish to Visual Studio Marketplace
-        uses: HaaLeo/publish-vscode-extension@ddfa605606270abb79040fc684324cae53a3b1b0 # v1
-        with:
-          pat: ${{ secrets.VSCE_TOKEN }}
-          registryUrl: https://marketplace.visualstudio.com
-          extensionFile: ${{ steps.download.outputs.vsix_name }}
+        run: vsce publish --pat "$VSCE_TOKEN" --packagePath "${{ steps.download.outputs.vsix_name }}"
+        env:
+          VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
