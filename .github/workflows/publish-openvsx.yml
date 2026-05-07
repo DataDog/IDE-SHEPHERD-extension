@@ -23,8 +23,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      - name: Install ovsx
+        run: npm install -g ovsx
+
       - name: Publish to Open VSX Registry
-        uses: HaaLeo/publish-vscode-extension@ddfa605606270abb79040fc684324cae53a3b1b0 # v1
-        with:
-          pat: ${{ secrets.OPEN_VSX_TOKEN }}
-          extensionFile: ${{ steps.download.outputs.vsix_name }}
+        run: ovsx publish "${{ steps.download.outputs.vsix_name }}" -p "$OPEN_VSX_TOKEN"
+        env:
+          OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
