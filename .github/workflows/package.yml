@@ -28,7 +28,7 @@ jobs:
         run: npm ci
 
       - name: Install vsce
-        run: npm install -g @vscode/vsce
+        run: npm install -g @vscode/vsce@3.9.1
 
       - name: Validate extension manifest
         run: vsce ls

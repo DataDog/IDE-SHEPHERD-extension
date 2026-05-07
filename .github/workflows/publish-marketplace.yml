@@ -24,7 +24,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Publish to Visual Studio Marketplace
-        uses: HaaLeo/publish-vscode-extension@v1
+        uses: HaaLeo/publish-vscode-extension@ddfa605606270abb79040fc684324cae53a3b1b0 # v1
         with:
           pat: ${{ secrets.VSCE_TOKEN }}
           registryUrl: https://marketplace.visualstudio.com
