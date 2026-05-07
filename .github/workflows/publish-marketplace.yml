@@ -1,0 +1,31 @@
+name: Publish to VS Marketplace
+
+on:
+  workflow_run:
+    workflows: ['Package Extension']
+    types: [completed]
+
+jobs:
+  publish:
+    name: Publish to VS Marketplace
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Download VSIX from release
+        id: download
+        run: |
+          TAG="${{ github.event.workflow_run.head_branch }}"
+          VERSION="${TAG#v}"
+          VSIX="ide-shepherd-extension-${VERSION}.vsix"
+          gh release download "$TAG" --pattern "*.vsix" --repo "${{ github.repository }}"
+          echo "vsix_name=$VSIX" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Publish to Visual Studio Marketplace
+        uses: HaaLeo/publish-vscode-extension@v1
+        with:
+          pat: ${{ secrets.VSCE_TOKEN }}
+          registryUrl: https://marketplace.visualstudio.com
+          extensionFile: ${{ steps.download.outputs.vsix_name }}
