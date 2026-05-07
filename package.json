@@ -12,7 +12,7 @@
     "runtime protection",
     "file system monitoring"
   ],
-  "version": "2.1.0",
+  "version": "3.0.0",
   "publisher": "datadog",
   "license": "Apache-2.0",
   "repository": {
