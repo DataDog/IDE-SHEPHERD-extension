@@ -14,14 +14,14 @@ jobs:
     steps:
       - name: Download VSIX from release
         id: download
+        env:
+          TAG: ${{ github.event.workflow_run.head_branch }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${{ github.event.workflow_run.head_branch }}"
           VERSION="${TAG#v}"
           VSIX="ide-shepherd-extension-${VERSION}.vsix"
           gh release download "$TAG" --pattern "*.vsix" --repo "${{ github.repository }}"
           echo "vsix_name=$VSIX" >> $GITHUB_OUTPUT
-        env:
-          GH_TOKEN: ${{ github.token }}
 
       - name: Install ovsx
         run: npm install -g ovsx
