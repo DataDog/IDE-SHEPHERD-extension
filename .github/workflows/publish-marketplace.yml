@@ -40,8 +40,10 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
 
       - name: Validate VSIX matches version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          EXPECTED_VSIX="ide-shepherd-extension-${{ steps.version.outputs.version }}.vsix"
+          EXPECTED_VSIX="ide-shepherd-extension-${VERSION}.vsix"
           ACTUAL_VSIX=$(ls ide-shepherd-extension-*.vsix 2>/dev/null | head -1)
 
           if [ -z "$ACTUAL_VSIX" ]; then
