@@ -36,7 +36,7 @@ jobs:
       - name: Package extension
         id: package
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION=$(jq -r '.version' package.json)
           VSIX="ide-shepherd-extension-${VERSION}.vsix"
           vsce package --no-dependencies --out "$VSIX"
           echo "vsix_name=$VSIX" >> $GITHUB_OUTPUT
@@ -45,19 +45,25 @@ jobs:
       - name: Extract changelog for this version
         id: changelog
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION=$(jq -r '.version' package.json)
           NOTES=$(awk "/^## \[$VERSION\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
-          NOTES="${NOTES/EOF/REDACTED}"
           echo "notes<<EOF" >> $GITHUB_OUTPUT
           echo "$NOTES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release and upload VSIX
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: vsix
+          path: ide-shepherd-extension-*.vsix
+          retention-days: 7
+
+      - name: Create GitHub Release
         run: |
           printf '%s' "$NOTES" > /tmp/release-notes.md
-          gh release create "${{ github.ref_name }}" \
+          gh release create "v${{ steps.package.outputs.version }}" \
             "${{ steps.package.outputs.vsix_name }}" \
-            --title "Release ${{ github.ref_name }}" \
+            --title "Release v${{ steps.package.outputs.version }}" \
             --notes-file /tmp/release-notes.md
         env:
           GH_TOKEN: ${{ github.token }}

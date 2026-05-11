@@ -5,28 +5,61 @@ on:
     workflows: ['Package Extension']
     types: [completed]
 
+concurrency:
+  group: publish-marketplace
+  cancel-in-progress: true
+
 jobs:
   publish:
     name: Publish to VS Marketplace
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      - name: Download VSIX from release
-        id: download
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Read version from package.json
+        id: version
         run: |
-          TAG="${{ github.event.workflow_run.head_branch }}"
-          VERSION="${TAG#v}"
-          VSIX="ide-shepherd-extension-${VERSION}.vsix"
-          gh release download "$TAG" --pattern "*.vsix" --repo "${{ github.repository }}"
-          echo "vsix_name=$VSIX" >> $GITHUB_OUTPUT
-        env:
-          GH_TOKEN: ${{ github.token }}
+          VERSION=$(jq -r '.version' package.json)
+          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "Error: Invalid version format: $VERSION"
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download VSIX artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: vsix
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Validate VSIX matches version
+        run: |
+          EXPECTED_VSIX="ide-shepherd-extension-${{ steps.version.outputs.version }}.vsix"
+          ACTUAL_VSIX=$(ls ide-shepherd-extension-*.vsix 2>/dev/null | head -1)
+
+          if [ -z "$ACTUAL_VSIX" ]; then
+            echo "Error: No VSIX artifact found"
+            exit 1
+          fi
+
+          if [ "$EXPECTED_VSIX" != "$(basename "$ACTUAL_VSIX")" ]; then
+            echo "Error: Version mismatch. Expected: $EXPECTED_VSIX, Found: $(basename "$ACTUAL_VSIX")"
+            exit 1
+          fi
+
+          echo "VSIX_PATH=$EXPECTED_VSIX" >> $GITHUB_ENV
 
       - name: Install vsce
         run: npm install -g @vscode/vsce@3.9.1
 
       - name: Publish to Visual Studio Marketplace
-        run: vsce publish --pat "$VSCE_TOKEN" --packagePath "${{ steps.download.outputs.vsix_name }}"
+        run: vsce publish --pat "$VSCE_TOKEN" --packagePath "$VSIX_PATH"
         env:
           VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
