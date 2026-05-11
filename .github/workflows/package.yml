@@ -36,29 +36,15 @@ jobs:
       - name: Package extension
         id: package
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION=$(jq -r '.version' package.json)
           VSIX="ide-shepherd-extension-${VERSION}.vsix"
           vsce package --no-dependencies --out "$VSIX"
           echo "vsix_name=$VSIX" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Extract changelog for this version
-        id: changelog
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          NOTES=$(awk "/^## \[$VERSION\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
-          NOTES="${NOTES/EOF/REDACTED}"
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Create GitHub Release and upload VSIX
-        run: |
-          printf '%s' "$NOTES" > /tmp/release-notes.md
-          gh release create "${{ github.ref_name }}" \
-            "${{ steps.package.outputs.vsix_name }}" \
-            --title "Release ${{ github.ref_name }}" \
-            --notes-file /tmp/release-notes.md
-        env:
-          GH_TOKEN: ${{ github.token }}
-          NOTES: ${{ steps.changelog.outputs.notes }}
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: ide-shepherd-extension-*.vsix
+          retention-days: 7
