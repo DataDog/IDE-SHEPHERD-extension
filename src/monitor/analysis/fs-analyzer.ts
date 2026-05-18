@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import { SecurityEvent } from '../../lib/events/sec-events';
 import { Logger } from '../../lib/logger';
 import { IDEStatusService } from '../../lib/services/ide-status-service';
@@ -54,6 +55,18 @@ export class FsAnalyzer {
 
     if (!ev.extension) {
       return new AnalysisResult();
+    }
+
+    if (rule.contentPattern && (ev.operation === 'write' || ev.operation === 'append')) {
+      try {
+        const content = fs.readFileSync(ev.path, 'utf8');
+        if (!rule.contentPattern.test(content)) {
+          return new AnalysisResult();
+        }
+      } catch (err) {
+        Logger.error(`FsAnalyzer: Failed to read file content for contentPattern check: ${ev.path}`, err as Error);
+        return new AnalysisResult();
+      }
     }
 
     return new AnalysisResult(

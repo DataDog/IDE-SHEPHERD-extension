@@ -25,6 +25,8 @@ export interface FsRule {
   pathPattern: RegExp;
   /** Which fs operations this rule applies to. */
   operations: FsOperation[];
+  /** Optional content pattern to match against the file content when written. */
+  contentPattern?: RegExp;
   confidence: number;
 }
 
@@ -160,6 +162,35 @@ export const FS_RULES: FsRule[] = [
   },
 
   // ─── WRITE HIGH ─────────────────────────────────────────────────────────────
+
+  {
+    id: 'write_git_hooks_malicious',
+    name: 'Malicious Git Hooks Write',
+    description:
+      'Detected write to git hooks directory containing suspicious payload (e.g., curl/wget/node execution - DPRK Contagious Interview campaign)',
+    type: FsRuleType.WRITE,
+    target: Target.FILESYSTEM,
+    severity: SeverityLevel.HIGH,
+    // Matches .git/hooks/*, .githooks/*, .husky/*
+    pathPattern: /[/\\](\.git[/\\]hooks|\.githooks|\.husky)[/\\].*/i,
+    // Typical malicious commands in hooks (downloaders, reverse shells, base64 eval)
+    contentPattern: /(curl|wget|bash -c|python -c|node -e|Invoke-WebRequest|powershell|base64)/i,
+    operations: ['write', 'append'],
+    confidence: 1,
+  },
+
+  {
+    id: 'write_git_config_hooks',
+    name: 'Git Config Core Hooks Write',
+    description: 'Detected modification of git config, potentially to alter core.hooksPath for persistence',
+    type: FsRuleType.WRITE,
+    target: Target.FILESYSTEM,
+    severity: SeverityLevel.HIGH,
+    pathPattern: /[/\\]\.git[/\\]config$/i,
+    contentPattern: /core\.hookspath/i,
+    operations: ['write', 'append'],
+    confidence: 0.9,
+  },
 
   {
     id: 'write_authorized_keys',
