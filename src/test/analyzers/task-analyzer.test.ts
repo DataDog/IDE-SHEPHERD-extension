@@ -184,6 +184,34 @@ suite('TaskScanner Tests', () => {
     });
   });
 
+  suite('Task Analysis - Auto-confirmed Remote Execution (nx-console TTP)', () => {
+    test('should detect npx -y github: command', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_npx_autoapprove_remote');
+      expect(rule).to.exist;
+      expect(rule!.commandPattern.test('npx -y github:nrwl/nx#558b09d7ad0d1660e2a0fb8a06da81a6f42e06d2')).to.be.true;
+    });
+
+    test('should detect npx --yes github: command', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_npx_autoapprove_remote');
+      expect(rule!.commandPattern.test('npx --yes github:org/repo')).to.be.true;
+    });
+
+    test('should be case insensitive', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_npx_autoapprove_remote');
+      expect(rule!.commandPattern.test('NPX --YES GITHUB:org/repo')).to.be.true;
+    });
+
+    test('should NOT match npx without -y or --yes flag', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_npx_autoapprove_remote');
+      expect(rule!.commandPattern.test('npx github:org/repo')).to.be.false;
+    });
+
+    test('should NOT match npx -y without github: specifier', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_npx_autoapprove_remote');
+      expect(rule!.commandPattern.test('npx -y some-npm-package')).to.be.false;
+    });
+  });
+
   suite('Trusted Workspace Integration', () => {
     test('should check trusted workspace status', async () => {
       const mockTrustedService = TrustedWorkspaceService.getInstance() as any;

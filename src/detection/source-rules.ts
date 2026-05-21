@@ -48,20 +48,29 @@ export const SOURCE_RULES: SourceRule[] = [
 
   /**
    * TTP: Reverse shell — open a raw TCP connection then attach a shell to it.
-   * Requires both a raw socket creation and a shell execution in the same file.
+   * Signal 1: raw TCP socket (net.Socket / net.connect / net.createConnection).
+   * Signal 2: a shell binary string literal (/bin/sh, cmd.exe, powershell, etc.).
+   *
+   * Using a generic exec/spawn as the second signal caused false positives on
+   * legitimate extensions (LSP servers, debug adapters) that open a TCP connection
+   * to their language server AND spawn it with exec/spawn. Requiring a shell binary
+   * string literal rules those out — a language server is invoked as 'node' or
+   * 'python', never as '/bin/sh'.
    */
   {
     id: 'reverse_shell',
     name: 'Reverse Shell Pattern',
     description:
-      'File opens a raw TCP socket (net.Socket, net.connect) and calls exec/spawn — the standard building blocks of a reverse shell',
+      'File opens a raw TCP socket (net.Socket, net.connect) and contains a shell binary string literal (/bin/sh, cmd.exe, etc.) — the fingerprint of a reverse shell that rules out legitimate LSP/debug-adapter extensions',
     severity: SeverityLevel.HIGH,
     detect: (content) => {
       const hasSocket = /new\s+net\.Socket\b|net\.connect\s*\(|net\.createConnection\s*\(/.test(content);
       if (!hasSocket) {
         return false;
       }
-      return /\bexec\s*\(|\bspawn\s*\(/.test(content);
+      return /['"`]\/bin\/(?:sh|bash|dash|zsh|ash|fish)['"`]|['"`](?:cmd(?:\.exe)?|powershell(?:\.exe)?|pwsh)['"`]/i.test(
+        content,
+      );
     },
   },
 
@@ -82,6 +91,36 @@ export const SOURCE_RULES: SourceRule[] = [
         /eval\s*\(\s*(?:atob|Buffer\.from|decodeURIComponent|unescape)\s*\(/.test(content) ||
         /new\s+Function\s*\([^)]*(?:atob|Buffer\.from|decodeURIComponent)\s*\(/.test(content)
       );
+    },
+  },
+
+  /**
+   * TTP: Stealthy background task delivering a remote payload — the extension
+   * creates a VS Code task hidden from the user (presentationOptions.focus = false)
+   * that auto-confirms and executes a GitHub package via npx, triggered silently at
+   * workspace activation.
+   *
+   * Signal 1: presentationOptions.focus suppressed (task hidden from terminal panel).
+   * Signal 2: npx invoked with -y/--yes and a github: specifier (remote, no user consent).
+   *
+   * Seen in nrwl.angular-console 18.95.0 (compromised nx-console, 2025).
+   */
+  {
+    id: 'stealth_task_remote_install',
+    name: 'Hidden Task — Auto-confirmed Remote Install',
+    description:
+      'File hides a VS Code task from the user (presentationOptions.focus = false/!1) and auto-confirms a remote GitHub package install via npx — supply-chain payload delivery TTP used in compromised VS Code extensions',
+    severity: SeverityLevel.HIGH,
+    detect: (content) => {
+      const hasHiddenTask = /\.presentationOptions\.focus\s*=\s*(?:false|!1)\b/.test(content);
+      if (!hasHiddenTask) {
+        return false;
+      }
+      const hasNpxGithub = /\bnpx\b[^\n]*\bgithub:/i.test(content);
+      if (!hasNpxGithub) {
+        return false;
+      }
+      return /(?:--yes|-y)\b/.test(content);
     },
   },
 
