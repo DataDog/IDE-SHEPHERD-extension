@@ -26,20 +26,32 @@ export interface SourceRule {
 
 export const SOURCE_RULES: SourceRule[] = [
   /**
-   * TTP: Download-and-execute — fetch a remote payload then run it.
-   * Requires both a network download primitive and a shell execution primitive
-   * in the same file. Either alone is common in legitimate code; the combination
-   * is the payload-delivery pattern.
+   * TTP: Download-and-execute — fetch a remote payload, stage it in a temp
+   * directory, then run it.
+   *
+   * Three signals required: (1) network download primitive, (2) temp-directory
+   * involvement (/tmp/, os.tmpdir(), TMPDIR), (3) process execution primitive.
+   *
+   * The original two-signal design (network + exec/spawn) caused widespread false
+   * positives: extensions that make HTTP requests for unrelated reasons (telemetry,
+   * update checks, API calls) and also spawn their own tooling would always fire.
+   * Adding a temp-directory staging signal targets the actual payload delivery
+   * pattern — fetch, write to disk, execute — without matching that common
+   * legitimate combination.
    */
   {
     id: 'download_and_execute',
     name: 'Download and Execute',
     description:
-      'File contains both a network download primitive (https.get, fetch, XMLHttpRequest) and a shell execution primitive (exec, spawn) — the core download-and-execute payload delivery pattern',
+      'File fetches remote content (https.get, fetch, XMLHttpRequest), references a temp directory, and calls exec/spawn — the three-stage download-stage-execute payload delivery pattern',
     severity: SeverityLevel.MEDIUM,
     detect: (content) => {
       const hasDownload = /https?\.get\s*\(|fetch\s*\(|new\s+XMLHttpRequest\b/.test(content);
       if (!hasDownload) {
+        return false;
+      }
+      const hasTempPath = /\/tmp\/|os\.tmpdir\s*\(|process\.env\.TMPDIR\b/.test(content);
+      if (!hasTempPath) {
         return false;
       }
       return /\bexec\s*\(|\bspawn\s*\(/.test(content);
