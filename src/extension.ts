@@ -13,6 +13,7 @@ import { TrustedWorkspaceService } from './lib/services/trusted-workspace-servic
 import { DatadogTelemetryService } from './lib/services/datadog/datadog-service';
 import { ExtensionChangeService } from './lib/services/extension-lifecycle-service';
 import { TaskScanner } from './monitor/analysis/task-analyzer';
+import { WelcomeService } from './lib/services/welcome-service';
 
 export function activate(context: vscode.ExtensionContext) {
   try {
@@ -134,6 +135,9 @@ export function activate(context: vscode.ExtensionContext) {
     }, 1000);
 
     IDEStatusService.startAutoRefresh();
+
+    WelcomeService.handleActivation(context);
+    Logger.info('IDE Shepherd Extension: Welcome service initialized');
 
     Logger.info('IDE Shepherd Extension: Activation completed successfully');
   } catch (error) {

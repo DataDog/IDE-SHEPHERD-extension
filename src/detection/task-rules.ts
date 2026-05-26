@@ -61,6 +61,17 @@ export const TASK_RULES: TaskRule[] = [
     commandPattern: /\/tmp\/.*\.sh/i,
     confidence: 1,
   },
+  {
+    id: 'task_npx_auto_approve_remote',
+    name: 'Task: Auto-confirmed Remote Execution via npx github:',
+    description:
+      'Task runs npx with -y/--yes and a github: package specifier — auto-confirms and executes untrusted code from a GitHub ref without user prompt',
+    type: TaskRuleType.REMOTE_SCRIPT,
+    target: Target.WORKSPACE,
+    severity: SeverityLevel.HIGH,
+    commandPattern: /npx\s+(?:--yes|-y)\s+github:/i,
+    confidence: 0.95,
+  },
 
   // Encoded Command Rules
   {

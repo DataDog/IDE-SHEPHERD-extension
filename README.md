@@ -147,17 +147,26 @@ IDE Shepherd intercepts `fs` module calls (`readFile`, `writeFile`, `appendFile`
 
 VS Code and Cursor workspace tasks are monitored for potentially dangerous operations:
 
-| Rule ID                   | Detection Name             | Type                 | Severity | Description                                         |
-| ------------------------- | -------------------------- | -------------------- | -------- | --------------------------------------------------- |
-| `task_curl_download`      | Network Download (curl)    | NETWORK              | High     | Task downloads content from the internet using curl |
-| `task_wget_download`      | Network Download (wget)    | NETWORK              | High     | Task downloads content from the internet using wget |
-| `task_powershell_encoded` | PowerShell Encoded Command | ENCODED_COMMAND      | High     | Task uses PowerShell with encoded command           |
-| `task_eval`               | Dynamic Code Evaluation    | ENCODED_COMMAND      | High     | Task uses eval() for dynamic code execution         |
-| `task_sudo`               | Sudo Execution             | PRIVILEGE_ESCALATION | High     | Task uses sudo for privilege escalation             |
-| `task_temp_script`        | Temporary Script Execution | REMOTE_SCRIPT        | Medium   | Task executes a script from the temporary directory |
-| `task_base64_decode`      | Base64 Decode              | ENCODED_COMMAND      | Medium   | Task uses base64 decoding (potential obfuscation)   |
-| `task_rm_rf`              | Recursive File Deletion    | DESTRUCTIVE          | Medium   | Task attempts to recursively delete files           |
-| `task_chmod_executable`   | Make File Executable       | PRIVILEGE_ESCALATION | Medium   | Task makes a file executable (potential backdoor)   |
+| Rule ID                        | Detection Name                          | Type                 | Severity | Description                                                                                                    |
+| ------------------------------ | --------------------------------------- | -------------------- | -------- | -------------------------------------------------------------------------------------------------------------- |
+| `task_curl_download`           | Network Download (curl)                 | NETWORK              | High     | Task downloads content from the internet using curl                                                            |
+| `task_wget_download`           | Network Download (wget)                 | NETWORK              | High     | Task downloads content from the internet using wget                                                            |
+| `task_powershell_encoded`      | PowerShell Encoded Command              | ENCODED_COMMAND      | High     | Task uses PowerShell with encoded command                                                                      |
+| `task_eval`                    | Dynamic Code Evaluation                 | ENCODED_COMMAND      | High     | Task uses eval() for dynamic code execution                                                                    |
+| `task_sudo`                    | Sudo Execution                          | PRIVILEGE_ESCALATION | High     | Task uses sudo for privilege escalation                                                                        |
+| `task_npx_auto_approve_remote` | Auto-confirmed Remote Execution via npx | REMOTE_SCRIPT        | High     | Task runs `npx` with `-y`/`--yes` and a `github:` specifier, auto-executing untrusted code without user prompt |
+| `task_temp_script`             | Temporary Script Execution              | REMOTE_SCRIPT        | Medium   | Task executes a script from the temporary directory                                                            |
+| `task_base64_decode`           | Base64 Decode                           | ENCODED_COMMAND      | Medium   | Task uses base64 decoding (potential obfuscation)                                                              |
+| `task_rm_rf`                   | Recursive File Deletion                 | DESTRUCTIVE          | Medium   | Task attempts to recursively delete files                                                                      |
+| `task_chmod_executable`        | Make File Executable                    | PRIVILEGE_ESCALATION | Medium   | Task makes a file executable (potential backdoor)                                                              |
+
+#### Extension-initiated task blocking
+
+IDE Shepherd patches `vscode.tasks.executeTask` directly on the shared `vscode` module object in addition to monitoring the `onDidStartTask` event. This closes the gap where `onDidStartTask` fires only after VS Code has already begun running the task — the patched `executeTask` rejects the call before it is queued, giving IDE Shepherd deterministic pre-execution control over programmatically launched tasks. This is the blocking path for supply-chain attacks where a compromised extension calls `executeTask` directly at runtime.
+
+**Extension attribution**: The extension responsible for a blocked task is identified by resolving `task.source` — the task-provider type string set at task construction time (e.g. `'nx'`) — against every installed extension's `contributes.taskDefinitions` entries in its `package.json`, recovering the full extension ID (e.g. `nrwl.angular-console`). This approach is reliable regardless of how the call is dispatched (synchronous, deferred, or event-driven), unlike call-stack inspection which loses attribution across async boundaries. Tasks whose `task.source` is `'Workspace'` or `'User'` are treated as workspace-owned and their "Ignore & Allow" action trusts the workspace rather than an extension.
+
+**Allowlist behavior**: Clicking "Allow this extension" in a task-blocked notification adds the extension to the allow list. This exempts **all** of that extension's monitored operations — network requests, process spawns, file system access, and future task executions — not only the command that triggered the alert. Use the workspace trust mechanism if you want to allow a specific workspace's tasks without granting a global exemption to an extension.
 
 ## Limitations
 

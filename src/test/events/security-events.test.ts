@@ -126,6 +126,7 @@ suite('SecurityEvent Tests', () => {
         SeverityLevel.HIGH,
         ProcessRuleType.COMMAND,
         iocs,
+        undefined,
         customTimestamp,
       );
 

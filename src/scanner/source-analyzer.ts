@@ -10,7 +10,15 @@ import { SOURCE_RULES } from '../detection/source-rules';
 const SKIP_NODE_MODULES = new Set(['typescript', '@vscode', '@types', 'electron']);
 
 const MAX_FILES = 500;
+// Files up to 1 MB are scanned in full.
 const MAX_FILE_BYTES = 1024 * 1024;
+// Files between 1 MB and 50 MB get a tail scan only (last 64 KB).
+// Injected code is almost always appended to the end of the legitimate bundle —
+// the nx-console 18.95.0 injection starts at byte 7,703,700 in a 7,719,408-byte
+// file, placing it within the last 16 KB. Skipping oversized files entirely was
+// the reason this attack bypassed static detection.
+const MAX_LARGE_FILE_BYTES = 25 * 1024 * 1024;
+const TAIL_SCAN_BYTES = 100 * 1024;
 
 export class SourceAnalyzer {
   static async analyzeExtension(extensionId: string, extensionPath: string): Promise<SuspiciousPattern[]> {
@@ -73,11 +81,28 @@ async function scanFile(
 ): Promise<void> {
   try {
     const stat = await fs.promises.stat(filePath);
-    if (stat.size > MAX_FILE_BYTES) {
+    if (stat.size > MAX_LARGE_FILE_BYTES) {
       return;
     }
 
-    const content = await fs.promises.readFile(filePath, 'utf-8');
+    let content: string;
+    if (stat.size > MAX_FILE_BYTES) {
+      // File is too large for a full scan — read only the tail. Injected code is
+      // almost always appended to the end of the legitimate bundle, so the last
+      // 64 KB covers the injection window without loading the whole file.
+      const tailOffset = stat.size - TAIL_SCAN_BYTES;
+      const fh = await fs.promises.open(filePath, 'r');
+      try {
+        const buf = Buffer.alloc(TAIL_SCAN_BYTES);
+        await fh.read(buf, 0, TAIL_SCAN_BYTES, tailOffset);
+        content = buf.toString('utf-8');
+      } finally {
+        await fh.close();
+      }
+    } else {
+      content = await fs.promises.readFile(filePath, 'utf-8');
+    }
+
     const relPath = path.relative(extensionPath, filePath);
 
     for (const rule of SOURCE_RULES) {

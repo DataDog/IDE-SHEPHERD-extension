@@ -58,9 +58,13 @@ export class NotificationService {
 
     let content = `A(n) <bold>${type}</bold> operation has been <bold>BLOCKED</bold> by IDE Shepherd's security policy.<br><br>`;
 
-    // Determine if this is an extension or workspace event
-    if (securityEvent.extension) {
-      content += `<strong>EXTENSION:</strong> <bold>${securityEvent.extension.id}</bold><br>`;
+    // callerExtension is set when the blocked operation originates from a known extension
+    // acting on a workspace target (e.g. vscode.tasks.executeTask). It takes precedence
+    // over the generic workspace/extension routing in the SecurityEvent.
+    const resolvedExtension = securityEvent.callerExtension ?? securityEvent.extension;
+
+    if (resolvedExtension) {
+      content += `<strong>EXTENSION:</strong> <bold>${resolvedExtension.id}</bold><br>`;
     } else if (securityEvent.workspace) {
       content += `<strong>WORKSPACE:</strong> <bold>${securityEvent.workspace.name}</bold><br>`;
       content += `<strong>PATH:</strong> ${securityEvent.workspace.path}<br>`;
@@ -75,8 +79,8 @@ export class NotificationService {
     content += `<strong>SUMMARY:</strong><br>${securityEvent.getSummary().replace(/\n/g, '<br>')}<br><br>`;
     content += `<strong>ACTION:</strong> The ${getOperationTitle(type).toLowerCase()} was automatically blocked to protect your workspace.`;
 
-    const identifier = securityEvent.extension ? securityEvent.extension.id : securityEvent.workspace?.path;
-    const isWorkspace = !!securityEvent.workspace;
+    const identifier = resolvedExtension ? resolvedExtension.id : securityEvent.workspace?.path;
+    const isWorkspace = !resolvedExtension && !!securityEvent.workspace;
 
     await this.showCustomModal(title, content, identifier, isWorkspace);
   }
@@ -183,6 +187,12 @@ export class NotificationService {
                         .ok-button:focus, .ignore-button:focus {
                             outline: 2px solid var(--vscode-focusBorder);
                         }
+                        .allow-caveat {
+                            margin: 10px 0 0;
+                            font-size: 11px;
+                            color: var(--vscode-descriptionForeground);
+                            text-align: center;
+                        }
                     </style>
                 </head>
                 <body>
@@ -191,8 +201,9 @@ export class NotificationService {
                         <div class="content">${content.replace(/\n/g, '<br>')}</div>
                         <div class="button-container">
                             <button class="ok-button" onclick="dismissModal()">Continue blocking</button>
-                            ${identifier ? '<button class="ignore-button" onclick="ignoreItem()">Ignore & Allow</button>' : ''}
+                            ${identifier ? `<button class="ignore-button" onclick="ignoreItem()">${isWorkspace ? 'Trust this workspace' : 'Allow this extension'}</button>` : ''}
                         </div>
+                        ${identifier && !isWorkspace ? '<p class="allow-caveat">Allows all future operations from this extension (network, process, file system, and tasks), not just this specific one.</p>' : ''}
                     </div>
                     <script>
                         const vscode = acquireVsCodeApi();

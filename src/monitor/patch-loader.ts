@@ -9,6 +9,7 @@ import { CONFIG } from '../lib/config';
 import { patchHttpExports } from './instrumentations/http-client-instrument';
 import { patchChildProcess } from './instrumentations/child-process-instrument';
 import { patchFs } from './instrumentations/fs-instrument';
+import { patchVscodeTasks } from './instrumentations/vscode-tasks-instrument';
 import { Protocol } from '../lib/events/network-events';
 
 const { Module } = require('module');
@@ -28,6 +29,7 @@ export class ModuleLoaderPatcher {
       ...CONFIG.MODULES.HTTP_MODULES,
       ...CONFIG.MODULES.CHILD_PROCESS_MODULES,
       ...CONFIG.MODULES.FS_MODULES,
+      ...CONFIG.MODULES.VSCODE_MODULES,
     ];
 
     for (const moduleName of allModuleNames) {
@@ -62,6 +64,7 @@ export class ModuleLoaderPatcher {
           CONFIG.MODULES.HTTP_MODULES,
           CONFIG.MODULES.CHILD_PROCESS_MODULES,
           CONFIG.MODULES.FS_MODULES,
+          CONFIG.MODULES.VSCODE_MODULES,
         ]) {
           toHook.push(...moduleGroup);
         }
@@ -96,6 +99,10 @@ export class ModuleLoaderPatcher {
 
       if (CONFIG.MODULES.FS_MODULES.includes(spec)) {
         patchFs(exp);
+      }
+
+      if (CONFIG.MODULES.VSCODE_MODULES.includes(spec)) {
+        patchVscodeTasks(exp);
       }
     } catch (error) {
       Logger.error(`ModuleLoaderPatcher: Failed to patch exports for ${spec}`, error as Error);
