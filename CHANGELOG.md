@@ -5,7 +5,7 @@
 ### Features
 
 - **`vscode.tasks.executeTask` instrumentation** — patches `executeTask` on the shared `vscode` module object so extension-initiated tasks are blocked before VS Code queues them, closing the gap left by `onDidStartTask` which fires only after execution begins
-- **What's New page** — opens on first install and on each version update, pulling release notes from the bundled `CHANGELOG.md`; shown at most once per install via a marker file in the extension directory
+- **What's New page** — opens on first install and on each version update, pulling release notes from the bundled `CHANGELOG.md`; shown at most once per version per installation via a versioned marker file in the extension directory
 
 ### Detection
 
