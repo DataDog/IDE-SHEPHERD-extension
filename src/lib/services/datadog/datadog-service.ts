@@ -31,6 +31,7 @@ export class DatadogTelemetryService {
   private _lastAgentStatus: boolean = false;
   private _consecutiveAgentFailures: number = 0;
   private _hasSeenAgentRunning: boolean = false;
+  private _hasLoggedStartupWait: boolean = false;
   private static readonly AGENT_DOWN_THRESHOLD = 3; // require 3 consecutive failures (~90s) before disabling
 
   private constructor() {
@@ -77,7 +78,16 @@ export class DatadogTelemetryService {
     // VS Code global settings to their defaults. Silently restore the previous state.
     // If the user or auto-disable actually removed the config, `savedPath` would have
     // been cleared from globalState before shutdown, so this branch won't trigger.
-    if (!config.isEnabled && savedPath && this._lastAgentStatus) {
+    //
+    // We distinguish a genuine settings reset from an intentional user disable by
+    // inspecting the raw VS Code config layer: if globalValue is undefined the setting
+    // was never explicitly written (i.e. it reverted to the package.json default), so
+    // restoration is safe. If the user explicitly wrote false, globalValue is false and
+    // we leave it alone.
+    const isEnabledInspect = vscode.workspace.getConfiguration('ide-shepherd.datadog').inspect<boolean>('isEnabled');
+    const settingsWereReset = isEnabledInspect?.globalValue === undefined;
+
+    if (!config.isEnabled && settingsWereReset && savedPath && this._lastAgentStatus) {
       const configFileStillExists = await doesShepherdConfigExist();
       if (configFileStillExists) {
         await this.restoreAfterSettingsReset();
@@ -281,8 +291,9 @@ export class DatadogTelemetryService {
         Logger.warn(
           `DatadogTelemetryService: Agent unreachable (consecutive failures: ${this._consecutiveAgentFailures}/${DatadogTelemetryService.AGENT_DOWN_THRESHOLD})`,
         );
-      } else {
-        Logger.info('DatadogTelemetryService: Agent not yet running on startup, waiting...');
+      } else if (!this._hasLoggedStartupWait) {
+        this._hasLoggedStartupWait = true;
+        Logger.debug('DatadogTelemetryService: Agent not yet running on startup, waiting...');
       }
 
       if (!agentRunning && this._consecutiveAgentFailures >= DatadogTelemetryService.AGENT_DOWN_THRESHOLD) {
