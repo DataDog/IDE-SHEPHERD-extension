@@ -4,23 +4,31 @@ import * as path from 'path';
 import { Logger } from '../logger';
 
 // Marker written into the extension's installation directory after showing the page.
-// The extension directory is freshly extracted on every install (including reinstalls
-// of the same version), so the marker is absent on every new install and present on
-// plain restarts — no version comparison needed.
+// The file contains the version string that was shown, so updates are detected even
+// when the IDE updates the extension in-place (e.g. Cursor) rather than extracting
+// to a fresh directory (e.g. VS Code). An absent marker always triggers the page.
 const SHOWN_MARKER = '.whats-new-shown';
 
 export class WelcomeService {
   static handleActivation(context: vscode.ExtensionContext): void {
+    const version: string = context.extension.packageJSON.version;
     const markerPath = path.join(context.extensionPath, SHOWN_MARKER);
+
     if (fs.existsSync(markerPath)) {
-      return;
+      try {
+        const shownVersion = fs.readFileSync(markerPath, 'utf8').trim();
+        if (shownVersion === version) {
+          return;
+        }
+      } catch {
+        // unreadable marker — fall through and show the page
+      }
     }
 
-    const version: string = context.extension.packageJSON.version;
     this.showWhatsNewPage(context.extensionPath, version);
 
     try {
-      fs.writeFileSync(markerPath, '');
+      fs.writeFileSync(markerPath, version);
     } catch (err) {
       Logger.error('WelcomeService: Failed to write shown marker', err as Error);
     }

@@ -1,5 +1,26 @@
 # Changelog
 
+## [3.1.1] - 2026-05-26
+
+### Features
+
+- **`vscode.tasks.executeTask` instrumentation** — patches `executeTask` on the shared `vscode` module object so extension-initiated tasks are blocked before VS Code queues them, closing the gap left by `onDidStartTask` which fires only after execution begins
+- **What's New page** — opens on first install and on each version update, pulling release notes from the bundled `CHANGELOG.md`; shown at most once per install via a marker file in the extension directory
+
+### Detection
+
+- **`task_npx_auto_approve_remote`** (High) — `npx` with `-y`/`--yes` and a `github:` package specifier
+- **`stealth_task_remote_install`** (High) — hidden task (`presentationOptions.focus = false`) combined with auto-confirmed remote npx install; requires both signals to fire
+
+### Bug Fixes
+
+- **Oversized bundle tail scan** — files between 1 MB and 25 MB now have their last 100 KB scanned; the previous 1 MB hard cap silently skipped these files entirely
+- **Source rule false positives** — `download_and_execute` now requires a temp-directory reference as a third signal; `reverse_shell` now requires a shell binary literal (`/bin/sh`, `cmd.exe`, etc.) rather than any exec/spawn call
+- **What's New page not shown after Cursor auto-update** — Cursor updates extensions in-place, preserving existing files in the extension directory. The previous marker-based check (file presence only) meant the page was silently skipped after every Cursor update. The marker file now stores the version string; the page shows whenever the stored version differs from the current one.
+- **Telemetry disabled and agent "Pending Restart" after update**
+
+---
+
 ## [3.1.0] - 2026-05-26
 
 ### Features
