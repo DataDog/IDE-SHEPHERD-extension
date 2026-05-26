@@ -59,6 +59,8 @@ export class SecurityEvent {
 
   public readonly extension?: ExtensionInfo;
   public readonly workspace?: WorkspaceInfo;
+  /** The extension that triggered the operation, when the event target is a workspace (e.g. vscode.tasks.executeTask). */
+  public readonly callerExtension?: ExtensionInfo;
 
   public readonly iocs: IoC[];
 
@@ -70,6 +72,7 @@ export class SecurityEvent {
     severity: SeverityLevel,
     securityEventType: ProcessRuleType | NetworkRuleType | TaskRuleType | FsRuleType,
     iocs: IoC[],
+    callerExtension?: ExtensionInfo,
     timestamp: Timestamp = Date.now(),
   ) {
     this.secEventId = originalEvent.eventId;
@@ -82,6 +85,7 @@ export class SecurityEvent {
       this.extension = source as ExtensionInfo;
     }
 
+    this.callerExtension = callerExtension;
     this.iocs = iocs;
     this.originalEvent = originalEvent;
     this.securityEventType = securityEventType;

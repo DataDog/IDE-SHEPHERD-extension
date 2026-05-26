@@ -17,8 +17,8 @@ const MAX_FILE_BYTES = 1024 * 1024;
 // the nx-console 18.95.0 injection starts at byte 7,703,700 in a 7,719,408-byte
 // file, placing it within the last 16 KB. Skipping oversized files entirely was
 // the reason this attack bypassed static detection.
-const MAX_LARGE_FILE_BYTES = 50 * 1024 * 1024;
-const TAIL_SCAN_BYTES = 64 * 1024;
+const MAX_LARGE_FILE_BYTES = 25 * 1024 * 1024;
+const TAIL_SCAN_BYTES = 100 * 1024;
 
 export class SourceAnalyzer {
   static async analyzeExtension(extensionId: string, extensionPath: string): Promise<SuspiciousPattern[]> {

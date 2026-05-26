@@ -1,24 +1,21 @@
 # Changelog
 
-## [3.1.0] - 2026-05-21
+## [3.1.0] - 2026-05-26
 
 ### Features
 
-- **`vscode.tasks.executeTask` instrumentation** — the module loader patcher now wraps `vscode.tasks.executeTask` in addition to `child_process`, `http/https`, and `fs`. Because IDE Shepherd activates with `*` and patches the shared vscode module object in-place, every subsequent `executeTask()` call from any extension is intercepted synchronously before VS Code queues the task. Matching tasks are blocked (rejected promise) and a security event is emitted. This closes the gap where the task event API (`onDidStartTask`) fires only after execution begins. This is the runtime detection path for the supply-chain TTP used in compromised nx-console 18.95.0
-
-- **Welcome and What's New pages** — a welcome webview opens on first install to introduce the extension's protection layers and getting-started steps. On subsequent updates, a What's New page opens instead, pulling its content directly from the bundled `CHANGELOG.md`. Both pages are VS Code theme-aware and shown at most once per install or version bump via `globalState`
+- **`vscode.tasks.executeTask` instrumentation** — patches `executeTask` on the shared `vscode` module object so extension-initiated tasks are blocked before VS Code queues them, closing the gap left by `onDidStartTask` which fires only after execution begins
+- **What's New page** — opens on first install and on each version update, pulling release notes from the bundled `CHANGELOG.md`; shown at most once per install via a marker file in the extension directory
 
 ### Detection
 
-- **New task rule: `task_npx_auto_approve_remote`** (High) — detects VS Code tasks that run `npx` with `-y`/`--yes` and a `github:` package specifier, auto-executing untrusted code from a GitHub ref without user confirmation
-
-- **New source rule: `stealth_task_remote_install`** (High) — static detection for extensions that hide a VS Code task from the user (`presentationOptions.focus = false`) while auto-confirming a remote GitHub package install via npx. Dual-signal design: focus suppression alone or npx-github alone does not fire; the combination does
+- **`task_npx_auto_approve_remote`** (High) — `npx` with `-y`/`--yes` and a `github:` package specifier
+- **`stealth_task_remote_install`** (High) — hidden task (`presentationOptions.focus = false`) combined with auto-confirmed remote npx install; requires both signals to fire
 
 ### Bug Fixes
 
-- **Source analyzer tail scan for oversized bundles** — files between 1 MB and 50 MB now have their last 64 KB scanned instead of being skipped entirely. Injected payloads are typically appended to the end of a legitimate bundle; the previous 1 MB full-scan cap caused these files to be silently ignored. Files above 50 MB are still skipped to avoid memory pressure
-
-- **Source rule false positives** — tightened `download_and_execute` from two signals to three by adding a temp-directory reference requirement (`/tmp/`, `os.tmpdir()`, `TMPDIR`), targeting the fetch-stage-execute delivery pattern rather than any extension that makes HTTP requests and spawns a process. Tightened `reverse_shell` to require a shell binary string literal (`/bin/sh`, `cmd.exe`, `powershell`, etc.) as the second signal instead of any `exec`/`spawn` call, so language server and debug-adapter extensions no longer trigger the rule
+- **Oversized bundle tail scan** — files between 1 MB and 25 MB now have their last 100 KB scanned; the previous 1 MB hard cap silently skipped these files entirely
+- **Source rule false positives** — `download_and_execute` now requires a temp-directory reference as a third signal; `reverse_shell` now requires a shell binary literal (`/bin/sh`, `cmd.exe`, etc.) rather than any exec/spawn call
 
 ---
 

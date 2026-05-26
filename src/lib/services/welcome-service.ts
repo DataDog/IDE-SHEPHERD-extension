@@ -45,7 +45,13 @@ export class WelcomeService {
 
   private static extractVersionNotes(extensionPath: string, version: string): string {
     try {
-      const changelogPath = path.join(extensionPath, 'CHANGELOG.md');
+      // vsce lowercases the filename when packaging, so the extracted file on disk
+      // is changelog.md — on Linux (case-sensitive FS) CHANGELOG.md would not resolve.
+      const candidates = ['CHANGELOG.md', 'changelog.md'];
+      const changelogPath = candidates.map((n) => path.join(extensionPath, n)).find((p) => fs.existsSync(p));
+      if (!changelogPath) {
+        return '';
+      }
       const content = fs.readFileSync(changelogPath, 'utf-8');
       const start = content.indexOf(`## [${version}]`);
       if (start === -1) {

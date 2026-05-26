@@ -3,12 +3,28 @@ import * as vscode from 'vscode';
 import { Logger } from '../../lib/logger';
 import { TASK_RULES } from '../../detection/task-rules';
 import { TrustedWorkspaceService } from '../../lib/services/trusted-workspace-service';
+import { AllowListService } from '../../lib/services/allowlist-service';
 import { NotificationService, BlockedOperationType } from '../../lib/services/notification-service';
 import { IDEStatusService } from '../../lib/services/ide-status-service';
-import { ExtensionServices } from '../../lib/services/ext-service';
 import { SecurityEvent, IoC } from '../../lib/events/sec-events';
 import { TaskEvent } from '../../lib/events/task-events';
 import { ExtensionInfo, WorkspaceInfo } from '../../lib/events/ext-events';
+
+// task.source values VS Code sets for workspace-owned tasks; anything else is an extension ID.
+const WORKSPACE_TASK_SOURCES = new Set(['Workspace', 'User', '']);
+
+// task.source is the task-provider type string (e.g. 'nx'), not the extension ID.
+// Resolve it to the real extension ID by finding which installed extension contributes
+// a taskDefinition with that type. Falls back to the raw source string if no match.
+function resolveExtensionIdFromTaskSource(taskSource: string, vscodeMod: typeof vscode): string {
+  for (const ext of vscodeMod.extensions.all) {
+    const taskDefs = ext.packageJSON?.contributes?.taskDefinitions;
+    if (Array.isArray(taskDefs) && taskDefs.some((def: any) => def.type === taskSource)) {
+      return ext.id;
+    }
+  }
+  return taskSource;
+}
 
 function extractCommand(task: vscode.Task): string {
   if (!task.execution) {
@@ -53,18 +69,26 @@ export function patchVscodeTasks(vscodeMod: typeof vscode): void {
       const normalized = normalizeCommand(raw);
       const workspacePath = vscodeMod.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
 
+      // task.source is set at Task construction time by whoever owns the task —
+      // reliable across sync and async dispatch, unlike stack trace inspection.
+      const taskSource = task.source ?? '';
+      const extensionId = WORKSPACE_TASK_SOURCES.has(taskSource)
+        ? null
+        : resolveExtensionIdFromTaskSource(taskSource, vscodeMod);
+
       for (const rule of TASK_RULES) {
         if (rule.commandPattern.test(normalized)) {
           if (TrustedWorkspaceService.getInstance().isTrusted(workspacePath)) {
             break;
           }
 
-          const callContext = ExtensionServices.getCallContext();
-          const extensionInfo = new ExtensionInfo(callContext.extension, true, Date.now());
+          if (extensionId && AllowListService.getInstance().isAllowed(extensionId)) {
+            break;
+          }
 
           Logger.warn(
             `vscode.tasks.executeTask intercepted — rule: ${rule.id} | ` +
-              `task: ${task.name} | ext: ${callContext.extension} | ` +
+              `task: ${task.name} | source: ${taskSource || 'Workspace'} | ` +
               `cmd: ${Logger.truncate(raw, 120)}`,
           );
 
@@ -87,7 +111,15 @@ export function patchVscodeTasks(vscodeMod: typeof vscode): void {
               confidence: rule.confidence,
               severity: rule.severity,
             };
-            const securityEvent = new SecurityEvent(taskEvent, workspaceInfo, rule.severity, rule.type, [ioc]);
+            const callerExtension = extensionId ? new ExtensionInfo(extensionId, true, Date.now()) : undefined;
+            const securityEvent = new SecurityEvent(
+              taskEvent,
+              workspaceInfo,
+              rule.severity,
+              rule.type,
+              [ioc],
+              callerExtension,
+            );
             await IDEStatusService.emitSecurityEvent(securityEvent);
             await NotificationService.showSecurityBlockingInfo(raw, securityEvent, BlockedOperationType.TASK);
           } catch (err) {
