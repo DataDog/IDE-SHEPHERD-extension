@@ -16,7 +16,7 @@ const WORKSPACE_TASK_SOURCES = new Set(['Workspace', 'User', '']);
 // task.source is the task-provider type string (e.g. 'nx'), not the extension ID.
 // Resolve it to the real extension ID by finding which installed extension contributes
 // a taskDefinition with that type. Falls back to the raw source string if no match.
-function resolveExtensionIdFromTaskSource(taskSource: string, vscodeMod: typeof vscode): string {
+export function resolveExtensionIdFromTaskSource(taskSource: string, vscodeMod: typeof vscode): string {
   for (const ext of vscodeMod.extensions.all) {
     const taskDefs = ext.packageJSON?.contributes?.taskDefinitions;
     if (Array.isArray(taskDefs) && taskDefs.some((def: any) => def.type === taskSource)) {
