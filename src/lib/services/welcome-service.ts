@@ -28,13 +28,15 @@ export class WelcomeService {
 
   private static showWhatsNewPage(extensionPath: string, version: string): void {
     const notes = this.extractVersionNotes(extensionPath, version);
+    const resourcesRoot = vscode.Uri.joinPath(vscode.Uri.file(extensionPath), 'resources');
     const panel = vscode.window.createWebviewPanel(
       'ideShepherdWhatsNew',
       `IDE Shepherd — What's New in v${version}`,
       vscode.ViewColumn.One,
-      { enableScripts: true },
+      { enableScripts: true, localResourceRoots: [resourcesRoot] },
     );
-    panel.webview.html = this.buildWhatsNewHtml(version, notes);
+    const logoUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(resourcesRoot, 'icons', 'icon.png'));
+    panel.webview.html = this.buildWhatsNewHtml(version, notes, logoUri);
     panel.webview.onDidReceiveMessage((msg) => {
       if (msg.command === 'close') {
         panel.dispose();
@@ -152,7 +154,7 @@ export class WelcomeService {
     `;
   }
 
-  private static buildWhatsNewHtml(version: string, changelogBlock: string): string {
+  private static buildWhatsNewHtml(version: string, changelogBlock: string, logoUri?: vscode.Uri): string {
     const notesHtml = changelogBlock
       ? this.changelogToHtml(changelogBlock)
       : '<p style="color: var(--vscode-descriptionForeground)">No release notes found for this version.</p>';
@@ -170,9 +172,10 @@ export class WelcomeService {
       border-bottom: 1px solid var(--vscode-notifications-border);
       margin-bottom: 28px;
       display: flex;
-      align-items: baseline;
+      align-items: center;
       gap: 14px;
     }
+    .header img { width: 36px; height: 36px; object-fit: contain; flex-shrink: 0; }
     .header h1 { margin: 0; font-size: 22px; }
     .version-tag {
       background: var(--vscode-badge-background);
@@ -205,6 +208,7 @@ export class WelcomeService {
 </head>
 <body>
   <div class="header">
+    ${logoUri ? `<img src="${logoUri}" alt="IDE Shepherd" />` : ''}
     <h1>What's New in IDE Shepherd</h1>
     <span class="version-tag">v${version}</span>
   </div>
