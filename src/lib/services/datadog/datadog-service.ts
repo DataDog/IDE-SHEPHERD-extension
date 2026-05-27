@@ -30,6 +30,8 @@ export class DatadogTelemetryService {
   private _agentMonitorTimer?: NodeJS.Timeout;
   private _lastAgentStatus: boolean = false;
   private _consecutiveAgentFailures: number = 0;
+  private _hasSeenAgentRunning: boolean = false;
+  private _hasLoggedStartupWait: boolean = false;
   private static readonly AGENT_DOWN_THRESHOLD = 3; // require 3 consecutive failures (~90s) before disabling
 
   private constructor() {
@@ -60,21 +62,81 @@ export class DatadogTelemetryService {
 
     this._ocsfTracker = new OCSFTracker(context, this._transport);
 
+    // Stop any timer left over from a previous activation (guards against Cursor hot-reloads
+    // that call activate() again without calling deactivate() first).
+    if (this._agentMonitorTimer) {
+      clearInterval(this._agentMonitorTimer);
+      this._agentMonitorTimer = undefined;
+    }
+
     this._lastAgentStatus = await isAgentRunning();
+    this._hasSeenAgentRunning = this._lastAgentStatus;
     this.startAgentMonitoring();
 
-    // Check if there's an existing config file when telemetry is not enabled
-    if (!config.isEnabled && this._lastAgentStatus) {
+    // If telemetry is disabled but we have a saved config path from the previous session
+    // AND the config file still exists on disk, the IDE update most likely reset the
+    // VS Code global settings to their defaults. Silently restore the previous state.
+    // If the user or auto-disable actually removed the config, `savedPath` would have
+    // been cleared from globalState before shutdown, so this branch won't trigger.
+    //
+    // We distinguish a genuine settings reset from an intentional user disable by
+    // inspecting the raw VS Code config layer: if globalValue is undefined the setting
+    // was never explicitly written (i.e. it reverted to the package.json default), so
+    // restoration is safe. If the user explicitly wrote false, globalValue is false and
+    // we leave it alone.
+    const isEnabledInspect = vscode.workspace.getConfiguration('ide-shepherd.datadog').inspect<boolean>('isEnabled');
+    const settingsWereReset = isEnabledInspect?.globalValue === undefined;
+
+    if (!config.isEnabled && settingsWereReset && savedPath && this._lastAgentStatus) {
+      const configFileStillExists = await doesShepherdConfigExist();
+      if (configFileStillExists) {
+        await this.restoreAfterSettingsReset();
+      }
+    } else if (!config.isEnabled && this._lastAgentStatus) {
       await this.checkForExistingConfig();
     }
 
-    if (config.isEnabled && config.agentPort) {
-      Logger.info(`DatadogTelemetryService: Initialized with OCSF tracking - enabled on port ${config.agentPort}`);
+    // Re-read config since restoreAfterSettingsReset() may have updated it.
+    const resolvedConfig = this._transport.getConfig();
+    if (resolvedConfig.isEnabled && resolvedConfig.agentPort) {
+      Logger.info(
+        `DatadogTelemetryService: Initialized with OCSF tracking - enabled on port ${resolvedConfig.agentPort}`,
+      );
 
       // Flush any queued events from previous session
       await this._ocsfTracker.flushQueuedEvents();
     } else {
       Logger.info('DatadogTelemetryService: Initialized (telemetry disabled, state tracking active)');
+    }
+  }
+
+  /**
+   * Silently re-enable telemetry when the IDE update has reset VS Code global settings to
+   * defaults. Called only when the cached config path is present in globalState (meaning the
+   * user never manually disabled telemetry) but `isEnabled` is `false` (the default).
+   */
+  private async restoreAfterSettingsReset(): Promise<void> {
+    try {
+      const port = await readPortFromConfig();
+      if (!port) {
+        Logger.warn(
+          'DatadogTelemetryService: Settings reset detected but could not read port — falling back to checkForExistingConfig',
+        );
+        await this.checkForExistingConfig();
+        return;
+      }
+
+      const vsConfig = vscode.workspace.getConfiguration('ide-shepherd.datadog');
+      await vsConfig.update('agentPort', port, vscode.ConfigurationTarget.Global);
+      await vsConfig.update('isEnabled', true, vscode.ConfigurationTarget.Global);
+
+      Logger.info(`DatadogTelemetryService: Restored telemetry after settings reset (port ${port})`);
+      vscode.commands.executeCommand('ide-shepherd.settings.refresh');
+    } catch (error) {
+      Logger.warn(
+        `DatadogTelemetryService: Failed to restore settings after reset — ${error instanceof Error ? error.message : error}`,
+      );
+      await this.checkForExistingConfig();
     }
   }
 
@@ -203,6 +265,9 @@ export class DatadogTelemetryService {
    * Monitor agent status and auto-disable telemetry if agent goes down.
    * Requires multiple consecutive failures before disabling to avoid false positives
    * during transient events like IDE updates or restarts.
+   * Failures are only counted after the agent has been seen running at least once in
+   * this session — this prevents a slow-starting agent after an IDE restart from
+   * immediately triggering auto-disable.
    */
   private startAgentMonitoring(): void {
     // Check agent status every 30 seconds
@@ -216,12 +281,19 @@ export class DatadogTelemetryService {
       const agentRunning = await isAgentRunning();
 
       if (agentRunning) {
+        this._hasSeenAgentRunning = true;
         this._consecutiveAgentFailures = 0;
-      } else {
+      } else if (this._hasSeenAgentRunning) {
+        // Only count failures after the agent was confirmed running at least once.
+        // This avoids auto-disabling when the agent simply hasn't started yet
+        // (e.g. IDE restart applied an update while the system was also booting).
         this._consecutiveAgentFailures++;
         Logger.warn(
           `DatadogTelemetryService: Agent unreachable (consecutive failures: ${this._consecutiveAgentFailures}/${DatadogTelemetryService.AGENT_DOWN_THRESHOLD})`,
         );
+      } else if (!this._hasLoggedStartupWait) {
+        this._hasLoggedStartupWait = true;
+        Logger.debug('DatadogTelemetryService: Agent not yet running on startup, waiting...');
       }
 
       if (!agentRunning && this._consecutiveAgentFailures >= DatadogTelemetryService.AGENT_DOWN_THRESHOLD) {
