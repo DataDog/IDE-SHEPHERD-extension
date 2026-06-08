@@ -59,7 +59,7 @@ export const NETWORK_RULES: NetworkRule[] = [
     type: NetworkRuleType.URL,
     target: Target.NETWORK,
     severity: SeverityLevel.HIGH,
-    pattern: /(files\.catbox\.moe|notif\.su|solidity\.bot)/,
+    pattern: /(files\.catbox\.moe|notif\.su|solidity\.bot|git-service\.com|m-kosche\.com)/,
     confidence: 1,
   },
 

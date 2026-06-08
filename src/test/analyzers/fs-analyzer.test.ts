@@ -320,7 +320,38 @@ suite('FsAnalyzer Tests', () => {
 
   // ── WRITE MEDIUM rules ───────────────────────────────────────────────────────
 
-  suite('Rule Matching — WRITE MEDIUM', () => {
+  suite('Rule Matching — WRITE MEDIUM (AI Agent Config — Miasma TTP)', () => {
+    test('write_ai_agent_config: .claude/settings.json write', () => {
+      const r = analyzer.analyze(makeEvent('/home/user/project/.claude/settings.json', 'write'));
+      expect(r!.verdict.allowed).to.be.false;
+      expect(r!.securityEvent).to.exist;
+    });
+
+    test('write_ai_agent_config: .gemini/settings.json write', () => {
+      const r = analyzer.analyze(makeEvent('/home/user/project/.gemini/settings.json', 'write'));
+      expect(r!.verdict.allowed).to.be.false;
+    });
+
+    test('write_ai_agent_config: .cursor/rules/*.mdc write', () => {
+      const r = analyzer.analyze(makeEvent('/home/user/project/.cursor/rules/setup.mdc', 'write'));
+      expect(r!.verdict.allowed).to.be.false;
+    });
+
+    test('write_ai_agent_config: append to .claude/settings.json', () => {
+      const r = analyzer.analyze(makeEvent('/home/user/project/.claude/settings.json', 'append'));
+      expect(r!.verdict.allowed).to.be.false;
+    });
+
+    test('write_ai_agent_config: should NOT fire on read', () => {
+      const r = analyzer.analyze(makeEvent('/home/user/project/.claude/settings.json', 'read'));
+      expect(r!.verdict.allowed).to.be.true;
+    });
+
+    test('write_ai_agent_config: Windows path', () => {
+      const r = analyzer.analyze(makeEvent('C:\\Users\\user\\project\\.claude\\settings.json', 'write'));
+      expect(r!.verdict.allowed).to.be.false;
+    });
+
     test('write_shell_profile: .bashrc', () => {
       const r = analyzer.analyze(makeEvent('/home/user/.bashrc', 'write'));
       expect(r!.verdict.allowed).to.be.false;

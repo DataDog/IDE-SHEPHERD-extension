@@ -220,6 +220,22 @@ export const FS_RULES: FsRule[] = [
   // ─── WRITE MEDIUM ───────────────────────────────────────────────────────────
 
   {
+    id: 'write_ai_agent_config',
+    name: 'AI Agent Hook Config Write',
+    description:
+      'Detected write to an AI coding-agent configuration file (.claude/settings.json, .gemini/settings.json, .cursor/rules/*.mdc) — used by the Miasma worm to plant SessionStart hooks that execute payloads on every agent session',
+    type: FsRuleType.WRITE,
+    target: Target.FILESYSTEM,
+    severity: SeverityLevel.HIGH,
+    // Matches per-project AI agent config files used as execution hooks:
+    //   ~/.claude/settings.json  (Claude Code SessionStart hook)
+    //   ~/.gemini/settings.json  (Gemini CLI SessionStart hook)
+    //   .cursor/rules/*.mdc      (Cursor prompt injection, alwaysApply: true)
+    pathPattern: /[/\\]\.(claude|gemini)[/\\]settings\.json$|[/\\]\.cursor[/\\]rules[/\\][^/\\]+\.mdc$/i,
+    operations: ['write', 'append'],
+    confidence: 0.95,
+  },
+  {
     id: 'write_shell_profile',
     name: 'Shell Profile Write',
     description: 'Detected write to shell profile or PowerShell profile — potential startup persistence',

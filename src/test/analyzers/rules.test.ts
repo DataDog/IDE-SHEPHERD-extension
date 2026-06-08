@@ -176,6 +176,15 @@ suite('DetectionRules Tests', () => {
       expect(rule!.pattern.test('https://solidity.bot/api')).to.be.true;
     });
 
+    test('Malware Download Domains rule should match Miasma worm C2 domains', () => {
+      const rule = NETWORK_RULES.find((r) => r.id === 'malware_download_domains');
+      expect(rule).to.exist;
+      // check.git-service.com — Miasma worm C2 (May 2026 PyPI wave)
+      expect(rule!.pattern.test('https://check.git-service.com/beacon')).to.be.true;
+      // t.m-kosche.com — Miasma worm C2 (June 2026 Azure wave)
+      expect(rule!.pattern.test('https://t.m-kosche.com/c2')).to.be.true;
+    });
+
     test('Intel Domains rule should match IP intelligence services', () => {
       const rule = NETWORK_RULES.find((r) => r.id === 'intel_domains');
       expect(rule).to.exist;

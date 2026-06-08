@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.1.2] - 2026-06-08
+
+### Detection — Miasma Supply-Chain Worm (June 2026)
+
+Three new rules targeting the TTPs newly observed in the Miasma worm campaign (TeamPCP, June 5 2026), which compromised 73 Microsoft repositories by planting IDE/AI-agent config files that auto-execute a credential-harvesting payload on folder open or agent session start.
+
+- **`task_node_hidden_dir_script`** (High) — task rule: `node` executing a script from a hidden VCS or AI-agent directory (`.github/`, `.git/`, `.claude/`, `.gemini/`, `.cursor/`); matches `node .github/setup.js`, the exact Miasma execution command
+- **`write_ai_agent_config`** (High) — FS rule: write to `.claude/settings.json`, `.gemini/settings.json`, or `.cursor/rules/*.mdc`; targets the SessionStart hook and `alwaysApply` prompt-injection persistence mechanism
+- **`malware_download_domains`** — extended with Miasma C2 domains: `git-service.com` (May 2026 PyPI wave) and `m-kosche.com` (June 2026 Azure wave)
+
+---
+
 ## [3.1.1] - 2026-05-26
 
 ### Features

@@ -107,12 +107,13 @@ IDE Shepherd employs multiple layers of security detection to identify potential
 
 IDE Shepherd scans every `.js` file inside an extension's installation directory (including `node_modules`) for TTP-based attack primitives. Each rule requires **two independent signals** in the same file, keeping the false-positive rate low while reliably identifying malicious combinations. Findings contribute to the extension's overall risk score displayed in the Extension Analysis sidebar.
 
-| Rule ID                  | Detection Name          | Severity | Description                                                                                                                                                           |
-| ------------------------ | ----------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `download_and_execute`   | Download and Execute    | Medium   | File contains a network download primitive (`https.get`, `fetch`, `XMLHttpRequest`) **and** `exec`/`spawn` — the core RCE payload delivery pattern                    |
-| `reverse_shell`          | Reverse Shell Pattern   | High     | File opens a raw TCP socket (`net.Socket`, `net.connect`) **and** calls `exec`/`spawn` — standard reverse shell building blocks                                       |
-| `eval_dynamic_payload`   | Dynamic Eval Payload    | High     | `eval()` called on decoded content (`atob`, `Buffer.from`, `decodeURIComponent`) or `new Function()` with a dynamic argument — obfuscation-agnostic payload execution |
-| `detached_unref_pattern` | Detached Silent Process | Medium   | File spawns a process with `detached: true` and calls `.unref()` — standard pattern for a payload that outlives its parent process                                    |
+| Rule ID                       | Detection Name             | Severity | Description                                                                                                                                                                    |
+| ----------------------------- | -------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `download_and_execute`        | Download and Execute       | Medium   | File contains a network download primitive (`https.get`, `fetch`, `XMLHttpRequest`) **and** `exec`/`spawn` — the core RCE payload delivery pattern                             |
+| `reverse_shell`               | Reverse Shell Pattern      | High     | File opens a raw TCP socket (`net.Socket`, `net.connect`) **and** contains a shell binary string literal (`/bin/sh`, `cmd.exe`, etc.) — standard reverse shell building blocks |
+| `eval_dynamic_payload`        | Dynamic Eval Payload       | High     | `eval()` called on decoded content (`atob`, `Buffer.from`, `decodeURIComponent`) or `new Function()` with a dynamic argument — obfuscation-agnostic payload execution          |
+| `detached_unref_pattern`      | Detached Silent Process    | Medium   | File spawns a process with `detached: true` and calls `.unref()` — standard pattern for a payload that outlives its parent process                                             |
+| `stealth_task_remote_install` | Hidden Task Remote Install | High     | File hides a VS Code task (`presentationOptions.focus = false`) and auto-confirms a remote `npx github:` install — supply-chain payload delivery TTP (nx-console 18.95.0)      |
 
 ### File System Monitoring
 
@@ -135,30 +136,32 @@ IDE Shepherd intercepts `fs` module calls (`readFile`, `writeFile`, `appendFile`
 
 **Persistence Mechanism Detection (Write)**
 
-| Rule ID                 | Detection Name              | Severity | Description                                                            |
-| ----------------------- | --------------------------- | -------- | ---------------------------------------------------------------------- |
-| `write_authorized_keys` | SSH Authorized Keys Write   | High     | Write to `~/.ssh/authorized_keys` — potential backdoor                 |
-| `write_cron`            | Cron / Scheduled Task Write | High     | Write to cron directories or Windows Scheduled Tasks                   |
-| `write_launch_agent`    | Launch Agent Write          | High     | Write to `~/Library/LaunchAgents/` or Windows Startup folder           |
-| `write_etc_hosts`       | Hosts File Write            | High     | Write to `/etc/hosts` or Windows hosts file — potential DNS poisoning  |
-| `write_shell_profile`   | Shell Profile Write         | Medium   | Write to `.bashrc`, `.zshrc`, PowerShell profile (startup persistence) |
+| Rule ID                 | Detection Name              | Severity | Description                                                                                                                                                               |
+| ----------------------- | --------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `write_authorized_keys` | SSH Authorized Keys Write   | High     | Write to `~/.ssh/authorized_keys` — potential backdoor                                                                                                                    |
+| `write_cron`            | Cron / Scheduled Task Write | High     | Write to cron directories or Windows Scheduled Tasks                                                                                                                      |
+| `write_launch_agent`    | Launch Agent Write          | High     | Write to `~/Library/LaunchAgents/` or Windows Startup folder                                                                                                              |
+| `write_etc_hosts`       | Hosts File Write            | High     | Write to `/etc/hosts` or Windows hosts file — potential DNS poisoning                                                                                                     |
+| `write_ai_agent_config` | AI Agent Hook Config Write  | High     | Write to `.claude/settings.json`, `.gemini/settings.json`, or `.cursor/rules/*.mdc` — plants execution hooks that fire on every AI coding-agent session (Miasma worm TTP) |
+| `write_shell_profile`   | Shell Profile Write         | Medium   | Write to `.bashrc`, `.zshrc`, PowerShell profile (startup persistence)                                                                                                    |
 
 ### Task Detection
 
 VS Code and Cursor workspace tasks are monitored for potentially dangerous operations:
 
-| Rule ID                        | Detection Name                          | Type                 | Severity | Description                                                                                                    |
-| ------------------------------ | --------------------------------------- | -------------------- | -------- | -------------------------------------------------------------------------------------------------------------- |
-| `task_curl_download`           | Network Download (curl)                 | NETWORK              | High     | Task downloads content from the internet using curl                                                            |
-| `task_wget_download`           | Network Download (wget)                 | NETWORK              | High     | Task downloads content from the internet using wget                                                            |
-| `task_powershell_encoded`      | PowerShell Encoded Command              | ENCODED_COMMAND      | High     | Task uses PowerShell with encoded command                                                                      |
-| `task_eval`                    | Dynamic Code Evaluation                 | ENCODED_COMMAND      | High     | Task uses eval() for dynamic code execution                                                                    |
-| `task_sudo`                    | Sudo Execution                          | PRIVILEGE_ESCALATION | High     | Task uses sudo for privilege escalation                                                                        |
-| `task_npx_auto_approve_remote` | Auto-confirmed Remote Execution via npx | REMOTE_SCRIPT        | High     | Task runs `npx` with `-y`/`--yes` and a `github:` specifier, auto-executing untrusted code without user prompt |
-| `task_temp_script`             | Temporary Script Execution              | REMOTE_SCRIPT        | Medium   | Task executes a script from the temporary directory                                                            |
-| `task_base64_decode`           | Base64 Decode                           | ENCODED_COMMAND      | Medium   | Task uses base64 decoding (potential obfuscation)                                                              |
-| `task_rm_rf`                   | Recursive File Deletion                 | DESTRUCTIVE          | Medium   | Task attempts to recursively delete files                                                                      |
-| `task_chmod_executable`        | Make File Executable                    | PRIVILEGE_ESCALATION | Medium   | Task makes a file executable (potential backdoor)                                                              |
+| Rule ID                        | Detection Name                          | Type                 | Severity | Description                                                                                                                                                                          |
+| ------------------------------ | --------------------------------------- | -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `task_curl_download`           | Network Download (curl)                 | NETWORK              | High     | Task downloads content from the internet using curl                                                                                                                                  |
+| `task_wget_download`           | Network Download (wget)                 | NETWORK              | High     | Task downloads content from the internet using wget                                                                                                                                  |
+| `task_powershell_encoded`      | PowerShell Encoded Command              | ENCODED_COMMAND      | High     | Task uses PowerShell with encoded command                                                                                                                                            |
+| `task_eval`                    | Dynamic Code Evaluation                 | ENCODED_COMMAND      | High     | Task uses eval() for dynamic code execution                                                                                                                                          |
+| `task_sudo`                    | Sudo Execution                          | PRIVILEGE_ESCALATION | High     | Task uses sudo for privilege escalation                                                                                                                                              |
+| `task_npx_auto_approve_remote` | Auto-confirmed Remote Execution via npx | REMOTE_SCRIPT        | High     | Task runs `npx` with `-y`/`--yes` and a `github:` specifier, auto-executing untrusted code without user prompt                                                                       |
+| `task_node_hidden_dir_script`  | Node.js Script from Hidden Directory    | REMOTE_SCRIPT        | High     | Task executes `node` on a script inside a hidden VCS/AI-agent directory (`.github/`, `.claude/`, `.gemini/`, `.cursor/`) — the execution vector used by the Miasma supply-chain worm |
+| `task_temp_script`             | Temporary Script Execution              | REMOTE_SCRIPT        | Medium   | Task executes a script from the temporary directory                                                                                                                                  |
+| `task_base64_decode`           | Base64 Decode                           | ENCODED_COMMAND      | Medium   | Task uses base64 decoding (potential obfuscation)                                                                                                                                    |
+| `task_rm_rf`                   | Recursive File Deletion                 | DESTRUCTIVE          | Medium   | Task attempts to recursively delete files                                                                                                                                            |
+| `task_chmod_executable`        | Make File Executable                    | PRIVILEGE_ESCALATION | Medium   | Task makes a file executable (potential backdoor)                                                                                                                                    |
 
 #### Extension-initiated task blocking
 
