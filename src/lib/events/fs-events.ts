@@ -5,6 +5,8 @@ export type FsOperation = 'read' | 'write' | 'append';
 export class FsEvent extends TargetEvent<Target.FILESYSTEM> {
   readonly path: string;
   readonly operation: FsOperation;
+  /** Raw write data as a string (write/append only). Intentionally excluded from toJSON to avoid logging file contents. */
+  readonly content: string | undefined;
 
   constructor(
     path: string,
@@ -12,10 +14,12 @@ export class FsEvent extends TargetEvent<Target.FILESYSTEM> {
     hookFile: string,
     extensionInfo: ExtensionInfo,
     timestamp?: number,
+    content?: string,
   ) {
     super(Target.FILESYSTEM, extensionInfo, hookFile, timestamp);
     this.path = path;
     this.operation = operation;
+    this.content = content;
   }
 
   toJSON(): string {

@@ -58,7 +58,7 @@ suite('HookIntegrity Tests', () => {
       const url = new URL('http://example.com/path');
       const req = http.request(url);
       assert.ok(req);
-      req.end();
+      req.destroy();
     });
 
     test('http.request() should support string URL', () => {
@@ -66,7 +66,7 @@ suite('HookIntegrity Tests', () => {
 
       const req = http.request('http://example.com/path');
       assert.ok(req);
-      req.end();
+      req.destroy();
     });
 
     test('http.request() should support options object', () => {
@@ -74,7 +74,7 @@ suite('HookIntegrity Tests', () => {
 
       const req = http.request({ hostname: 'example.com', port: 80, path: '/path', method: 'GET' });
       assert.ok(req);
-      req.end();
+      req.destroy();
     });
   });
 
@@ -293,19 +293,16 @@ suite('HookIntegrity Tests', () => {
   suite('Memory Leaks', () => {
     test('should not leak listeners on repeated patching', () => {
       const cp1 = require('child_process');
-      const EventEmitter = require('events');
 
-      // Get initial listener count
-      const initialCount = EventEmitter.listenerCount(cp1, 'newListener');
+      patchChildProcess(cp1);
+      const spawnAfterFirst = cp1.spawn;
 
-      // Patch multiple times
+      // Repeated patches must not double-wrap — idempotency guard (__patched__)
       for (let i = 0; i < 10; i++) {
         patchChildProcess(cp1);
       }
 
-      // Listener count should not grow
-      const finalCount = EventEmitter.listenerCount(cp1, 'newListener');
-      assert.strictEqual(initialCount, finalCount);
+      assert.strictEqual(cp1.spawn, spawnAfterFirst, 'spawn reference must not change after repeated patching');
     });
   });
 });

@@ -184,34 +184,14 @@ suite('TaskScanner Tests', () => {
     });
   });
 
-  suite('Task Analysis - Node.js Script from Hidden Directory (Miasma TTP)', () => {
+  suite('Task Analysis - Node.js Script from .github/ (Miasma TTP)', () => {
     test('should detect node .github/setup.js (Miasma primary IOC)', () => {
       const rule = TASK_RULES.find((r) => r.id === 'task_node_hidden_dir_script');
       expect(rule).to.exist;
       expect(rule!.commandPattern.test('node .github/setup.js')).to.be.true;
     });
 
-    test('should detect node .claude/setup.js', () => {
-      const rule = TASK_RULES.find((r) => r.id === 'task_node_hidden_dir_script');
-      expect(rule!.commandPattern.test('node .claude/setup.js')).to.be.true;
-    });
-
-    test('should detect node .gemini/run.js', () => {
-      const rule = TASK_RULES.find((r) => r.id === 'task_node_hidden_dir_script');
-      expect(rule!.commandPattern.test('node .gemini/run.js')).to.be.true;
-    });
-
-    test('should detect node .cursor/run.js', () => {
-      const rule = TASK_RULES.find((r) => r.id === 'task_node_hidden_dir_script');
-      expect(rule!.commandPattern.test('node .cursor/run.js')).to.be.true;
-    });
-
-    test('should detect node .git/hooks/post-commit (hidden dir)', () => {
-      const rule = TASK_RULES.find((r) => r.id === 'task_node_hidden_dir_script');
-      expect(rule!.commandPattern.test('node .git/hooks/post-commit.js')).to.be.true;
-    });
-
-    test('should detect Windows path separator', () => {
+    test('should detect Windows path separator (.github\\setup.js)', () => {
       const rule = TASK_RULES.find((r) => r.id === 'task_node_hidden_dir_script');
       expect(rule!.commandPattern.test('node .github\\setup.js')).to.be.true;
     });
@@ -221,15 +201,14 @@ suite('TaskScanner Tests', () => {
       expect(rule!.commandPattern.test('NODE .GITHUB/setup.js')).to.be.true;
     });
 
-    test('should NOT match node with a normal relative path', () => {
+    test('should NOT match node with a normal path', () => {
       const rule = TASK_RULES.find((r) => r.id === 'task_node_hidden_dir_script');
       expect(rule!.commandPattern.test('node ./src/index.js')).to.be.false;
       expect(rule!.commandPattern.test('node dist/main.js')).to.be.false;
     });
 
-    test('should NOT match node ./github/setup.js (not a hidden dir)', () => {
+    test('should NOT match node ./github/setup.js (not .github/)', () => {
       const rule = TASK_RULES.find((r) => r.id === 'task_node_hidden_dir_script');
-      // ./github/ is not the same as .github/
       expect(rule!.commandPattern.test('node ./github/setup.js')).to.be.false;
     });
   });

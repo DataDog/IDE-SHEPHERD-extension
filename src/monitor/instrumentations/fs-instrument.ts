@@ -6,6 +6,24 @@ import { FsEvent, FsOperation } from '../../lib/events/fs-events';
 import { ExtensionServices } from '../../lib/services/ext-service';
 import { IDEStatusService } from '../../lib/services/ide-status-service';
 
+/** Maximum bytes to decode from write data for content-pattern matching. */
+const MAX_CONTENT_SCAN_BYTES = 64 * 1024;
+
+/**
+ * Convert the `data` argument of writeFile/appendFile to a string suitable for
+ * content-pattern matching. Returns undefined for non-text types (e.g. typed arrays
+ * where toString() would produce "[object Uint8Array]" rather than the actual text).
+ */
+function extractContent(data: unknown): string | undefined {
+  if (typeof data === 'string') {
+    return data.length <= MAX_CONTENT_SCAN_BYTES ? data : data.slice(0, MAX_CONTENT_SCAN_BYTES);
+  }
+  if (Buffer.isBuffer(data)) {
+    return data.slice(0, MAX_CONTENT_SCAN_BYTES).toString('utf8');
+  }
+  return undefined;
+}
+
 function makeBlockedError(filePath: string): NodeJS.ErrnoException {
   const err: NodeJS.ErrnoException = new Error(`EACCES: permission denied, open '${filePath}'`);
   err.code = 'EACCES';
@@ -29,7 +47,7 @@ function resolvePath(fileArg: unknown): string {
   return String(fileArg);
 }
 
-function getContext(filePath: string, operation: FsOperation, fsAnalyzer: FsAnalyzer) {
+function getContext(filePath: string, operation: FsOperation, fsAnalyzer: FsAnalyzer, content?: string) {
   const callContext = ExtensionServices.getCallContext();
   const extensionInfo = new ExtensionInfo(callContext.extension, true, Date.now());
 
@@ -37,7 +55,7 @@ function getContext(filePath: string, operation: FsOperation, fsAnalyzer: FsAnal
     Logger.warn(`FsInstrument: Failed to update extension status for ${extensionInfo.id}: ${error.message}`);
   });
 
-  const ev = new FsEvent(filePath, operation, __filename, extensionInfo);
+  const ev = new FsEvent(filePath, operation, __filename, extensionInfo, undefined, content);
   const analysis = fsAnalyzer.analyze(ev);
   return { analysis };
 }
@@ -64,7 +82,7 @@ function patchFsPromises(promises: any, fsAnalyzer: FsAnalyzer): void {
   const origWriteFile = promises.writeFile.bind(promises);
   promises.writeFile = async function patchedPromisesWriteFile(file: any, data: any, ...rest: any[]): Promise<void> {
     const filePath = resolvePath(file);
-    const { analysis } = getContext(filePath, 'write', fsAnalyzer);
+    const { analysis } = getContext(filePath, 'write', fsAnalyzer, extractContent(data));
 
     if (analysis && !analysis.verdict.allowed && analysis.securityEvent) {
       Logger.warn(`FsInstrument: blocked promises.writeFile(): ${filePath}`);
@@ -78,7 +96,7 @@ function patchFsPromises(promises: any, fsAnalyzer: FsAnalyzer): void {
   const origAppendFile = promises.appendFile.bind(promises);
   promises.appendFile = async function patchedPromisesAppendFile(file: any, data: any, ...rest: any[]): Promise<void> {
     const filePath = resolvePath(file);
-    const { analysis } = getContext(filePath, 'append', fsAnalyzer);
+    const { analysis } = getContext(filePath, 'append', fsAnalyzer, extractContent(data));
 
     if (analysis && !analysis.verdict.allowed && analysis.securityEvent) {
       Logger.warn(`FsInstrument: blocked promises.appendFile(): ${filePath}`);
@@ -136,7 +154,7 @@ function patchFullFsModule(fs: any, fsAnalyzer: FsAnalyzer): void {
   const origWriteFile = fs.writeFile.bind(fs);
   fs.writeFile = function patchedWriteFile(file: any, data: any, ...rest: any[]): void {
     const filePath = resolvePath(file);
-    const { analysis } = getContext(filePath, 'write', fsAnalyzer);
+    const { analysis } = getContext(filePath, 'write', fsAnalyzer, extractContent(data));
 
     if (analysis && !analysis.verdict.allowed && analysis.securityEvent) {
       Logger.warn(`FsInstrument: blocked writeFile(): ${filePath}`);
@@ -156,7 +174,7 @@ function patchFullFsModule(fs: any, fsAnalyzer: FsAnalyzer): void {
   const origWriteFileSync = fs.writeFileSync.bind(fs);
   fs.writeFileSync = function patchedWriteFileSync(file: any, data: any, ...rest: any[]): void {
     const filePath = resolvePath(file);
-    const { analysis } = getContext(filePath, 'write', fsAnalyzer);
+    const { analysis } = getContext(filePath, 'write', fsAnalyzer, extractContent(data));
 
     if (analysis && !analysis.verdict.allowed && analysis.securityEvent) {
       Logger.warn(`FsInstrument: blocked writeFileSync(): ${filePath}`);
@@ -172,7 +190,7 @@ function patchFullFsModule(fs: any, fsAnalyzer: FsAnalyzer): void {
   const origAppendFile = fs.appendFile.bind(fs);
   fs.appendFile = function patchedAppendFile(file: any, data: any, ...rest: any[]): void {
     const filePath = resolvePath(file);
-    const { analysis } = getContext(filePath, 'append', fsAnalyzer);
+    const { analysis } = getContext(filePath, 'append', fsAnalyzer, extractContent(data));
 
     if (analysis && !analysis.verdict.allowed && analysis.securityEvent) {
       Logger.warn(`FsInstrument: blocked appendFile(): ${filePath}`);
@@ -192,7 +210,7 @@ function patchFullFsModule(fs: any, fsAnalyzer: FsAnalyzer): void {
   const origAppendFileSync = fs.appendFileSync.bind(fs);
   fs.appendFileSync = function patchedAppendFileSync(file: any, data: any, ...rest: any[]): void {
     const filePath = resolvePath(file);
-    const { analysis } = getContext(filePath, 'append', fsAnalyzer);
+    const { analysis } = getContext(filePath, 'append', fsAnalyzer, extractContent(data));
 
     if (analysis && !analysis.verdict.allowed && analysis.securityEvent) {
       Logger.warn(`FsInstrument: blocked appendFileSync(): ${filePath}`);

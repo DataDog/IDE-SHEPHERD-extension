@@ -26,6 +26,11 @@ export interface FsRule {
   /** Which fs operations this rule applies to. */
   operations: FsOperation[];
   confidence: number;
+  /**
+   * Optional content pattern. When set, the written data must also match for
+   * the rule to fire (in addition to pathPattern).
+   */
+  contentPattern?: RegExp;
 }
 
 export const FS_RULES: FsRule[] = [
@@ -220,10 +225,10 @@ export const FS_RULES: FsRule[] = [
   // ─── WRITE MEDIUM ───────────────────────────────────────────────────────────
 
   {
-    id: 'write_ai_agent_config',
-    name: 'AI Agent Hook Config Write',
+    id: 'write_ai_agent_config_miasma_setupjs',
+    name: 'Hidden Node.js Script in Agent Hook Config Write',
     description:
-      'Detected write to an AI coding-agent configuration file (.claude/settings.json, .gemini/settings.json, .cursor/rules/*.mdc) — used by the Miasma worm to plant SessionStart hooks that execute payloads on every agent session',
+      'Detected write to an AI coding-agent configuration file (.claude/settings.json, .gemini/settings.json, .cursor/rules/*.mdc)',
     type: FsRuleType.WRITE,
     target: Target.FILESYSTEM,
     severity: SeverityLevel.HIGH,
@@ -234,6 +239,7 @@ export const FS_RULES: FsRule[] = [
     pathPattern: /[/\\]\.(claude|gemini)[/\\]settings\.json$|[/\\]\.cursor[/\\]rules[/\\][^/\\]+\.mdc$/i,
     operations: ['write', 'append'],
     confidence: 0.95,
+    contentPattern: /node\s+\.github[/\\]{1,2}setup\.js/i,
   },
   {
     id: 'write_shell_profile',

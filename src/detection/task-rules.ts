@@ -53,20 +53,17 @@ export const TASK_RULES: TaskRule[] = [
   // Remote Script Execution Rules
 
   /**
-   * TTP: Miasma worm — execute a payload staged in a hidden VCS/AI-agent directory
-   * via a VS Code folderOpen task. The worm plants .github/setup.js (or equivalent
-   * .claude/, .gemini/, .cursor/ paths) then triggers it with `node .github/setup.js`.
-   * No user action is required beyond opening the folder.
+   * Miasma worm TTP: the compromised tasks.json runs `node .github/setup.js` on folderOpen.
    */
   {
     id: 'task_node_hidden_dir_script',
-    name: 'Task: Node.js Script from Hidden Directory',
+    name: 'Task: Node.js Script from .github/ Directory',
     description:
-      'Task executes a Node.js script from a hidden VCS or AI-agent config directory (.github/, .git/, .claude/, .gemini/, .cursor/) — the execution vector used by the Miasma supply-chain worm',
+      'Task runs `node .github/setup.js`. This pattern is used by the Miasma worm to execute a payload on folderOpen.',
     type: TaskRuleType.REMOTE_SCRIPT,
     target: Target.WORKSPACE,
     severity: SeverityLevel.HIGH,
-    commandPattern: /node\s+\.(?:github|git|claude|gemini|cursor)[/\\]/i,
+    commandPattern: /node\s+\.github[/\\]setup\.js/i,
     confidence: 0.95,
   },
   {
