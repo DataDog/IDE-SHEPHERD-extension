@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.1.2] - 2026-06-08
+## [3.1.2] - 2026-06-09
 
 ### Detection — Miasma Supply-Chain Worm (June 2026)
 
