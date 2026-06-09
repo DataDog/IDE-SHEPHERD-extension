@@ -51,6 +51,21 @@ export const TASK_RULES: TaskRule[] = [
   },
 
   // Remote Script Execution Rules
+
+  /**
+   * Miasma worm TTP: the compromised tasks.json runs `node .github/setup.js` on folderOpen.
+   */
+  {
+    id: 'task_node_hidden_dir_script',
+    name: 'Task: Node.js Script from .github/ Directory',
+    description:
+      'Task runs `node .github/setup.js`. This pattern is used by the Miasma worm to execute a payload on folderOpen.',
+    type: TaskRuleType.REMOTE_SCRIPT,
+    target: Target.WORKSPACE,
+    severity: SeverityLevel.HIGH,
+    commandPattern: /node\s+\.github[/\\]setup\.js/i,
+    confidence: 0.95,
+  },
   {
     id: 'task_temp_script',
     name: 'Task: Temporary Script Execution',

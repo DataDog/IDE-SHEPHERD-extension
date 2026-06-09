@@ -52,6 +52,14 @@ export class FsAnalyzer {
       return new AnalysisResult();
     }
 
+    // Content gate: if the rule specifies a payload pattern, the write data must
+    // also match. No match (or no content captured) means the rule does not fire.
+    if (rule.contentPattern !== undefined) {
+      if (!ev.content || !rule.contentPattern.test(ev.content)) {
+        return new AnalysisResult();
+      }
+    }
+
     if (!ev.extension) {
       return new AnalysisResult();
     }

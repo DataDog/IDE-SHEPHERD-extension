@@ -184,6 +184,35 @@ suite('TaskScanner Tests', () => {
     });
   });
 
+  suite('Task Analysis - Node.js Script from .github/ (Miasma TTP)', () => {
+    test('should detect node .github/setup.js (Miasma primary IOC)', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_node_hidden_dir_script');
+      expect(rule).to.exist;
+      expect(rule!.commandPattern.test('node .github/setup.js')).to.be.true;
+    });
+
+    test('should detect Windows path separator (.github\\setup.js)', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_node_hidden_dir_script');
+      expect(rule!.commandPattern.test('node .github\\setup.js')).to.be.true;
+    });
+
+    test('should be case insensitive', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_node_hidden_dir_script');
+      expect(rule!.commandPattern.test('NODE .GITHUB/setup.js')).to.be.true;
+    });
+
+    test('should NOT match node with a normal path', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_node_hidden_dir_script');
+      expect(rule!.commandPattern.test('node ./src/index.js')).to.be.false;
+      expect(rule!.commandPattern.test('node dist/main.js')).to.be.false;
+    });
+
+    test('should NOT match node ./github/setup.js (not .github/)', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_node_hidden_dir_script');
+      expect(rule!.commandPattern.test('node ./github/setup.js')).to.be.false;
+    });
+  });
+
   suite('Task Analysis - Auto-confirmed Remote Execution (nx-console TTP)', () => {
     test('should detect npx -y github: command', () => {
       const rule = TASK_RULES.find((r) => r.id === 'task_npx_auto_approve_remote');

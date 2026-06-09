@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.1.2] - 2026-06-09
+
+### Detection — Miasma Supply-Chain Worm (June 2026)
+
+Three new rules targeting the TTPs newly observed in the Miasma worm campaign (TeamPCP, June 5 2026), which compromised 73 Microsoft repositories by planting IDE/AI-agent config files that auto-execute a credential-harvesting payload on folder open or agent session start.
+
+- **`task_node_hidden_dir_script`** (High) — task rule: matches `node .github/setup.js` — the Miasma worm execution command fired via a `folderOpen` task
+- **`write_ai_agent_config_miasma_setupjs`** (High) — FS write rule: fires when **both** (1) the destination is `.claude/settings.json`, `.gemini/settings.json`, or `.cursor/rules/*.mdc` **and** (2) the written content contains `node .github/setup.js`; targets the SessionStart hook and `alwaysApply` prompt-injection persistence mechanism; the dual-signal requirement prevents false positives from legitimate AI coding-agent config management
+- **`malware_download_domains`** — extended with Miasma C2 domains: `git-service.com` (May 2026 PyPI wave) and `m-kosche.com` (June 2026 Azure wave)
+
+### Infrastructure
+
+- **Content-pattern scanning for FS write rules** — `FsRule` now accepts an optional `contentPattern?: RegExp`; when set, `FsAnalyzer` gates rule firing on both the normalized file path and the written payload. Write data (string or `Buffer`) is decoded up to 64 KB before matching; content is intentionally excluded from `FsEvent.toJSON()` so it is never emitted in telemetry or logs. All six `fs` write/append call sites (`writeFile`, `appendFile`, and their sync and promise variants) extract and forward the write payload to the analyzer.
+
+---
+
 ## [3.1.1] - 2026-05-26
 
 ### Features
