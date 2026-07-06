@@ -321,6 +321,31 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.2"
+  },
+  "overrides": {
+    "eslint": {
+      "ajv": "^6.15.0",
+      "js-yaml": "^4.3.0",
+      "minimatch": "^3.1.5"
+    },
+    "@vscode/test-cli": {
+      "glob": "^10.5.0",
+      "js-yaml": "^4.3.0",
+      "brace-expansion": "^2.0.3",
+      "minimatch": "^3.1.5"
+    },
+    "@typescript-eslint/eslint-plugin": {
+      "brace-expansion": "^2.0.3"
+    },
+    "@typescript-eslint/parser": {
+      "brace-expansion": "^2.0.3"
+    },
+    "@eslint/config-array": {
+      "minimatch": "^3.1.5"
+    },
+    "@eslint/eslintrc": {
+      "minimatch": "^3.1.5"
+    }
   }
 }
