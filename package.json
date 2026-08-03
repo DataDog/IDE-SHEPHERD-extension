@@ -321,6 +321,19 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.2"
+  },
+  "overrides": {
+    "@vscode/test-cli": {
+      "glob": {
+        "minimatch": {
+          "brace-expansion": "^2.1.4"
+        }
+      },
+      "minimatch": {
+        "brace-expansion": "^2.1.4"
+      },
+      "brace-expansion": "^1.1.18"
+    }
   }
 }
