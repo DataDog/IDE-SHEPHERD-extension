@@ -213,6 +213,36 @@ suite('TaskScanner Tests', () => {
     });
   });
 
+  suite('Task Analysis - Interpreter Against Non-Script File (PolinRider TTP)', () => {
+    test('should detect node run against a .woff2 font file', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_interpreter_nonscript_ext');
+      expect(rule).to.exist;
+      expect(rule!.commandPattern.test('node ./public/fonts/fa-solid-400.woff2')).to.be.true;
+    });
+
+    test('should detect other interpreters against non-script extensions', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_interpreter_nonscript_ext');
+      expect(rule!.commandPattern.test('python3 ./assets/logo.png')).to.be.true;
+      expect(rule!.commandPattern.test('bash ./data/report.pdf')).to.be.true;
+      expect(rule!.commandPattern.test('pwsh ./bin/module.wasm')).to.be.true;
+    });
+
+    test('should be case insensitive', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_interpreter_nonscript_ext');
+      expect(rule!.commandPattern.test('NODE ./public/fonts/fa-solid-400.WOFF2')).to.be.true;
+    });
+
+    test('should NOT match interpreters run against script files', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_interpreter_nonscript_ext');
+      expect(rule!.commandPattern.test('node build.js')).to.be.false;
+      expect(rule!.commandPattern.test('node index.js')).to.be.false;
+      expect(rule!.commandPattern.test('node scripts/postinstall.js')).to.be.false;
+      expect(rule!.commandPattern.test('node ./dist/server.js --port 3000')).to.be.false;
+      expect(rule!.commandPattern.test('python manage.py runserver')).to.be.false;
+      expect(rule!.commandPattern.test('bash scripts/deploy.sh')).to.be.false;
+    });
+  });
+
   suite('Task Analysis - Auto-confirmed Remote Execution (nx-console TTP)', () => {
     test('should detect npx -y github: command', () => {
       const rule = TASK_RULES.find((r) => r.id === 'task_npx_auto_approve_remote');
