@@ -88,6 +88,27 @@ export const TASK_RULES: TaskRule[] = [
     confidence: 0.95,
   },
 
+  /**
+   * PolinRider npm supply-chain TTP: a task runs an interpreter directly against
+   * a file whose extension declares non-code content (font, image, PDF, wasm, etc.),
+   * e.g. `node ./public/fonts/fa-solid-400.woff2`. Legitimate tasks never invoke an
+   * interpreter on a font/image asset — this is masquerading a script payload as a
+   * binary asset to evade extension-based filtering.
+   * See: https://opensourcemalware.com/blog/polinrider-npm-case-study-dprk-attack
+   */
+  {
+    id: 'task_interpreter_nonscript_ext',
+    name: 'Task: Interpreter Executed Against Non-Script File',
+    description:
+      'Task runs an interpreter (node, python, ruby, perl, bash, sh, pwsh, powershell) directly against a file with a non-script extension (font, image, wasm, pdf, etc.) — a masquerading pattern used to disguise a script payload as a binary asset',
+    type: TaskRuleType.REMOTE_SCRIPT,
+    target: Target.WORKSPACE,
+    severity: SeverityLevel.HIGH,
+    commandPattern:
+      /\b(?:node|python3?|ruby|perl|bash|sh|pwsh|powershell)\s+\S*\.(?:woff2?|ttf|otf|eot|png|jpe?g|gif|ico|bmp|svg|pdf|wasm|dat)\b/i,
+    confidence: 0.95,
+  },
+
   // Encoded Command Rules
   {
     id: 'task_powershell_encoded',
