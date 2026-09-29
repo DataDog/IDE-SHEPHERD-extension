@@ -242,6 +242,28 @@ suite('TaskScanner Tests', () => {
       expect(rule!.commandPattern.test(realWorldCommand)).to.be.true;
     });
 
+    test('should detect node run against a .llf file (fa-solid-300.llf variant, Sept 2026)', () => {
+      // PolinRider swapped .woff2 for .llf specifically to evade font-extension-only
+      // checks, per https://opensourcemalware.com/blog/polinrider-is-a-b-testing-its-way-past-your-detections
+      const rule = TASK_RULES.find((r) => r.id === 'task_interpreter_nonscript_ext');
+      const realWorldCommand =
+        '(command -v node >/dev/null 2>&1 && node ./public/fonts/fa-solid-300.llf) || ' +
+        "(where node >nul 2>&1 && node ./public/fonts/fa-solid-300.llf) || echo ''";
+      expect(rule!.commandPattern.test(realWorldCommand)).to.be.true;
+    });
+
+    test('should detect the payload buried in a deeply nested, project-specific path', () => {
+      // PolinRider also varies the file location to look like generated output
+      // (e.g. a Prisma client folder) rather than the original top-level public/fonts/.
+      const rule = TASK_RULES.find((r) => r.id === 'task_interpreter_nonscript_ext');
+      const realWorldCommand =
+        '(command -v node >/dev/null 2>&1 && ' +
+        'node ./prisma/generated/prisma/internal/public/fonts/fa-solid-900.woff2) || ' +
+        '(where node >nul 2>&1 && ' +
+        "node ./prisma/generated/prisma/internal/public/fonts/fa-solid-900.woff2) || echo ''";
+      expect(rule!.commandPattern.test(realWorldCommand)).to.be.true;
+    });
+
     test('should be case insensitive', () => {
       const rule = TASK_RULES.find((r) => r.id === 'task_interpreter_nonscript_ext');
       expect(rule!.commandPattern.test('NODE ./public/fonts/fa-solid-400.WOFF2')).to.be.true;
