@@ -213,6 +213,73 @@ suite('TaskScanner Tests', () => {
     });
   });
 
+  suite('Task Analysis - Interpreter Against Non-Script File (PolinRider TTP)', () => {
+    test('should detect node run against a .woff2 font file', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_interpreter_nonscript_ext');
+      expect(rule).to.exist;
+      expect(rule!.commandPattern.test('node ./public/fonts/fa-solid-400.woff2')).to.be.true;
+    });
+
+    test('should detect other interpreters against non-script extensions', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_interpreter_nonscript_ext');
+      expect(rule!.commandPattern.test('python3 ./assets/logo.png')).to.be.true;
+      expect(rule!.commandPattern.test('bash ./data/report.pdf')).to.be.true;
+      expect(rule!.commandPattern.test('pwsh ./bin/module.wasm')).to.be.true;
+    });
+
+    test('should detect node run against a .dict file (Malicious Dictionary campaign fallback)', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_interpreter_nonscript_ext');
+      expect(rule!.commandPattern.test('node ./spellright.dict')).to.be.true;
+    });
+
+    test('should detect the real-world cross-platform command-chain form', () => {
+      // From a live compromised repo, as documented at
+      // https://opensourcemalware.com/blog/how-malware-abuses-npm-lifecycle-scripts-and-vs-code-tasks
+      const rule = TASK_RULES.find((r) => r.id === 'task_interpreter_nonscript_ext');
+      const realWorldCommand =
+        '(command -v node >/dev/null 2>&1 && node ./public/fonts/fa-solid-400.woff2) || ' +
+        "(where node >nul 2>&1 && node ./public/fonts/fa-solid-400.woff2) || echo ''";
+      expect(rule!.commandPattern.test(realWorldCommand)).to.be.true;
+    });
+
+    test('should detect node run against a .llf file (fa-solid-300.llf variant, Sept 2026)', () => {
+      // PolinRider swapped .woff2 for .llf specifically to evade font-extension-only
+      // checks, per https://opensourcemalware.com/blog/polinrider-is-a-b-testing-its-way-past-your-detections
+      const rule = TASK_RULES.find((r) => r.id === 'task_interpreter_nonscript_ext');
+      const realWorldCommand =
+        '(command -v node >/dev/null 2>&1 && node ./public/fonts/fa-solid-300.llf) || ' +
+        "(where node >nul 2>&1 && node ./public/fonts/fa-solid-300.llf) || echo ''";
+      expect(rule!.commandPattern.test(realWorldCommand)).to.be.true;
+    });
+
+    test('should detect the payload buried in a deeply nested, project-specific path', () => {
+      // PolinRider also varies the file location to look like generated output
+      // (e.g. a Prisma client folder) rather than the original top-level public/fonts/.
+      const rule = TASK_RULES.find((r) => r.id === 'task_interpreter_nonscript_ext');
+      const realWorldCommand =
+        '(command -v node >/dev/null 2>&1 && ' +
+        'node ./prisma/generated/prisma/internal/public/fonts/fa-solid-900.woff2) || ' +
+        '(where node >nul 2>&1 && ' +
+        "node ./prisma/generated/prisma/internal/public/fonts/fa-solid-900.woff2) || echo ''";
+      expect(rule!.commandPattern.test(realWorldCommand)).to.be.true;
+    });
+
+    test('should be case insensitive', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_interpreter_nonscript_ext');
+      expect(rule!.commandPattern.test('NODE ./public/fonts/fa-solid-400.WOFF2')).to.be.true;
+    });
+
+    test('should NOT match interpreters run against script files', () => {
+      const rule = TASK_RULES.find((r) => r.id === 'task_interpreter_nonscript_ext');
+      expect(rule!.commandPattern.test('node build.js')).to.be.false;
+      expect(rule!.commandPattern.test('node index.js')).to.be.false;
+      expect(rule!.commandPattern.test('node scripts/postinstall.js')).to.be.false;
+      expect(rule!.commandPattern.test('node ./dist/server.js --port 3000')).to.be.false;
+      expect(rule!.commandPattern.test('python manage.py runserver')).to.be.false;
+      expect(rule!.commandPattern.test('bash scripts/deploy.sh')).to.be.false;
+    });
+  });
+
   suite('Task Analysis - Auto-confirmed Remote Execution (nx-console TTP)', () => {
     test('should detect npx -y github: command', () => {
       const rule = TASK_RULES.find((r) => r.id === 'task_npx_auto_approve_remote');
