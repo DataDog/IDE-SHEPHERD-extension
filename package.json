@@ -327,13 +327,13 @@
     "@vscode/test-cli": {
       "glob": {
         "minimatch": {
-          "brace-expansion": "^2.1.4"
+          "brace-expansion": "^2.1.7"
         }
       },
       "minimatch": {
-        "brace-expansion": "^2.1.4"
+        "brace-expansion": "^2.1.7"
       },
-      "brace-expansion": "^1.1.18"
+      "brace-expansion": "^1.1.21"
     }
   }
 }
